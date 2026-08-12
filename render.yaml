@@ -1,0 +1,29 @@
+# Render Blueprint — mantém o comando de build versionado no repositório.
+#
+# IMPORTANTE: o build NÃO pode instalar pacotes de sistema (`apt-get install git-lfs`).
+# O filesystem do builder do Render é somente-leitura para o APT, e a tentativa falha com:
+#   E: List directory /var/lib/apt/lists/partial is missing. - Acquire (30: Read-only file system)
+# Os objetos do Git LFS são resolvidos por `scripts/fetch-lfs-assets.mjs` (Node puro),
+# executado automaticamente pelo `npm run build`.
+services:
+  - type: web
+    name: medank
+    runtime: node
+    plan: starter
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Se o build falhar baixando o binário nativo do `sharp` (libvips), adicione
+      # NPM_CONFIG_IGNORE_SCRIPTS=true — o app não usa sharp em runtime.
+      # Defina LFS_STRICT=true se preferir que o deploy FALHE quando os embeddings
+      # (public/seed-data/document-embeddings.json, ~158 MB) não puderem ser baixados.
+      - key: LFS_STRICT
+        value: "false"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
