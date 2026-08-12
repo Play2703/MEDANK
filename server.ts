@@ -15,7 +15,7 @@ import { professorEngine } from "./src/core/medcore_kernel/engines/ProfessorEngi
 
 import { localEmbeddingClient } from "./src/data/services/embeddings/LocalEmbeddingClient";
 import { LOCAL_EMBEDDING_CONFIG } from "./src/data/services/embeddings/localEmbeddingConfig";
-import { dictionaryNEREngine } from "./src/core/ner/DictionaryNEREngine";
+import { hybridNEREngine } from "./src/core/ner/HybridNEREngine";
 
 let aiClient: GoogleGenAI | null = null;
 
@@ -168,7 +168,7 @@ async function startServer() {
     return formatted;
   }
 
-  // API Medical Named Entity Recognition (NER) & Clinical Relations Endpoint (Motor Local Determinístico)
+  // API Medical Named Entity Recognition (NER) & Clinical Relations Endpoint (Motor Híbrido: Local Determinístico + IA opcional)
   app.post("/api/extract-entities", async (req, res) => {
     try {
       const { chunks = [] } = req.body;
@@ -196,18 +196,19 @@ async function startServer() {
         DIAGNOSTICO_POR: 'diagnostica',
       };
 
-      const results = chunks.map((item: any) => {
-        const text = item.text || '';
-        const matchedEntities = dictionaryNEREngine.extractEntities(text);
-        const extractedRelations = dictionaryNEREngine.extractRelations(text, matchedEntities);
+      const results = await Promise.all(
+        chunks.map(async (item: any) => {
+          const text = item.text || '';
+          const matchedEntities = await hybridNEREngine.extractEntities(text);
+          const extractedRelations = hybridNEREngine.extractRelations(text, matchedEntities);
 
-        const entities = matchedEntities.map((ent) => ({
-          text: ent.text,
-          type: CATEGORY_TO_TYPE[ent.category] || ent.category.toLowerCase(),
-          code_system: null,
-          code: null,
-          confidence: 1.0,
-        }));
+          const entities = matchedEntities.map((ent) => ({
+            text: ent.text,
+            type: CATEGORY_TO_TYPE[ent.category] || ent.category.toLowerCase(),
+            code_system: ent.codeSystem ?? null,
+            code: ent.code ?? null,
+            confidence: 1.0,
+          }));
 
         const relations = extractedRelations.map((rel) => {
           const sourceCategory = matchedEntities.find((e) => e.normalizedTerm === rel.sourceEntity)?.category || '';
@@ -228,7 +229,8 @@ async function startServer() {
           entities,
           relations,
         };
-      });
+      })
+      );
 
       return res.json({ success: true, results });
     } catch (error: any) {
