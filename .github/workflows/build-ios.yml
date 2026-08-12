@@ -1,0 +1,73 @@
+name: Build iOS IPA (unsigned)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Instalar dependências
+        run: bun install
+
+      - name: Build do app web (Vite)
+        run: bunx vite build
+
+      - name: Gerar o projeto iOS nativo (se ainda não existir)
+        run: |
+          if [ ! -d "ios" ]; then
+            bunx cap add ios
+          fi
+
+      - name: Sincronizar assets web com o projeto iOS nativo
+        run: bunx cap sync ios
+
+      - name: Instalar CocoaPods (dependências nativas do iOS)
+        working-directory: ios/App
+        run: pod install
+
+      - name: Criar archive SEM assinatura
+        working-directory: ios/App
+        run: |
+          xcodebuild archive \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -destination "generic/platform=iOS" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Empacotar o .ipa manualmente (sem passar pelo processo de assinatura da Apple)
+        run: |
+          set -e
+          APP_PATH="$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Não encontrei App.app dentro do archive. Verifique o nome do scheme/target no Xcode."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -r "$APP_PATH" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          zip -r MedAnki-unsigned.ipa Payload
+          mkdir -p "${{ github.workspace }}/ipa-output"
+          mv MedAnki-unsigned.ipa "${{ github.workspace }}/ipa-output/"
+
+      - name: Publicar o .ipa como artifact do run
+        uses: actions/upload-artifact@v4
+        with:
+          name: MedAnki-ipa
+          path: ipa-output/MedAnki-unsigned.ipa
+          retention-days: 14

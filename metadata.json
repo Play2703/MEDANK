@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix MedAnki",
+  "description": "Plataforma de estudos e flashcards médicos com repetição espaçada, Material 3, Clean Architecture e inteligência artificial Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,22 @@
+export enum ImportStatus {
+  Selecionando = 'Selecionando',
+  Validando = 'Validando',
+  Lendo = 'Lendo',
+  ExtraindoMetadados = 'Extraindo Metadados',
+  Classificando = 'Classificando',
+  Organizando = 'Organizando',
+  Armazenando = 'Armazenando',
+  ProcessandoRAG = 'Processando embeddings RAG...',
+  Finalizado = 'Finalizado',
+  Erro = 'Erro',
+  Cancelado = 'Cancelado',
+  Waiting = 'Aguardando',
+  Reading = 'Lendo',
+  Validating = 'Validando',
+  Importing = 'Organizando',
+  Processing = 'Armazenando',
+  Completed = 'Finalizado',
+  Failed = 'Erro',
+  Cancelled = 'Cancelado',
+}
+

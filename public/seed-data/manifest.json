@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-08-12T05:02:58.511Z",
+  "assetCount": 14,
+  "embeddingCount": 11727,
+  "chunkEntityCount": 11727,
+  "chunkRelationCount": 11727,
+  "canonicalEntityCount": 2045,
+  "graphEdgeCount": 6171,
+  "totalChunksProcessed": 11727,
+  "failedFiles": []
+}
