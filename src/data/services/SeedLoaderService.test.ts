@@ -132,18 +132,20 @@ describe('SeedLoaderService Unit Tests', () => {
         } as Response;
       }
       if (urlStr.includes('document-embeddings.json')) {
+        const data = [
+          {
+            id: 'seed-asset-1-0',
+            assetId: 'seed-asset-1',
+            chunkIndex: 0,
+            content: 'Texto sobre Cetoacidose Diabética...',
+            embedding: [0.1, 0.2, 0.3],
+            createdAt: new Date().toISOString(),
+          },
+        ];
         return {
           ok: true,
-          json: async () => [
-            {
-              id: 'seed-asset-1-0',
-              assetId: 'seed-asset-1',
-              chunkIndex: 0,
-              content: 'Texto sobre Cetoacidose Diabética...',
-              embedding: [0.1, 0.2, 0.3],
-              createdAt: new Date().toISOString(),
-            },
-          ],
+          json: async () => data,
+          text: async () => JSON.stringify(data),
         } as Response;
       }
       if (urlStr.includes('chunk-entities.json')) {
@@ -171,5 +173,30 @@ describe('SeedLoaderService Unit Tests', () => {
 
     const isNeededAfter = await seedLoaderService.isSeedNeeded();
     expect(isNeededAfter).toBe(false);
+  });
+
+  it('loadSeedBundle deve carregar os 14 arquivos-base mesmo se document-embeddings.json for um PONTEIRO do Git LFS', async () => {
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('knowledge-assets.json')) {
+        const data = [{ id: 'seed-asset-lfs', uuid: 'seed-asset-lfs', title: 'Apostila LFS', category: 'Apostila', subcategory: 'Geral', discipline: 'Medicina', specialty: 'Geral', author: 'MedAnki', institution: 'MedAnki', board: 'Geral', professor: 'Geral', year: 2026, semester: '1', tags: [], metadata: {}, file: { name: 'a.pdf' }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), processingStatus: 'completed' }];
+        return { ok: true, json: async () => data, text: async () => JSON.stringify(data) } as Response;
+      }
+      if (urlStr.includes('document-embeddings.json')) {
+        // Ponteiro Git LFS real (conteúdo ~158 MB ausente) — exatamente o que está commitado.
+        return { ok: true, json: async () => { throw new Error('invalid JSON'); }, text: async () => 'version https://git-lfs.github.com/spec/v1\noid sha256:abc\n' } as unknown as Response;
+      }
+      const empty: any[] = [];
+      return { ok: true, json: async () => empty, text: async () => '[]' } as Response;
+    });
+
+    const loaded = await seedLoaderService.loadSeedBundle();
+    expect(loaded).toBe(true);
+
+    // O catálogo de arquivos-base deve ser populado MESMO sem embeddings.
+    const assetCount = await db.knowledgeAssets.count();
+    const embeddingCount = await db.documentEmbeddings.count();
+    expect(assetCount).toBe(1);
+    expect(embeddingCount).toBe(0);
   });
 });

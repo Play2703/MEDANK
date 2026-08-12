@@ -7,6 +7,10 @@ export interface MatchedEntity {
   category: string;
   startIndex: number;
   endIndex: number;
+  // Opcional: código clínico padronizado (CID-10 / SNOMED CT) quando resolvido
+  // pela camada de IA do HybridNEREngine. Ausente no motor local.
+  codeSystem?: string | null;
+  code?: string | null;
 }
 
 export interface ExtractedRelation {

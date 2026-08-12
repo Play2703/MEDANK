@@ -64,8 +64,36 @@ export class SeedLoaderService {
       onProgress?.({ stage: 'Baixando materiais de referência...', percent: 15 });
       const assets = await fetchJson<KnowledgeAsset>('knowledge-assets.json');
 
+      // Embeddings são OPCIONAIS no carregamento do seed. O arquivo document-embeddings.json
+      // pode estar ausente, ser um ponteiro do Git LFS (ex.: "version https://git-lfs..." em vez
+      // do JSON real de ~158 MB) ou falhar ao fazer parse. Nesses casos NÃO devemos abortar o
+      // carregamento dos demais dados (catálogo dos 14 arquivos-base, entidades, relações e grafo),
+      // senão o Developer Console fica sem citar nenhum arquivo de base. A busca semântica/híbrida
+      // simplesmente ficará vazia até o arquivo real de embeddings ser disponibilizado.
       onProgress?.({ stage: 'Baixando embeddings semânticos...', percent: 35 });
-      const embeddings = await fetchJson<DocumentEmbedding>('document-embeddings.json');
+      let embeddings: DocumentEmbedding[] = [];
+      try {
+        const embRes = await fetch(`/seed-data/document-embeddings.json`);
+        if (!embRes.ok) {
+          throw new Error(`status ${embRes.status}`);
+        }
+        const embText = await embRes.text();
+        if (embText.startsWith('version https://git-lfs')) {
+          console.warn(
+            '[SeedLoaderService] document-embeddings.json é um PONTEIRO do Git LFS (conteúdo real ~158 MB ausente). ' +
+              'Os arquivos-base aparecerão na biblioteca, mas a busca semântica/híbrida ficará vazia até você ' +
+              'executar "git lfs pull" ou rodar "npm run seed:build" com os 14 PDFs em scripts/seed-source/.'
+          );
+        } else {
+          const parsed = JSON.parse(embText);
+          embeddings = Array.isArray(parsed) ? parsed : [];
+        }
+      } catch (embErr: any) {
+        console.warn(
+          '[SeedLoaderService] Embeddings semânticos indisponíveis — continuando o carregamento sem eles:',
+          embErr?.message || embErr
+        );
+      }
 
       onProgress?.({ stage: 'Baixando entidades clínicas (NER)...', percent: 55 });
       const chunkEntities = await fetchJson<ChunkEntityRecord>('chunk-entities.json');
