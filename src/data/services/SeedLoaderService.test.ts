@@ -14,9 +14,15 @@ describe('SeedLoaderService Unit Tests', () => {
     if (typeof localStorage === 'undefined') {
       (global as any).localStorage = {
         getItem: (key: string) => mockLocalStorage[key] || null,
-        setItem: (key: string, val: string) => { mockLocalStorage[key] = val; },
-        removeItem: (key: string) => { delete mockLocalStorage[key]; },
-        clear: () => { Object.keys(mockLocalStorage).forEach((k) => delete mockLocalStorage[k]); },
+        setItem: (key: string, val: string) => {
+          mockLocalStorage[key] = val;
+        },
+        removeItem: (key: string) => {
+          delete mockLocalStorage[key];
+        },
+        clear: () => {
+          Object.keys(mockLocalStorage).forEach((k) => delete mockLocalStorage[k]);
+        },
       };
     } else {
       localStorage.clear();
@@ -70,7 +76,7 @@ describe('SeedLoaderService Unit Tests', () => {
     let fetchCalled = false;
     global.fetch = vi.fn().mockImplementation(async () => {
       fetchCalled = true;
-      return { ok: true, json: async () => [] } as Response;
+      return new Response(JSON.stringify([]));
     });
 
     await db.knowledgeAssets.put({
@@ -100,13 +106,12 @@ describe('SeedLoaderService Unit Tests', () => {
     expect(fetchCalled).toBe(false);
   });
 
-  it('loadSeedBundle deve buscar os JSONs estáticos e popular as 6 tabelas no IndexedDB quando aprovado', async () => {
+  it('loadSeedBundle deve buscar os JSONs estáticos e popular as tabelas no IndexedDB quando aprovado', async () => {
     global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request) => {
       const urlStr = url.toString();
       if (urlStr.includes('knowledge-assets.json')) {
-        return {
-          ok: true,
-          json: async () => [
+        return new Response(
+          JSON.stringify([
             {
               id: 'seed-asset-1',
               uuid: 'seed-asset-1',
@@ -128,39 +133,24 @@ describe('SeedLoaderService Unit Tests', () => {
               updatedAt: new Date().toISOString(),
               processingStatus: 'completed',
             },
-          ],
-        } as Response;
+          ])
+        );
       }
-      if (urlStr.includes('document-embeddings.json')) {
-        const data = [
-          {
-            id: 'seed-asset-1-0',
-            assetId: 'seed-asset-1',
-            chunkIndex: 0,
-            content: 'Texto sobre Cetoacidose Diabética...',
-            embedding: [0.1, 0.2, 0.3],
-            createdAt: new Date().toISOString(),
-          },
-        ];
-        return {
-          ok: true,
-          json: async () => data,
-          text: async () => JSON.stringify(data),
-        } as Response;
+      if (urlStr.includes('document-embeddings.json.gz')) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: 'seed-asset-1-0',
+              assetId: 'seed-asset-1',
+              chunkIndex: 0,
+              content: 'Texto sobre Cetoacidose Diabética...',
+              embedding: [0.1, 0.2, 0.3],
+              createdAt: new Date().toISOString(),
+            },
+          ])
+        );
       }
-      if (urlStr.includes('chunk-entities.json')) {
-        return { ok: true, json: async () => [] } as Response;
-      }
-      if (urlStr.includes('chunk-relations.json')) {
-        return { ok: true, json: async () => [] } as Response;
-      }
-      if (urlStr.includes('canonical-entity-index.json')) {
-        return { ok: true, json: async () => [] } as Response;
-      }
-      if (urlStr.includes('graph-edges.json')) {
-        return { ok: true, json: async () => [] } as Response;
-      }
-      return { ok: true, json: async () => [] } as Response;
+      return new Response(JSON.stringify([]));
     });
 
     const loaded = await seedLoaderService.loadSeedBundle();
@@ -175,28 +165,63 @@ describe('SeedLoaderService Unit Tests', () => {
     expect(isNeededAfter).toBe(false);
   });
 
-  it('loadSeedBundle deve carregar os 14 arquivos-base mesmo se document-embeddings.json for um PONTEIRO do Git LFS', async () => {
+  it('loadSeedBundle deve ser resiliente se document-embeddings.json.gz falhar ou vier como ponteiro Git LFS', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request) => {
       const urlStr = url.toString();
       if (urlStr.includes('knowledge-assets.json')) {
-        const data = [{ id: 'seed-asset-lfs', uuid: 'seed-asset-lfs', title: 'Apostila LFS', category: 'Apostila', subcategory: 'Geral', discipline: 'Medicina', specialty: 'Geral', author: 'MedAnki', institution: 'MedAnki', board: 'Geral', professor: 'Geral', year: 2026, semester: '1', tags: [], metadata: {}, file: { name: 'a.pdf' }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), processingStatus: 'completed' }];
-        return { ok: true, json: async () => data, text: async () => JSON.stringify(data) } as Response;
+        return new Response(
+          JSON.stringify([
+            {
+              id: 'seed-asset-1',
+              uuid: 'seed-asset-1',
+              title: 'Apostila Seed Endocrinologia',
+              category: 'Apostila',
+              subcategory: 'Endocrinologia',
+              discipline: 'Endocrinologia',
+              specialty: 'Endocrinologia',
+              author: 'MedAnki',
+              institution: 'MedAnki',
+              board: 'REVALIDA',
+              professor: 'Geral',
+              year: 2026,
+              semester: '1',
+              tags: ['Endocrinologia'],
+              metadata: { isSeed: true },
+              file: { name: 'endo.pdf' },
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              processingStatus: 'completed',
+            },
+          ])
+        );
       }
-      if (urlStr.includes('document-embeddings.json')) {
-        // Ponteiro Git LFS real (conteúdo ~158 MB ausente) — exatamente o que está commitado.
-        return { ok: true, json: async () => { throw new Error('invalid JSON'); }, text: async () => 'version https://git-lfs.github.com/spec/v1\noid sha256:abc\n' } as unknown as Response;
+      if (urlStr.includes('document-embeddings.json.gz')) {
+        // Retorna ponteiro Git LFS
+        return new Response(
+          'version https://git-lfs.github.com/spec/v1\noid sha256:123456789\nsize 1000'
+        );
       }
-      const empty: any[] = [];
-      return { ok: true, json: async () => empty, text: async () => '[]' } as Response;
+      return new Response(JSON.stringify([]));
     });
 
     const loaded = await seedLoaderService.loadSeedBundle();
     expect(loaded).toBe(true);
 
-    // O catálogo de arquivos-base deve ser populado MESMO sem embeddings.
     const assetCount = await db.knowledgeAssets.count();
     const embeddingCount = await db.documentEmbeddings.count();
     expect(assetCount).toBe(1);
     expect(embeddingCount).toBe(0);
+
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('loadSeedBundle deve lançar erro se knowledge-assets.json falhar', async () => {
+    global.fetch = vi.fn().mockImplementation(async () => {
+      return new Response('Not Found', { status: 444 });
+    });
+
+    await expect(seedLoaderService.loadSeedBundle()).rejects.toThrow();
   });
 });

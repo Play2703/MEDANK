@@ -7,4 +7,5 @@ coverage/
 .env*
 !.env.example
 scripts/.seed-progress.json
+public/seed-data/document-embeddings.json
 

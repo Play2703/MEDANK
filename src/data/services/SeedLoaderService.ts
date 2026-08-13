@@ -16,6 +16,7 @@ import {
 
 const SEED_STORAGE_KEY = 'MEDANKI_SEED_LOADED_VERSION';
 const CURRENT_SEED_VERSION = '1.0.0';
+const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/';
 
 export interface SeedProgressInfo {
   stage: string;
@@ -41,6 +42,57 @@ export class SeedLoaderService {
   }
 
   /**
+   * Helper to fetch plain JSON files, checking for Git LFS pointer.
+   */
+  private async fetchSeedJson<T>(filename: string): Promise<T[]> {
+    const res = await fetch(`/seed-data/${filename}`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch /seed-data/${filename} (${res.status})`);
+    }
+    const text = await res.text();
+    if (text.startsWith(LFS_POINTER_PREFIX)) {
+      throw new Error(`File /seed-data/${filename} is an unresolved Git LFS pointer text`);
+    }
+    return JSON.parse(text);
+  }
+
+  /**
+   * Helper to fetch .gz compressed JSON files using native DecompressionStream.
+   */
+  private async fetchGzSeedJson<T>(filename: string): Promise<T[]> {
+    const res = await fetch(`/seed-data/${filename}`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch /seed-data/${filename} (${res.status})`);
+    }
+    const arrayBuffer = await res.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    // Check if raw array buffer is a Git LFS pointer text
+    const headerSnippet = new TextDecoder().decode(uint8Array.slice(0, 100));
+    if (headerSnippet.startsWith(LFS_POINTER_PREFIX)) {
+      throw new Error(`File /seed-data/${filename} is an unresolved Git LFS pointer text`);
+    }
+
+    let text: string;
+    if (uint8Array.length >= 2 && uint8Array[0] === 0x1f && uint8Array[1] === 0x8b) {
+      // Native DecompressionStream decompression
+      const blob = new Blob([arrayBuffer]);
+      const decompressedStream = blob.stream().pipeThrough(new DecompressionStream('gzip'));
+      const decompressedResponse = new Response(decompressedStream);
+      text = await decompressedResponse.text();
+    } else {
+      // Fallback for raw text / JSON in test mocks
+      text = new TextDecoder().decode(arrayBuffer);
+    }
+
+    if (text.startsWith(LFS_POINTER_PREFIX)) {
+      throw new Error(`File /seed-data/${filename} is an unresolved Git LFS pointer text`);
+    }
+
+    return JSON.parse(text);
+  }
+
+  /**
    * Fetches static JSON assets from public/seed-data/ and populates Dexie tables via bulkPut
    */
   async loadSeedBundle(onProgress?: (info: SeedProgressInfo) => void): Promise<boolean> {
@@ -50,58 +102,72 @@ export class SeedLoaderService {
       return false;
     }
 
+    const failedFiles: string[] = [];
+
     try {
       onProgress?.({ stage: 'Iniciando download do pacote base...', percent: 5 });
 
-      const fetchJson = async <T>(filename: string): Promise<T[]> => {
-        const res = await fetch(`/seed-data/${filename}`);
-        if (!res.ok) {
-          throw new Error(`Failed to fetch /seed-data/${filename} (${res.status})`);
-        }
-        return await res.json();
-      };
-
+      // 1. knowledge-assets.json (FATAL if fails)
       onProgress?.({ stage: 'Baixando materiais de referência...', percent: 15 });
-      const assets = await fetchJson<KnowledgeAsset>('knowledge-assets.json');
+      let assets: KnowledgeAsset[] = [];
+      try {
+        assets = await this.fetchSeedJson<KnowledgeAsset>('knowledge-assets.json');
+      } catch (err) {
+        console.error('[SeedLoaderService] FATAL: Failed to fetch knowledge-assets.json:', err);
+        throw new Error(`Erro fatal ao carregar materiais de referência (knowledge-assets.json): ${err instanceof Error ? err.message : String(err)}`);
+      }
 
-      // Embeddings são OPCIONAIS no carregamento do seed. O arquivo document-embeddings.json
-      // pode estar ausente, ser um ponteiro do Git LFS (ex.: "version https://git-lfs..." em vez
-      // do JSON real de ~158 MB) ou falhar ao fazer parse. Nesses casos NÃO devemos abortar o
-      // carregamento dos demais dados (catálogo dos 14 arquivos-base, entidades, relações e grafo),
-      // senão o Developer Console fica sem citar nenhum arquivo de base. A busca semântica/híbrida
-      // simplesmente ficará vazia até o arquivo real de embeddings ser disponibilizado.
+      // 2. document-embeddings.json.gz (Non-fatal)
       onProgress?.({ stage: 'Baixando embeddings semânticos...', percent: 35 });
       let embeddings: DocumentEmbedding[] = [];
       try {
-        const embRes = await fetch(`/seed-data/document-embeddings.json`);
-        if (!embRes.ok) {
-          throw new Error(`status ${embRes.status}`);
-        }
-        const embText = await embRes.text();
-        if (embText.startsWith('version https://git-lfs')) {
-          console.warn(
-            '[SeedLoaderService] document-embeddings.json é um PONTEIRO do Git LFS (conteúdo real ~158 MB ausente). ' +
-              'Os arquivos-base aparecerão na biblioteca, mas a busca semântica/híbrida ficará vazia até você ' +
-              'executar "git lfs pull" ou rodar "npm run seed:build" com os 14 PDFs em scripts/seed-source/.'
-          );
-        } else {
-          const parsed = JSON.parse(embText);
-          embeddings = Array.isArray(parsed) ? parsed : [];
-        }
-      } catch (embErr: any) {
-        console.warn(
-          '[SeedLoaderService] Embeddings semânticos indisponíveis — continuando o carregamento sem eles:',
-          embErr?.message || embErr
-        );
+        embeddings = await this.fetchGzSeedJson<DocumentEmbedding>('document-embeddings.json.gz');
+      } catch (err) {
+        failedFiles.push('document-embeddings.json.gz');
+        console.warn('[SeedLoaderService] Falha ao carregar document-embeddings.json.gz:', err);
       }
 
+      // 3. chunk-entities.json (Non-fatal)
       onProgress?.({ stage: 'Baixando entidades clínicas (NER)...', percent: 55 });
-      const chunkEntities = await fetchJson<ChunkEntityRecord>('chunk-entities.json');
-      const chunkRelations = await fetchJson<ChunkRelationRecord>('chunk-relations.json');
+      let chunkEntities: ChunkEntityRecord[] = [];
+      try {
+        chunkEntities = await this.fetchSeedJson<ChunkEntityRecord>('chunk-entities.json');
+      } catch (err) {
+        failedFiles.push('chunk-entities.json');
+        console.warn('[SeedLoaderService] Falha ao carregar chunk-entities.json:', err);
+      }
 
+      // 4. chunk-relations.json (Non-fatal)
+      let chunkRelations: ChunkRelationRecord[] = [];
+      try {
+        chunkRelations = await this.fetchSeedJson<ChunkRelationRecord>('chunk-relations.json');
+      } catch (err) {
+        failedFiles.push('chunk-relations.json');
+        console.warn('[SeedLoaderService] Falha ao carregar chunk-relations.json:', err);
+      }
+
+      // 5. canonical-entity-index.json (Non-fatal)
       onProgress?.({ stage: 'Baixando grafo de conhecimento...', percent: 75 });
-      const canonicalEntities = await fetchJson<CanonicalEntityIndexRecord>('canonical-entity-index.json');
-      const graphEdges = await fetchJson<GraphEdgeRecord>('graph-edges.json');
+      let canonicalEntities: CanonicalEntityIndexRecord[] = [];
+      try {
+        canonicalEntities = await this.fetchSeedJson<CanonicalEntityIndexRecord>('canonical-entity-index.json');
+      } catch (err) {
+        failedFiles.push('canonical-entity-index.json');
+        console.warn('[SeedLoaderService] Falha ao carregar canonical-entity-index.json:', err);
+      }
+
+      // 6. graph-edges.json (Non-fatal)
+      let graphEdges: GraphEdgeRecord[] = [];
+      try {
+        graphEdges = await this.fetchSeedJson<GraphEdgeRecord>('graph-edges.json');
+      } catch (err) {
+        failedFiles.push('graph-edges.json');
+        console.warn('[SeedLoaderService] Falha ao carregar graph-edges.json:', err);
+      }
+
+      if (failedFiles.length > 0) {
+        console.warn(`[SeedLoaderService] Carregamento parcial do seed concluído. Arquivos com falha: ${failedFiles.join(', ')}`);
+      }
 
       onProgress?.({ stage: 'Gravando dados na biblioteca local...', percent: 85 });
 
@@ -130,7 +196,9 @@ export class SeedLoaderService {
       }
       onProgress?.({ stage: 'Biblioteca base pronta!', percent: 100 });
 
-      console.log(`[SeedLoaderService] Seed bundle successfully loaded: ${assets.length} assets, ${embeddings.length} embeddings.`);
+      console.log(
+        `[SeedLoaderService] Seed bundle successfully loaded: ${assets.length} assets, ${embeddings.length} embeddings.`
+      );
       return true;
     } catch (err) {
       console.error('[SeedLoaderService] Failed to load seed bundle:', err);
