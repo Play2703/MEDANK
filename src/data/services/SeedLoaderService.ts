@@ -15,6 +15,7 @@ import {
 } from '../../domain/entities/ChunkEntity';
 
 const SEED_STORAGE_KEY = 'MEDANKI_SEED_LOADED_VERSION';
+const SEED_DISMISSED_KEY = 'MEDANKI_SEED_DISMISSED_VERSION';
 const CURRENT_SEED_VERSION = '1.0.0';
 const LFS_POINTER_PREFIX = 'version https://git-lfs.github.com/spec/';
 
@@ -25,16 +26,23 @@ export interface SeedProgressInfo {
 
 export class SeedLoaderService {
   /**
-   * Checks whether seed bundle loading prompt should be presented to the user
+   * Checks whether seed bundle loading prompt should be presented to the user.
+   * Checks IndexedDB as the source of truth, optimizing via localStorage flags.
    */
   async isSeedNeeded(): Promise<boolean> {
     try {
-      const isAlreadyLoaded =
+      const isLoaded =
         typeof localStorage !== 'undefined' && localStorage.getItem(SEED_STORAGE_KEY) === CURRENT_SEED_VERSION;
-      if (isAlreadyLoaded) return false;
+      if (isLoaded) return false;
 
       const existingAssetCount = await db.knowledgeAssets.count();
-      return existingAssetCount === 0;
+      if (existingAssetCount > 0) return false;
+
+      const isDismissed =
+        typeof localStorage !== 'undefined' && localStorage.getItem(SEED_DISMISSED_KEY) === CURRENT_SEED_VERSION;
+      if (isDismissed) return false;
+
+      return true;
     } catch (err) {
       console.warn('[SeedLoaderService] Error checking if seed is needed:', err);
       return false;
@@ -93,10 +101,14 @@ export class SeedLoaderService {
   }
 
   /**
-   * Fetches static JSON assets from public/seed-data/ and populates Dexie tables via bulkPut
+   * Fetches static JSON assets from public/seed-data/ and populates Dexie tables via bulkPut.
+   * If ignoreFlags is true, bypasses localStorage flags and loads if database has 0 assets.
    */
-  async loadSeedBundle(onProgress?: (info: SeedProgressInfo) => void): Promise<boolean> {
-    const needed = await this.isSeedNeeded();
+  async loadSeedBundle(
+    onProgress?: (info: SeedProgressInfo) => void,
+    ignoreFlags: boolean = false
+  ): Promise<boolean> {
+    const needed = ignoreFlags ? (await db.knowledgeAssets.count()) === 0 : await this.isSeedNeeded();
     if (!needed) {
       console.log('[SeedLoaderService] Seed loading skipped: user already has assets or seed flag set.');
       return false;
@@ -193,6 +205,7 @@ export class SeedLoaderService {
 
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(SEED_STORAGE_KEY, CURRENT_SEED_VERSION);
+        localStorage.removeItem(SEED_DISMISSED_KEY);
       }
       onProgress?.({ stage: 'Biblioteca base pronta!', percent: 100 });
 
@@ -207,11 +220,11 @@ export class SeedLoaderService {
   }
 
   /**
-   * Dismisses the seed prompt without loading, setting the flag so it won't ask again
+   * Dismisses the seed prompt without loading, setting the dismissed flag
    */
   dismissSeedPrompt(): void {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(SEED_STORAGE_KEY, CURRENT_SEED_VERSION);
+      localStorage.setItem(SEED_DISMISSED_KEY, CURRENT_SEED_VERSION);
     }
   }
 }

@@ -37,6 +37,7 @@ import { useMaterialViewModel } from '../../core/material';
 import { MaterialModel } from '../../core/material';
 import { KnowledgeCategory, KnowledgeCategoryMapper } from '../../core/knowledge_library/models/KnowledgeCategory';
 import { DocumentViewerModal } from './DocumentViewerModal';
+import { seedLoaderService } from '../../data/services/SeedLoaderService';
 
 export const DeveloperLibraryView: React.FC = () => {
   const {
@@ -79,6 +80,31 @@ export const DeveloperLibraryView: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [isLoadingSeed, setIsLoadingSeed] = useState(false);
+  const [seedProgress, setSeedProgress] = useState<string | null>(null);
+
+  const handleLoadSeedManual = async () => {
+    if (confirm('Deseja carregar a Biblioteca Base Pré-processada (14 arquivos-base do MedCore)?')) {
+      setIsLoadingSeed(true);
+      setSeedProgress('Iniciando...');
+      try {
+        const ok = await seedLoaderService.loadSeedBundle((info) => {
+          setSeedProgress(`${info.stage} (${info.percent}%)`);
+        }, true);
+        if (ok) {
+          alert('Biblioteca Base carregada com sucesso!');
+          window.location.reload();
+        } else {
+          alert('A biblioteca base não foi carregada porque o banco de dados já possui materiais.');
+        }
+      } catch (err: any) {
+        alert(`Erro ao carregar biblioteca base: ${err?.message || String(err)}`);
+      } finally {
+        setIsLoadingSeed(false);
+        setSeedProgress(null);
+      }
+    }
+  };
 
   // Edit inline state for detail modal
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -182,6 +208,18 @@ export const DeveloperLibraryView: React.FC = () => {
 
         {/* Primary CTA Buttons */}
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleLoadSeedManual}
+            disabled={isLoadingSeed}
+            className="px-3.5 py-2.5 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 font-medium text-xs transition-colors flex items-center gap-2 border border-indigo-500/30 disabled:opacity-50"
+            title="Carregar Biblioteca Base Pré-processada"
+          >
+            <BookOpen className="w-4 h-4 text-indigo-400" />
+            <span className="hidden sm:inline">
+              {isLoadingSeed ? (seedProgress || 'Carregando...') : 'Carregar Biblioteca Base'}
+            </span>
+          </button>
+
           <button
             onClick={() => resetToSeed()}
             className="px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs transition-colors flex items-center gap-2 border border-slate-700"

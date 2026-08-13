@@ -40,7 +40,7 @@ describe('SeedLoaderService Unit Tests', () => {
     vi.restoreAllMocks();
   });
 
-  it('isSeedNeeded deve retornar true quando db.knowledgeAssets estiver vazio e flag não estiver definida', async () => {
+  it('isSeedNeeded deve retornar true quando db.knowledgeAssets estiver vazio e nenhuma flag estiver definida', async () => {
     const needed = await seedLoaderService.isSeedNeeded();
     expect(needed).toBe(true);
   });
@@ -70,6 +70,62 @@ describe('SeedLoaderService Unit Tests', () => {
 
     const needed = await seedLoaderService.isSeedNeeded();
     expect(needed).toBe(false);
+  });
+
+  it('dismissSeedPrompt deve gravar na chave SEED_DISMISSED_KEY e isSeedNeeded deve retornar false', async () => {
+    seedLoaderService.dismissSeedPrompt();
+
+    expect(localStorage.getItem('MEDANKI_SEED_DISMISSED_VERSION')).toBe('1.0.0');
+    expect(localStorage.getItem('MEDANKI_SEED_LOADED_VERSION')).toBeNull();
+
+    const needed = await seedLoaderService.isSeedNeeded();
+    expect(needed).toBe(false);
+  });
+
+  it('loadSeedBundle com ignoreFlags=true deve carregar o seed manualmente mesmo que o usuário tenha dispensado antes', async () => {
+    seedLoaderService.dismissSeedPrompt();
+    expect(await seedLoaderService.isSeedNeeded()).toBe(false);
+
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('knowledge-assets.json')) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: 'seed-asset-manual',
+              uuid: 'seed-asset-manual',
+              title: 'Apostila Seed Manual',
+              category: 'Apostila',
+              subcategory: 'Cardiologia',
+              discipline: 'Cardiologia',
+              specialty: 'Cardiologia',
+              author: 'MedAnki',
+              institution: 'MedAnki',
+              board: 'REVALIDA',
+              professor: 'Geral',
+              year: 2026,
+              semester: '1',
+              tags: ['Cardiologia'],
+              metadata: { isSeed: true },
+              file: { name: 'cardio.pdf' },
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              processingStatus: 'completed',
+            },
+          ])
+        );
+      }
+      return new Response(JSON.stringify([]));
+    });
+
+    const loaded = await seedLoaderService.loadSeedBundle(undefined, true);
+    expect(loaded).toBe(true);
+
+    const assetCount = await db.knowledgeAssets.count();
+    expect(assetCount).toBe(1);
+
+    expect(localStorage.getItem('MEDANKI_SEED_LOADED_VERSION')).toBe('1.0.0');
+    expect(localStorage.getItem('MEDANKI_SEED_DISMISSED_VERSION')).toBeNull();
   });
 
   it('loadSeedBundle não deve carregar dados nem fazer fetch se o usuário já tiver dados reais', async () => {
