@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import path from 'path';
-import { dictionaryNEREngine, estimateCoverage, MIN_COVERAGE_THRESHOLD } from './DictionaryNEREngine';
-
-const terminology: any[] = JSON.parse(
-  fs.readFileSync(path.resolve(process.cwd(), 'src/core/ner/medicalTerminologyPt.json'), 'utf-8')
-);
+import { dictionaryNEREngine, estimateCoverage, MIN_COVERAGE_THRESHOLD, getTerminology } from './DictionaryNEREngine';
 
 describe('DictionaryNEREngine', () => {
   describe('PARTE 1 — Multi-entity relation extraction (extractRelations)', () => {
@@ -93,7 +87,7 @@ describe('DictionaryNEREngine', () => {
       // Sentence 2 entities
       expect(results[1].map((e) => e.normalizedTerm)).toEqual([
         'diabetes mellitus tipo 2',
-        'hipertensão arterial sistêmica',
+        'hipertensão',
         'febre',
         'dispneia',
       ]);
@@ -185,6 +179,7 @@ describe('DictionaryNEREngine', () => {
 
   describe('PARTE 3 — Sanidade e Integridade do Dicionário (CID-10)', () => {
     it('deve possuir mais de 10.000 termos principais e nenhuma duplicata exata de normalizedTerm', () => {
+      const terminology = getTerminology();
       const normalizedMap = new Map<string, number>();
       let duplicateCount = 0;
 

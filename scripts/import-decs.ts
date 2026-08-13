@@ -10,6 +10,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { parseDecsXml, DecsDescriptor } from '../src/core/ner/decs/decsXmlParser';
 import { shouldSkipTerm } from '../src/core/ner/decs/decsCategoryMap';
+import { convertJsonToSqlite } from './convert-to-sqlite';
 
 // Load .env variables if available
 try {
@@ -263,6 +264,13 @@ export function importDecs(isDryRun: boolean = false) {
     const finalSizeBytes = fs.statSync(DICTIONARY_PATH).size;
     console.log(`🎉 Dicionário ${DICTIONARY_PATH} atualizado com sucesso!`);
     console.log(`   Tamanho final: ${(finalSizeBytes / (1024 * 1024)).toFixed(2)} MB`);
+
+    // Sincroniza e reconstrói o banco SQLite medicalTerminology.db
+    try {
+      convertJsonToSqlite(DICTIONARY_PATH);
+    } catch (dbErr) {
+      console.warn('Aviso: falha ao atualizar medicalTerminology.db automaticamente:', dbErr);
+    }
   } else {
     console.log(`ℹ️ Modos [DRY RUN] — Nenhuma alteração foi gravada em disco.`);
   }

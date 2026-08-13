@@ -14,3 +14,9 @@ scripts/seed-source/decs/*.tar
 scripts/seed-source/decs/*.gz
 !scripts/seed-source/decs/fixtures/
 
+# Medical Dictionary Source JSON (migrated to SQLite medicalTerminology.db)
+src/core/ner/medicalTerminologyPt.json
+medicalTerminologyPt.json
+!src/core/ner/medicalTerminology.db
+!medicalTerminology.db
+

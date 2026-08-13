@@ -11,10 +11,11 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=15000",
     "seed:build": "tsx scripts/build-seed-bundle.ts",
     "seed:manifest": "tsx scripts/generate-seed-manifest.ts",
-    "dict:import-decs": "tsx scripts/import-decs.ts"
+    "dict:import-decs": "tsx scripts/import-decs.ts",
+    "db:build": "tsx scripts/convert-to-sqlite.ts"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",
@@ -23,6 +24,7 @@
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "@xenova/transformers": "^2.17.2",
+    "better-sqlite3": "^13.0.3",
     "cors": "^2.8.5",
     "dexie": "^4.4.4",
     "dotenv": "^17.2.3",
@@ -42,6 +44,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",

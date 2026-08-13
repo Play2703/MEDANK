@@ -13,6 +13,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { convertJsonToSqlite } from './convert-to-sqlite';
 
 interface DictionaryEntry {
   term: string;
@@ -205,6 +206,13 @@ export function importCid10() {
   fs.writeFileSync(DICTIONARY_PATH, JSON.stringify(finalDict, null, 2), 'utf-8');
   console.log(`🎉 Dicionário ${DICTIONARY_PATH} atualizado com sucesso!`);
   console.log(`   Total final: ${finalDict.length} termos principais / ${finalTotalTermsWithSynonyms} com sinônimos.`);
+
+  // Sincroniza e reconstrói o banco SQLite medicalTerminology.db
+  try {
+    convertJsonToSqlite(DICTIONARY_PATH);
+  } catch (dbErr) {
+    console.warn('Aviso: falha ao atualizar medicalTerminology.db automaticamente:', dbErr);
+  }
 
   return {
     initialMainTermsCount,

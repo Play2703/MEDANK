@@ -40,6 +40,8 @@ const GENERIC_DENYLIST = new Set([
   'fatores de risco',
   'fator de risco para',
   'fatores de risco para',
+  'risco',
+  'riscos',
   'causa',
   'causas',
 ]);

@@ -1,20 +1,6 @@
+import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
-import { AhoCorasick } from './ahoCorasick';
-
-export function getTerminology(): any[] {
-  try {
-    if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-      const jsonPath = path.resolve(process.cwd(), 'src/core/ner/medicalTerminologyPt.json');
-      if (fs.existsSync(jsonPath)) {
-        return JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-      }
-    }
-  } catch {
-    // Browser fallback
-  }
-  return [];
-}
 
 export interface MatchedEntity {
   text: string;           // trecho exato encontrado no texto original
@@ -22,8 +8,7 @@ export interface MatchedEntity {
   category: string;
   startIndex: number;
   endIndex: number;
-  // Opcional: código clínico padronizado (CID-10 / SNOMED CT) quando resolvido
-  // pela camada de IA do HybridNEREngine. Ausente no motor local.
+  // Código clínico padronizado (CID-10 / DeCS / MeSH / SNOMED CT)
   codeSystem?: string | null;
   code?: string | null;
 }
@@ -36,11 +21,92 @@ export interface ExtractedRelation {
   sentence: string;
 }
 
-function normalizeText(text: string): string {
+export interface DictionaryPayload {
+  canonicalTerm: string;
+  category: string;
+  codeSystem?: string | null;
+  code?: string | null;
+}
+
+export interface TermRow {
+  system: string | null;
+  code: string | null;
+  category?: string | null;
+  canonical_term?: string | null;
+}
+
+export function normalizeText(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ''); // remove acentos
+    .replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function getDbPath(): string {
+  const possiblePaths = [
+    path.resolve(process.cwd(), 'src/core/ner/medicalTerminology.db'),
+    path.resolve(process.cwd(), 'medicalTerminology.db'),
+    path.resolve(__dirname, 'medicalTerminology.db'),
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return path.resolve(process.cwd(), 'src/core/ner/medicalTerminology.db');
+}
+
+let dbInstance: Database.Database | null = null;
+let selectTermStmt: Database.Statement<[string], TermRow> | null = null;
+
+export function getTerminologyDb(): Database.Database | null {
+  if (dbInstance) return dbInstance;
+  try {
+    if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+      const dbPath = getDbPath();
+      if (fs.existsSync(dbPath)) {
+        dbInstance = new Database(dbPath, { readonly: true, fileMustExist: true });
+        return dbInstance;
+      }
+    }
+  } catch (err) {
+    console.warn('[DictionaryNEREngine] Erro ao conectar ao medicalTerminology.db:', err);
+  }
+  return null;
+}
+
+export function getSelectTermStatement(): Database.Statement<[string], TermRow> | null {
+  if (selectTermStmt) return selectTermStmt;
+  const db = getTerminologyDb();
+  if (db) {
+    selectTermStmt = db.prepare<[string], TermRow>(
+      'SELECT system, code, category, canonical_term FROM terms WHERE term = ? LIMIT 1'
+    );
+  }
+  return selectTermStmt;
+}
+
+export function lookupTerm(term: string): TermRow | undefined {
+  const stmt = getSelectTermStatement();
+  if (!stmt) return undefined;
+  const norm = normalizeText(term);
+  const row = stmt.get(norm);
+  if (row) return row;
+  const trimmed = term.trim();
+  if (trimmed !== norm) {
+    return stmt.get(trimmed);
+  }
+  return undefined;
+}
+
+export function getTerminology(): any[] {
+  const db = getTerminologyDb();
+  if (!db) return [];
+  try {
+    return db.prepare('SELECT DISTINCT canonical_term as term, category FROM terms').all();
+  } catch {
+    return [];
+  }
 }
 
 // Gatilhos de relação: frase encontrada entre duas entidades na mesma sentença -> tipo de relação
@@ -94,7 +160,7 @@ const RELATION_TRIGGERS: { pattern: RegExp; type: string }[] = [
   { pattern: /\bdetectad[oa]s? (por|com|através de)\b/, type: 'DIAGNOSTICO_POR' },
   { pattern: /\bo exame de escolha (é|para)\b/, type: 'DIAGNOSTICO_POR' },
 
-  // MECANISMO_DE_ACAO (novo)
+  // MECANISMO_DE_ACAO
   { pattern: /\bage(m)? (sobre|em|no|na)\b|\batua(m)? (sobre|em|no|na)\b/, type: 'MECANISMO_DE_ACAO' },
   { pattern: /\binibe(m)?\b/, type: 'MECANISMO_DE_ACAO' },
   { pattern: /\bestimula(m)?\b/, type: 'MECANISMO_DE_ACAO' },
@@ -103,79 +169,89 @@ const RELATION_TRIGGERS: { pattern: RegExp; type: string }[] = [
   { pattern: /\breduz(em)?\b/, type: 'MECANISMO_DE_ACAO' },
   { pattern: /\baumenta(m)? a (produção|secreção|liberação) de\b/, type: 'MECANISMO_DE_ACAO' },
 
-  // EFEITO_ADVERSO (novo)
+  // EFEITO_ADVERSO
   { pattern: /\befeito(s)? colateral(is)? (de|do|da)\b/, type: 'EFEITO_ADVERSO' },
   { pattern: /\befeito(s)? adverso(s)? (de|do|da)\b/, type: 'EFEITO_ADVERSO' },
   { pattern: /\bpode(m)? causar como efeito colateral\b/, type: 'EFEITO_ADVERSO' },
   { pattern: /\breação(ões)? adversa(s)? (a|ao|à)\b/, type: 'EFEITO_ADVERSO' },
 
-  // PREVENCAO (novo)
+  // PREVENCAO
   { pattern: /\bprevine(m)?\b/, type: 'PREVENCAO' },
   { pattern: /\breduz(em)? o risco de\b/, type: 'PREVENCAO' },
   { pattern: /\bprofilaxia (para|de|do|da)\b/, type: 'PREVENCAO' },
 ];
 
-export interface DictionaryPayload {
-  canonicalTerm: string;
-  category: string;
-  codeSystem?: string | null;
-  code?: string | null;
+interface Token {
+  text: string;
+  startIndex: number;
+  endIndex: number;
 }
 
-function resolveCodesForEntry(entry: any): { codeSystem: string | null; code: string | null } {
-  if (Array.isArray(entry.codes) && entry.codes.length > 0) {
-    const cid = entry.codes.find((c: any) => c.system === 'CID-10');
-    if (cid) return { codeSystem: 'CID-10', code: cid.code };
-    const decs = entry.codes.find((c: any) => c.system === 'DeCS');
-    if (decs) return { codeSystem: 'DeCS', code: decs.code };
-    const mesh = entry.codes.find((c: any) => c.system === 'MeSH');
-    if (mesh) return { codeSystem: 'MeSH', code: mesh.code };
-    const first = entry.codes[0];
-    if (first) return { codeSystem: first.system || null, code: first.code || null };
+function tokenize(text: string): Token[] {
+  const tokens: Token[] = [];
+  const regex = /[a-zA-Z0-9\u00C0-\u024F]+(?:[\.\-][a-zA-Z0-9\u00C0-\u024F]+)*/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    tokens.push({
+      text: match[0],
+      startIndex: match.index,
+      endIndex: match.index + match[0].length,
+    });
   }
-
-  const cidRegex = /^[A-Z][0-9]{2}(\.[0-9]{1,2})?$/;
-  for (const syn of entry.synonyms || []) {
-    if (typeof syn === 'string' && cidRegex.test(syn.trim())) {
-      return { codeSystem: 'CID-10', code: syn.trim() };
-    }
-  }
-
-  return { codeSystem: null, code: null };
+  return tokens;
 }
 
 export class DictionaryNEREngine {
-  private automaton: AhoCorasick<DictionaryPayload>;
-
   constructor() {
-    this.automaton = new AhoCorasick<DictionaryPayload>();
-    this.reload();
+    // Garante inicialização prévia da conexão e do prepared statement
+    getSelectTermStatement();
   }
 
   public reload(): void {
-    this.automaton = new AhoCorasick<DictionaryPayload>();
-
-    for (const entry of getTerminology()) {
-      const { codeSystem, code } = resolveCodesForEntry(entry);
-      const payload: DictionaryPayload = {
-        canonicalTerm: entry.term,
-        category: entry.category,
-        codeSystem,
-        code,
-      };
-
-      this.automaton.add(normalizeText(entry.term), payload);
-      for (const syn of entry.synonyms || []) {
-        this.automaton.add(normalizeText(syn), payload);
-      }
+    if (dbInstance) {
+      try {
+        dbInstance.close();
+      } catch {}
+      dbInstance = null;
     }
-
-    this.automaton.build();
+    selectTermStmt = null;
+    getSelectTermStatement();
   }
 
   extractEntities(text: string): MatchedEntity[] {
-    const normalizedFullText = normalizeText(text);
-    const rawMatches = this.automaton.search(normalizedFullText);
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      return [];
+    }
+
+    const tokens = tokenize(text);
+    if (tokens.length === 0) {
+      return [];
+    }
+
+    const rawMatches: MatchedEntity[] = [];
+    const maxSpanLength = 8;
+
+    for (let i = 0; i < tokens.length; i++) {
+      const maxLen = Math.min(tokens.length - i, maxSpanLength);
+      for (let len = maxLen; len >= 1; len--) {
+        const startIdx = tokens[i].startIndex;
+        const endIdx = tokens[i + len - 1].endIndex;
+        const rawText = text.slice(startIdx, endIdx);
+        const row = lookupTerm(rawText);
+
+        if (row) {
+          rawMatches.push({
+            text: rawText,
+            normalizedTerm: row.canonical_term || rawText,
+            category: row.category || 'DOENCA',
+            startIndex: startIdx,
+            endIndex: endIdx,
+            codeSystem: row.system ?? null,
+            code: row.code ?? null,
+          });
+        }
+      }
+    }
 
     // Ordena os matches brutos por tamanho decrescente (e por posição em caso de empate)
     // para garantir que termos maiores tenham prioridade de marcação em 'occupied'
@@ -190,32 +266,20 @@ export class DictionaryNEREngine {
     const occupied: boolean[] = new Array(text.length).fill(false);
 
     for (const match of rawMatches) {
-      const { startIndex, endIndex, value } = match;
-
-      // Verifica limites de palavra (evita casar "card" dentro de outra palavra)
-      const before = startIndex === 0 ? ' ' : normalizedFullText[startIndex - 1];
-      const after = endIndex >= normalizedFullText.length ? ' ' : normalizedFullText[endIndex];
-      const isWordBoundary = /[^a-z0-9]/.test(before) && /[^a-z0-9]/.test(after);
-      if (!isWordBoundary) continue;
+      const { startIndex, endIndex } = match;
 
       // Verifica se essa região do texto já foi ocupada por um termo maior já casado
       let alreadyOccupied = false;
       for (let i = startIndex; i < endIndex; i++) {
-        if (occupied[i]) { alreadyOccupied = true; break; }
+        if (occupied[i]) {
+          alreadyOccupied = true;
+          break;
+        }
       }
       if (alreadyOccupied) continue;
 
       for (let i = startIndex; i < endIndex; i++) occupied[i] = true;
-
-      entities.push({
-        text: text.slice(startIndex, endIndex),
-        normalizedTerm: value.canonicalTerm,
-        category: value.category,
-        startIndex,
-        endIndex,
-        codeSystem: value.codeSystem ?? null,
-        code: value.code ?? null,
-      });
+      entities.push(match);
     }
 
     return entities.sort((a, b) => a.startIndex - b.startIndex);
