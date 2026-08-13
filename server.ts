@@ -163,7 +163,7 @@ async function startServer() {
           return `  - [${(e.type || 'term').toUpperCase()}] "${e.text}"${codeStr}${confStr}`;
         })
         .join('\n');
-      formatted += `\nEntidades Clínicas Estruturadas (CID-10 / SNOMED):\n${entityLines}`;
+      formatted += `\nEntidades Clínicas Estruturadas (CID-10 / SNOMED / DeCS):\n${entityLines}`;
     }
     return formatted;
   }

@@ -91,7 +91,10 @@ export class GeminiAiNerProvider implements AiNerProvider {
   };
 
   isAvailable(): boolean {
-    return Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
+    const hasKey = Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
+    const isAiNerEnabled =
+      process.env.ENABLE_AI_NER === 'true' || process.env.VITE_ENABLE_AI_NER === 'true';
+    return hasKey && isAiNerEnabled;
   }
 
   async extractEntities(text: string): Promise<AiNerEntity[]> {
@@ -100,11 +103,11 @@ export class GeminiAiNerProvider implements AiNerProvider {
     const prompt = [
       'Voce e um extrator de entidades clinicas para textos de medicina em portugues.',
       'Identifique entidades medicas no texto e retorne SOMENTE um JSON com a forma:',
-      '{"entities":[{"text":"termo exato como aparece","type":"<tipo>","code_system":"CID-10|SNOMED CT|null","code":"<codigo>|null","confidence":0.0}]}.',
+      '{"entities":[{"text":"termo exato como aparece","type":"<tipo>","code_system":"CID-10|SNOMED CT|DeCS|MeSH|null","code":"<codigo>|null","confidence":0.0}]}.',
       'Tipos permitidos: disease, finding, microorganism, guideline, medication, drug_class, symptom,',
       'anatomy, medical_device, exam, lab_value, imaging_finding, score, procedure, vaccination,',
       'gene, protein, hormone, enzyme, risk_factor.',
-      'Use codigos CID-10 ou SNOMED CT reais quando souber. Nao invente codigos.',
+      'Use codigos CID-10, SNOMED CT ou DeCS/MeSH reais quando souber. Nao invente codigos.',
       'Nao repita o termo "text" como codigo. Responda apenas o JSON.',
       '',
       `TEXTO:\n${text}`,
@@ -152,7 +155,10 @@ export class GeminiAiNerProvider implements AiNerProvider {
 }
 
 function hasGeminiKey(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
+  const hasKey = Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
+  const isAiNerEnabled =
+    process.env.ENABLE_AI_NER === 'true' || process.env.VITE_ENABLE_AI_NER === 'true';
+  return hasKey && isAiNerEnabled;
 }
 
 function normalize(text: string): string {

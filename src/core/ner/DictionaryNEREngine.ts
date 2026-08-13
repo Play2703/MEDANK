@@ -1,5 +1,20 @@
-import terminology from './medicalTerminologyPt.json';
+import fs from 'fs';
+import path from 'path';
 import { AhoCorasick } from './ahoCorasick';
+
+export function getTerminology(): any[] {
+  try {
+    if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+      const jsonPath = path.resolve(process.cwd(), 'src/core/ner/medicalTerminologyPt.json');
+      if (fs.existsSync(jsonPath)) {
+        return JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+      }
+    }
+  } catch {
+    // Browser fallback
+  }
+  return [];
+}
 
 export interface MatchedEntity {
   text: string;           // trecho exato encontrado no texto original
@@ -100,16 +115,58 @@ const RELATION_TRIGGERS: { pattern: RegExp; type: string }[] = [
   { pattern: /\bprofilaxia (para|de|do|da)\b/, type: 'PREVENCAO' },
 ];
 
+export interface DictionaryPayload {
+  canonicalTerm: string;
+  category: string;
+  codeSystem?: string | null;
+  code?: string | null;
+}
+
+function resolveCodesForEntry(entry: any): { codeSystem: string | null; code: string | null } {
+  if (Array.isArray(entry.codes) && entry.codes.length > 0) {
+    const cid = entry.codes.find((c: any) => c.system === 'CID-10');
+    if (cid) return { codeSystem: 'CID-10', code: cid.code };
+    const decs = entry.codes.find((c: any) => c.system === 'DeCS');
+    if (decs) return { codeSystem: 'DeCS', code: decs.code };
+    const mesh = entry.codes.find((c: any) => c.system === 'MeSH');
+    if (mesh) return { codeSystem: 'MeSH', code: mesh.code };
+    const first = entry.codes[0];
+    if (first) return { codeSystem: first.system || null, code: first.code || null };
+  }
+
+  const cidRegex = /^[A-Z][0-9]{2}(\.[0-9]{1,2})?$/;
+  for (const syn of entry.synonyms || []) {
+    if (typeof syn === 'string' && cidRegex.test(syn.trim())) {
+      return { codeSystem: 'CID-10', code: syn.trim() };
+    }
+  }
+
+  return { codeSystem: null, code: null };
+}
+
 export class DictionaryNEREngine {
-  private automaton: AhoCorasick<{ canonicalTerm: string; category: string }>;
+  private automaton: AhoCorasick<DictionaryPayload>;
 
   constructor() {
-    this.automaton = new AhoCorasick<{ canonicalTerm: string; category: string }>();
+    this.automaton = new AhoCorasick<DictionaryPayload>();
+    this.reload();
+  }
 
-    for (const entry of terminology as any[]) {
-      this.automaton.add(normalizeText(entry.term), { canonicalTerm: entry.term, category: entry.category });
+  public reload(): void {
+    this.automaton = new AhoCorasick<DictionaryPayload>();
+
+    for (const entry of getTerminology()) {
+      const { codeSystem, code } = resolveCodesForEntry(entry);
+      const payload: DictionaryPayload = {
+        canonicalTerm: entry.term,
+        category: entry.category,
+        codeSystem,
+        code,
+      };
+
+      this.automaton.add(normalizeText(entry.term), payload);
       for (const syn of entry.synonyms || []) {
-        this.automaton.add(normalizeText(syn), { canonicalTerm: entry.term, category: entry.category });
+        this.automaton.add(normalizeText(syn), payload);
       }
     }
 
@@ -156,6 +213,8 @@ export class DictionaryNEREngine {
         category: value.category,
         startIndex,
         endIndex,
+        codeSystem: value.codeSystem ?? null,
+        code: value.code ?? null,
       });
     }
 
@@ -244,3 +303,19 @@ export class DictionaryNEREngine {
 
 export const dictionaryNEREngine = new DictionaryNEREngine();
 
+/**
+ * Limiar mínimo de cobertura de caracteres reconhecidos (3% do texto).
+ * Chunks com cobertura menor que este valor acionam fallback para a API de IA.
+ */
+export const MIN_COVERAGE_THRESHOLD = 0.03;
+
+/**
+ * Função pura para estimar a proporção de caracteres cobertos por entidades médicas reconhecidas sobre o total do texto.
+ */
+export function estimateCoverage(text: string, entities: MatchedEntity[]): number {
+  if (!text || text.trim().length === 0) return 0;
+  if (!entities || entities.length === 0) return 0;
+
+  const totalRecognizedChars = entities.reduce((sum, ent) => sum + (ent.endIndex - ent.startIndex), 0);
+  return totalRecognizedChars / text.length;
+}

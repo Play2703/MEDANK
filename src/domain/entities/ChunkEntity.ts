@@ -26,7 +26,7 @@ export type MedicalEntityType =
   | 'drug_class'
   | 'imaging_finding';
 
-export type CodeSystem = 'CID-10' | 'SNOMED' | null;
+export type CodeSystem = 'CID-10' | 'SNOMED' | 'DeCS' | 'MeSH' | null;
 
 export type RelationType =
   | 'trata'

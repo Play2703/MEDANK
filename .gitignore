@@ -8,4 +8,9 @@ coverage/
 !.env.example
 scripts/.seed-progress.json
 public/seed-data/document-embeddings.json
+scripts/seed-source/decs/*.tgz
+scripts/seed-source/decs/*.xml
+scripts/seed-source/decs/*.tar
+scripts/seed-source/decs/*.gz
+!scripts/seed-source/decs/fixtures/
 

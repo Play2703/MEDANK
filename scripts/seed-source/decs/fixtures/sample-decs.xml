@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DescriptorRecordSet>
+  <!-- 1. Disease (Category: DOENCA) -->
+  <DescriptorRecordDescriptor>
+    <DescriptorUI>D006973</DescriptorUI>
+    <DescriptorName>
+      <String>Hipertensão</String>
+    </DescriptorName>
+    <TreeNumberList>
+      <TreeNumber>C14.907.489</TreeNumber>
+    </TreeNumberList>
+    <ConceptList>
+      <Concept>
+        <TermList>
+          <Term>
+            <String>Pressão Alta</String>
+          </Term>
+          <Term>
+            <String>HAS</String>
+          </Term>
+          <Term>
+            <String>Hypertension</String>
+          </Term>
+        </TermList>
+      </Concept>
+    </ConceptList>
+  </DescriptorRecordDescriptor>
+
+  <!-- 2. Drug (Category: MEDICAMENTO) -->
+  <DescriptorRecordDescriptor>
+    <DescriptorUI>D000404</DescriptorUI>
+    <DescriptorName>
+      <String>Alopurinol</String>
+    </DescriptorName>
+    <TreeNumberList>
+      <TreeNumber>D03.438.421.080</TreeNumber>
+    </TreeNumberList>
+    <ConceptList>
+      <Concept>
+        <TermList>
+          <Term>
+            <String>Allopurinol</String>
+          </Term>
+        </TermList>
+      </Concept>
+    </ConceptList>
+  </DescriptorRecordDescriptor>
+
+  <!-- 3. Anatomy (Category: ESTRUTURA_ANATOMICA) -->
+  <DescriptorRecordDescriptor>
+    <DescriptorUI>D009206</DescriptorUI>
+    <DescriptorName>
+      <String>Miocárdio</String>
+    </DescriptorName>
+    <TreeNumberList>
+      <TreeNumber>A07.541.510</TreeNumber>
+    </TreeNumberList>
+    <ConceptList>
+      <Concept>
+        <TermList>
+          <Term>
+            <String>Músculo Cardíaco</String>
+          </Term>
+          <Term>
+            <String>Myocardium</String>
+          </Term>
+        </TermList>
+      </Concept>
+    </ConceptList>
+  </DescriptorRecordDescriptor>
+
+  <!-- 4. Exam (Category: EXAME) -->
+  <DescriptorRecordDescriptor>
+    <DescriptorUI>D004562</DescriptorUI>
+    <DescriptorName>
+      <String>Eletrocardiografia</String>
+    </DescriptorName>
+    <TreeNumberList>
+      <TreeNumber>E01.370.370.380</TreeNumber>
+    </TreeNumberList>
+    <ConceptList>
+      <Concept>
+        <TermList>
+          <Term>
+            <String>Eletrocardiograma</String>
+          </Term>
+          <Term>
+            <String>ECG</String>
+          </Term>
+        </TermList>
+      </Concept>
+    </ConceptList>
+  </DescriptorRecordDescriptor>
+
+  <!-- 5. Procedure (Category: PROCEDIMENTO) -->
+  <DescriptorRecordDescriptor>
+    <DescriptorUI>D006435</DescriptorUI>
+    <DescriptorName>
+      <String>Hemodiálise</String>
+    </DescriptorName>
+    <TreeNumberList>
+      <TreeNumber>E02.520.615</TreeNumber>
+    </TreeNumberList>
+    <ConceptList>
+      <Concept>
+        <TermList>
+          <Term>
+            <String>Hemodialysis</String>
+          </Term>
+          <Term>
+            <String>Diálise Renal</String>
+          </Term>
+        </TermList>
+      </Concept>
+    </ConceptList>
+  </DescriptorRecordDescriptor>
+
+  <!-- 6. Non-clinical / Geographical (Should be skipped) -->
+  <DescriptorRecordDescriptor>
+    <DescriptorUI>D001938</DescriptorUI>
+    <DescriptorName>
+      <String>Brasil</String>
+    </DescriptorName>
+    <TreeNumberList>
+      <TreeNumber>Z01.107.084.280</TreeNumber>
+    </TreeNumberList>
+    <ConceptList>
+      <Concept>
+        <TermList>
+          <Term>
+            <String>Brazil</String>
+          </Term>
+        </TermList>
+      </Concept>
+    </ConceptList>
+  </DescriptorRecordDescriptor>
+</DescriptorRecordSet>

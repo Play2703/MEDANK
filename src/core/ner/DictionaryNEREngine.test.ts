@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { dictionaryNEREngine } from './DictionaryNEREngine';
-import terminology from './medicalTerminologyPt.json';
+import fs from 'fs';
+import path from 'path';
+import { dictionaryNEREngine, estimateCoverage, MIN_COVERAGE_THRESHOLD } from './DictionaryNEREngine';
+
+const terminology: any[] = JSON.parse(
+  fs.readFileSync(path.resolve(process.cwd(), 'src/core/ner/medicalTerminologyPt.json'), 'utf-8')
+);
 
 describe('DictionaryNEREngine', () => {
   describe('PARTE 1 — Multi-entity relation extraction (extractRelations)', () => {
@@ -209,6 +214,32 @@ describe('DictionaryNEREngine', () => {
         'shiguelose devida a shigella dysenteriae',
         'febre paratifóide a',
       ]);
+    });
+  });
+
+  describe('PARTE 4 — Cobertura e Limiar de Fallback (estimateCoverage)', () => {
+    it('deve calcular alta cobertura para texto rico em termos médicos e superam MIN_COVERAGE_THRESHOLD (>= 0.03)', () => {
+      const medicalText = 'O paciente com hipertensão arterial sistêmica e diabetes mellitus tipo 2 apresenta febre e dispneia.';
+      const entities = dictionaryNEREngine.extractEntities(medicalText);
+      const coverage = estimateCoverage(medicalText, entities);
+
+      expect(coverage).toBeGreaterThanOrEqual(MIN_COVERAGE_THRESHOLD);
+      expect(coverage).toBeGreaterThan(0.3); // > 30% de cobertura
+    });
+
+    it('deve calcular baixa cobertura (0.0) para texto genérico/não-médico e ficar abaixo do limiar MIN_COVERAGE_THRESHOLD (< 0.03)', () => {
+      const genericText = 'A reunião de negócios sobre planejamento estratégico financeiro ocorreu na segunda-feira pela manhã.';
+      const entities = dictionaryNEREngine.extractEntities(genericText);
+      const coverage = estimateCoverage(genericText, entities);
+
+      expect(coverage).toBeLessThan(MIN_COVERAGE_THRESHOLD);
+      expect(coverage).toBe(0);
+    });
+
+    it('deve retornar 0 para texto vazio ou lista de entidades vazia (edge cases)', () => {
+      expect(estimateCoverage('', [])).toBe(0);
+      expect(estimateCoverage('   ', [])).toBe(0);
+      expect(estimateCoverage('Algum texto aleatório', [])).toBe(0);
     });
   });
 });
