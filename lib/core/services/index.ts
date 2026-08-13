@@ -12,7 +12,11 @@ export type {
   CachedQuestionRow,
   CachedHistoryRow,
   CachedStatsRow,
+  GraphNodeRow,
+  GraphEdgeRow,
+  RelatedEntityConnection,
 } from './NativeSQLiteService';
+
 
 export { SyncService, syncService } from './SyncService';
 export type {

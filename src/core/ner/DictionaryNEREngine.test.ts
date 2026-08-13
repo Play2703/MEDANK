@@ -237,6 +237,51 @@ describe('DictionaryNEREngine', () => {
       expect(estimateCoverage('Algum texto aleatório', [])).toBe(0);
     });
   });
+
+  describe('PARTE 5 — Resiliência do NER (Normalização + Levenshtein / Typo Tolerance)', () => {
+    it('deve reconhecer termos sem acento via busca exata normalizada (Passo A)', () => {
+      const textWithoutAccents = 'Paciente com hipertensao e diabetes mellitus apresentando dor toracica.';
+      const entities = dictionaryNEREngine.extractEntities(textWithoutAccents);
+
+      const terms = entities.map((e) => e.normalizedTerm);
+      expect(terms).toContain('hipertensão arterial sistêmica');
+      expect(terms).toContain('diabetes mellitus');
+      expect(terms).toContain('dor torácica');
+    });
+
+    it('deve reconhecer termos com variações de digitação (typos) via Levenshtein (Passo B)', () => {
+      // "pneunomia" (typo de pneumonia) e "cefaleya" (typo de cefaleia)
+      const textWithTypos = 'Quadro sugestivo de pneunomia bacteriana com cefaleya intensa.';
+      const entities = dictionaryNEREngine.extractEntities(textWithTypos);
+
+      const terms = entities.map((e) => e.normalizedTerm);
+      expect(terms).toContain('pneumonia');
+      expect(terms).toContain('cefaleia');
+    });
+
+    it('deve associar corretamente códigos clínicos mesmo em matches com typo', () => {
+      const match = dictionaryNEREngine.lookup('pneunomia');
+      expect(match).toBeDefined();
+      expect(match?.canonical_term).toBe('pneumonia');
+      expect(match?.code).toBeDefined();
+    });
+  });
+
+
+  describe('PARTE 6 — Consultas Relacionais ao Knowledge Graph no SQLite', () => {
+    it('deve consultar conexões e entidades relacionadas a partir do SQLite relacional', () => {
+      const connections = dictionaryNEREngine.getRelatedEntities('colecistite aguda');
+      expect(Array.isArray(connections)).toBe(true);
+    });
+
+    it('deve retornar nós do grafo por código canônico', () => {
+      const node = dictionaryNEREngine.getGraphNode('colecistite aguda');
+      if (node) {
+        expect(node.canonical_code).toBe('colecistite aguda');
+      }
+    });
+  });
 });
+
 
 

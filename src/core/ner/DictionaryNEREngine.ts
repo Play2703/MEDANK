@@ -28,11 +28,14 @@ export interface DictionaryPayload {
   code?: string | null;
 }
 
+import { levenshteinDistance } from './levenshtein';
+
 export interface TermRow {
   system: string | null;
   code: string | null;
   category?: string | null;
   canonical_term?: string | null;
+  normalized_term?: string | null;
 }
 
 export function normalizeText(text: string): string {
@@ -58,6 +61,7 @@ export function getDbPath(): string {
 
 let dbInstance: Database.Database | null = null;
 let selectTermStmt: Database.Statement<[string], TermRow> | null = null;
+let selectLikeStmt: Database.Statement<[string], TermRow> | null = null;
 
 export function getTerminologyDb(): Database.Database | null {
   if (dbInstance) return dbInstance;
@@ -80,24 +84,101 @@ export function getSelectTermStatement(): Database.Statement<[string], TermRow> 
   const db = getTerminologyDb();
   if (db) {
     selectTermStmt = db.prepare<[string], TermRow>(
-      'SELECT system, code, category, canonical_term FROM terms WHERE term = ? LIMIT 1'
+      'SELECT system, code, category, canonical_term, normalized_term FROM terms WHERE normalized_term = ? LIMIT 1'
     );
   }
   return selectTermStmt;
 }
 
-export function lookupTerm(term: string): TermRow | undefined {
-  const stmt = getSelectTermStatement();
-  if (!stmt) return undefined;
-  const norm = normalizeText(term);
-  const row = stmt.get(norm);
-  if (row) return row;
-  const trimmed = term.trim();
-  if (trimmed !== norm) {
-    return stmt.get(trimmed);
+export function getSelectLikeStatement(): Database.Statement<[string], TermRow> | null {
+  if (selectLikeStmt) return selectLikeStmt;
+  const db = getTerminologyDb();
+  if (db) {
+    selectLikeStmt = db.prepare<[string], TermRow>(
+      'SELECT system, code, category, canonical_term, normalized_term FROM terms WHERE normalized_term LIKE ? LIMIT 60'
+    );
   }
+  return selectLikeStmt;
+}
+
+const COMMON_STOP_WORDS = new Set([
+  'pode', 'para', 'como', 'mais', 'pelo', 'pela', 'sobre', 'onde', 'quando',
+  'esta', 'este', 'essa', 'esse', 'foram', 'sendo', 'caso', 'grau', 'tipo',
+  'alta', 'baixa', 'todo', 'toda', 'qual', 'quais', 'cada', 'entre', 'apenas',
+  'muito', 'muita', 'outro', 'outra', 'geral', 'total', 'fase', 'hipotese',
+  'acao', 'efeito', 'terapia', 'inicia', 'segue', 'ate', 'as', 'os', 'ao', 'aos',
+  'reuniao', 'negocios', 'financeiro', 'ocorreu', 'segunda', 'manha',
+  'risco', 'causa', 'causar', 'causam', 'tratamento', 'inclui', 'fatores',
+  'diagnostico', 'diagnostica', 'paciente', 'apresenta', 'evoluiu', 'quadro',
+  'sintoma', 'sintomas', 'sinal', 'sinais', 'indicado', 'relato', 'exame'
+]);
+
+/**
+ * Resilient Two-Step Term Lookup:
+ * Step A: Exact normalized term lookup on indexed column `normalized_term` (0ms).
+ * Step B: Typo-tolerance fallback using LIKE prefix query + Levenshtein distance <= 2.
+ */
+export function lookupTerm(term: string, enableTypoTolerance = true): TermRow | undefined {
+  if (!term || typeof term !== 'string') return undefined;
+  const norm = normalizeText(term);
+  if (!norm) return undefined;
+
+  // Step A: Exact match on normalized_term
+  const stmt = getSelectTermStatement();
+  if (stmt) {
+    const row = stmt.get(norm);
+    if (row) return row;
+  }
+
+  // Step B: Typo-tolerance fallback via Levenshtein
+  if (enableTypoTolerance) {
+    // Avoid noisy typo matching on stop words or short words
+    if (norm.length < 5 || COMMON_STOP_WORDS.has(norm)) {
+      return undefined;
+    }
+
+    const likeStmt = getSelectLikeStatement();
+    if (likeStmt) {
+      const normWordCount = norm.split(' ').length;
+      const prefixLen = norm.length <= 5 ? 3 : 4;
+      const prefix = norm.slice(0, prefixLen);
+      const candidates = likeStmt.all(`${prefix}%`);
+
+      let bestMatch: TermRow | undefined;
+      let minDistance = 3; // Must be <= 2
+      let minLenDiff = 999;
+
+      for (const candidate of candidates) {
+        const cNorm = candidate.normalized_term || normalizeText(candidate.canonical_term || '');
+        if (!cNorm || COMMON_STOP_WORDS.has(cNorm)) continue;
+
+        // Candidate must have the EXACT SAME word count as the search span
+        if (cNorm.split(' ').length !== normWordCount) continue;
+
+        // Length difference must be <= 1
+        const lenDiff = Math.abs(norm.length - cNorm.length);
+        if (lenDiff > 1) continue;
+
+        const maxThreshold = norm.length < 7 ? 1 : 2;
+        const dist = levenshteinDistance(norm, cNorm, maxThreshold);
+        if (dist <= maxThreshold) {
+          if (dist < minDistance || (dist === minDistance && lenDiff < minLenDiff)) {
+            minDistance = dist;
+            minLenDiff = lenDiff;
+            bestMatch = candidate;
+          }
+        }
+      }
+
+      if (bestMatch) {
+        return bestMatch;
+      }
+    }
+  }
+
   return undefined;
 }
+
 
 export function getTerminology(): any[] {
   const db = getTerminologyDb();
@@ -108,6 +189,95 @@ export function getTerminology(): any[] {
     return [];
   }
 }
+
+
+
+export interface RelatedEntityConnection {
+  edgeId: string;
+  sourceCode: string;
+  targetCode: string;
+  predicate: string;
+  direction: 'outgoing' | 'incoming';
+  relatedCode: string;
+  relatedLabel: string;
+  relatedType: string;
+  relatedSystem: string | null;
+  occurrenceCount: number;
+  confidence: number;
+}
+
+export function getRelatedEntitiesFromDb(
+  canonicalCode: string,
+  filterPredicate?: string
+): RelatedEntityConnection[] {
+  const db = getTerminologyDb();
+  if (!db || !canonicalCode) return [];
+
+  try {
+    const normCode = normalizeText(canonicalCode);
+    const results: RelatedEntityConnection[] = [];
+
+    // 1. Outgoing edges (code -> target)
+    let outSql = `
+      SELECT e.id as edgeId, e.source_code as sourceCode, e.target_code as targetCode,
+             e.predicate, e.occurrence_count as occurrenceCount, e.confidence,
+             'outgoing' as direction, e.target_code as relatedCode,
+             COALESCE(n.display_text, e.target_code) as relatedLabel,
+             COALESCE(n.type, 'entity') as relatedType,
+             n.code_system as relatedSystem
+      FROM graph_edges e
+      LEFT JOIN graph_nodes n ON n.canonical_code = e.target_code
+      WHERE e.source_code = ? OR e.source_code = ?
+    `;
+    const outParams: any[] = [canonicalCode, normCode];
+    if (filterPredicate) {
+      outSql += ' AND e.predicate = ?';
+      outParams.push(filterPredicate);
+    }
+    const outRows = db.prepare(outSql).all(...outParams) as RelatedEntityConnection[];
+    results.push(...outRows);
+
+    // 2. Incoming edges (source -> code)
+    let inSql = `
+      SELECT e.id as edgeId, e.source_code as sourceCode, e.target_code as targetCode,
+             e.predicate, e.occurrence_count as occurrenceCount, e.confidence,
+             'incoming' as direction, e.source_code as relatedCode,
+             COALESCE(n.display_text, e.source_code) as relatedLabel,
+             COALESCE(n.type, 'entity') as relatedType,
+             n.code_system as relatedSystem
+      FROM graph_edges e
+      LEFT JOIN graph_nodes n ON n.canonical_code = e.source_code
+      WHERE e.target_code = ? OR e.target_code = ?
+    `;
+    const inParams: any[] = [canonicalCode, normCode];
+    if (filterPredicate) {
+      inSql += ' AND e.predicate = ?';
+      inParams.push(filterPredicate);
+    }
+    const inRows = db.prepare(inSql).all(...inParams) as RelatedEntityConnection[];
+    results.push(...inRows);
+
+    return results;
+  } catch (err) {
+    console.warn('[DictionaryNEREngine] Erro ao consultar conexões do grafo:', err);
+    return [];
+  }
+}
+
+export function getGraphNodeByCode(canonicalCode: string): any | null {
+  const db = getTerminologyDb();
+  if (!db || !canonicalCode) return null;
+  try {
+    const normCode = normalizeText(canonicalCode);
+    const row = db.prepare(
+      'SELECT id, canonical_code, code_system, type, display_text, occurrence_count FROM graph_nodes WHERE canonical_code = ? OR canonical_code = ? LIMIT 1'
+    ).get(canonicalCode, normCode);
+    return row || null;
+  } catch {
+    return null;
+  }
+}
+
 
 // Gatilhos de relação: frase encontrada entre duas entidades na mesma sentença -> tipo de relação
 const RELATION_TRIGGERS: { pattern: RegExp; type: string }[] = [
@@ -228,7 +398,7 @@ export class DictionaryNEREngine {
       return [];
     }
 
-    const rawMatches: MatchedEntity[] = [];
+    const rawMatches: Array<MatchedEntity & { isExact: boolean }> = [];
     const maxSpanLength = 8;
 
     for (let i = 0; i < tokens.length; i++) {
@@ -240,6 +410,8 @@ export class DictionaryNEREngine {
         const row = lookupTerm(rawText);
 
         if (row) {
+          const normRaw = normalizeText(rawText);
+          const isExact = (row.normalized_term || '').toLowerCase() === normRaw;
           rawMatches.push({
             text: rawText,
             normalizedTerm: row.canonical_term || rawText,
@@ -248,19 +420,23 @@ export class DictionaryNEREngine {
             endIndex: endIdx,
             codeSystem: row.system ?? null,
             code: row.code ?? null,
+            isExact,
           });
         }
       }
     }
 
-    // Ordena os matches brutos por tamanho decrescente (e por posição em caso de empate)
-    // para garantir que termos maiores tenham prioridade de marcação em 'occupied'
+    // Prioriza matches exatos sobre aproximações e depois termos mais longos
     rawMatches.sort((a, b) => {
+      if (a.isExact !== b.isExact) {
+        return a.isExact ? -1 : 1;
+      }
       const lenA = a.endIndex - a.startIndex;
       const lenB = b.endIndex - b.startIndex;
       if (lenB !== lenA) return lenB - lenA;
       return a.startIndex - b.startIndex;
     });
+
 
     const entities: MatchedEntity[] = [];
     const occupied: boolean[] = new Array(text.length).fill(false);
@@ -363,9 +539,22 @@ export class DictionaryNEREngine {
 
     return relations;
   }
+
+  public lookup(term: string, enableTypoTolerance = true): TermRow | undefined {
+    return lookupTerm(term, enableTypoTolerance);
+  }
+
+  public getRelatedEntities(canonicalCode: string, predicate?: string): RelatedEntityConnection[] {
+    return getRelatedEntitiesFromDb(canonicalCode, predicate);
+  }
+
+  public getGraphNode(canonicalCode: string): any | null {
+    return getGraphNodeByCode(canonicalCode);
+  }
 }
 
 export const dictionaryNEREngine = new DictionaryNEREngine();
+
 
 /**
  * Limiar mínimo de cobertura de caracteres reconhecidos (3% do texto).

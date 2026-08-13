@@ -47,6 +47,38 @@ export interface CachedStatsRow {
   updated_at: string;
 }
 
+export interface GraphNodeRow {
+  id: string;
+  canonical_code: string;
+  code_system: string | null;
+  type: string;
+  display_text: string | null;
+  occurrence_count: number;
+}
+
+export interface GraphEdgeRow {
+  id: string;
+  source_code: string;
+  target_code: string;
+  predicate: string;
+  occurrence_count: number;
+  confidence: number;
+}
+
+export interface RelatedEntityConnection {
+  edgeId: string;
+  sourceCode: string;
+  targetCode: string;
+  predicate: string;
+  direction: 'outgoing' | 'incoming';
+  relatedCode: string;
+  relatedLabel: string;
+  relatedType: string;
+  relatedSystem: string | null;
+  occurrenceCount: number;
+  confidence: number;
+}
+
 /**
  * High-Performance Native SQLite Service for Capacitor (iOS/Android)
  * with robust in-memory/web fallback for non-native platforms and unit tests.
@@ -64,6 +96,9 @@ export class NativeSQLiteService {
   private memQuestions = new Map<string, CachedQuestionRow>();
   private memHistory = new Map<string, CachedHistoryRow>();
   private memStats = new Map<string, CachedStatsRow>();
+  private memGraphNodes = new Map<string, GraphNodeRow>();
+  private memGraphEdges = new Map<string, GraphEdgeRow>();
+
 
   constructor() {}
 
@@ -169,10 +204,33 @@ export class NativeSQLiteService {
         data_json TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS graph_nodes (
+        id TEXT PRIMARY KEY,
+        canonical_code TEXT NOT NULL,
+        code_system TEXT,
+        type TEXT NOT NULL,
+        display_text TEXT,
+        occurrence_count INTEGER DEFAULT 1
+      );
+      CREATE INDEX IF NOT EXISTS idx_graph_nodes_canonical ON graph_nodes(canonical_code);
+
+      CREATE TABLE IF NOT EXISTS graph_edges (
+        id TEXT PRIMARY KEY,
+        source_code TEXT NOT NULL,
+        target_code TEXT NOT NULL,
+        predicate TEXT NOT NULL,
+        occurrence_count INTEGER DEFAULT 1,
+        confidence REAL DEFAULT 1.0
+      );
+      CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_code);
+      CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_code);
+      CREATE INDEX IF NOT EXISTS idx_graph_edges_predicate ON graph_edges(predicate);
     `;
 
     await this.dbConnection.execute(schema);
   }
+
 
   private initMemoryStore(): void {
     // Memory tables are ready by default Map instances
@@ -506,6 +564,167 @@ export class NativeSQLiteService {
       return s ? { ...s } : null;
     }
   }
+
+  // --- KNOWLEDGE GRAPH RELATIONAL OPERATIONS ---
+
+  public async upsertGraphNode(node: GraphNodeRow): Promise<void> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = `
+        INSERT OR REPLACE INTO graph_nodes (id, canonical_code, code_system, type, display_text, occurrence_count)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `;
+      await this.dbConnection.run(sql, [
+        node.id,
+        node.canonical_code,
+        node.code_system,
+        node.type,
+        node.display_text,
+        node.occurrence_count,
+      ]);
+    } else {
+      this.memGraphNodes.set(node.canonical_code, { ...node });
+    }
+  }
+
+  public async upsertGraphEdge(edge: GraphEdgeRow): Promise<void> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = `
+        INSERT OR REPLACE INTO graph_edges (id, source_code, target_code, predicate, occurrence_count, confidence)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `;
+      await this.dbConnection.run(sql, [
+        edge.id,
+        edge.source_code,
+        edge.target_code,
+        edge.predicate,
+        edge.occurrence_count,
+        edge.confidence,
+      ]);
+    } else {
+      this.memGraphEdges.set(edge.id, { ...edge });
+    }
+  }
+
+  /**
+   * High-performance relational SQL query for knowledge graph connections
+   */
+  public async getRelatedEntities(
+    canonicalCode: string,
+    filterPredicate?: string
+  ): Promise<RelatedEntityConnection[]> {
+    await this.initialize();
+    if (!canonicalCode) return [];
+
+    const normCode = canonicalCode.toLowerCase().trim();
+
+    if (this.dbConnection && this.isNative()) {
+      const results: RelatedEntityConnection[] = [];
+
+      // 1. Outgoing
+      let outSql = `
+        SELECT e.id as edgeId, e.source_code as sourceCode, e.target_code as targetCode,
+               e.predicate, e.occurrence_count as occurrenceCount, e.confidence,
+               'outgoing' as direction, e.target_code as relatedCode,
+               COALESCE(n.display_text, e.target_code) as relatedLabel,
+               COALESCE(n.type, 'entity') as relatedType,
+               n.code_system as relatedSystem
+        FROM graph_edges e
+        LEFT JOIN graph_nodes n ON n.canonical_code = e.target_code
+        WHERE e.source_code = ? OR e.source_code = ?
+      `;
+      const outParams: any[] = [canonicalCode, normCode];
+      if (filterPredicate) {
+        outSql += ' AND e.predicate = ?';
+        outParams.push(filterPredicate);
+      }
+      const outRes = await this.dbConnection.query(outSql, outParams);
+      if (outRes.values) results.push(...(outRes.values as RelatedEntityConnection[]));
+
+      // 2. Incoming
+      let inSql = `
+        SELECT e.id as edgeId, e.source_code as sourceCode, e.target_code as targetCode,
+               e.predicate, e.occurrence_count as occurrenceCount, e.confidence,
+               'incoming' as direction, e.source_code as relatedCode,
+               COALESCE(n.display_text, e.source_code) as relatedLabel,
+               COALESCE(n.type, 'entity') as relatedType,
+               n.code_system as relatedSystem
+        FROM graph_edges e
+        LEFT JOIN graph_nodes n ON n.canonical_code = e.source_code
+        WHERE e.target_code = ? OR e.target_code = ?
+      `;
+      const inParams: any[] = [canonicalCode, normCode];
+      if (filterPredicate) {
+        inSql += ' AND e.predicate = ?';
+        inParams.push(filterPredicate);
+      }
+      const inRes = await this.dbConnection.query(inSql, inParams);
+      if (inRes.values) results.push(...(inRes.values as RelatedEntityConnection[]));
+
+      return results;
+    } else {
+      const results: RelatedEntityConnection[] = [];
+
+      for (const edge of this.memGraphEdges.values()) {
+        if (edge.source_code === canonicalCode || edge.source_code === normCode) {
+          if (!filterPredicate || edge.predicate === filterPredicate) {
+            const targetNode = this.memGraphNodes.get(edge.target_code);
+            results.push({
+              edgeId: edge.id,
+              sourceCode: edge.source_code,
+              targetCode: edge.target_code,
+              predicate: edge.predicate,
+              direction: 'outgoing',
+              relatedCode: edge.target_code,
+              relatedLabel: targetNode?.display_text || edge.target_code,
+              relatedType: targetNode?.type || 'entity',
+              relatedSystem: targetNode?.code_system || null,
+              occurrenceCount: edge.occurrence_count,
+              confidence: edge.confidence,
+            });
+          }
+        }
+
+        if (edge.target_code === canonicalCode || edge.target_code === normCode) {
+          if (!filterPredicate || edge.predicate === filterPredicate) {
+            const sourceNode = this.memGraphNodes.get(edge.source_code);
+            results.push({
+              edgeId: edge.id,
+              sourceCode: edge.source_code,
+              targetCode: edge.target_code,
+              predicate: edge.predicate,
+              direction: 'incoming',
+              relatedCode: edge.source_code,
+              relatedLabel: sourceNode?.display_text || edge.source_code,
+              relatedType: sourceNode?.type || 'entity',
+              relatedSystem: sourceNode?.code_system || null,
+              occurrenceCount: edge.occurrence_count,
+              confidence: edge.confidence,
+            });
+          }
+        }
+      }
+
+      return results;
+    }
+  }
+
+  public async getGraphNodeByCode(canonicalCode: string): Promise<GraphNodeRow | null> {
+    await this.initialize();
+    if (!canonicalCode) return null;
+    const normCode = canonicalCode.toLowerCase().trim();
+
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'SELECT * FROM graph_nodes WHERE canonical_code = ? OR canonical_code = ? LIMIT 1';
+      const res = await this.dbConnection.query(sql, [canonicalCode, normCode]);
+      return res.values && res.values.length > 0 ? (res.values[0] as GraphNodeRow) : null;
+    } else {
+      const node = this.memGraphNodes.get(canonicalCode) || this.memGraphNodes.get(normCode);
+      return node ? { ...node } : null;
+    }
+  }
 }
 
 export const nativeSQLiteService = new NativeSQLiteService();
+

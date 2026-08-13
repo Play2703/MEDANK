@@ -130,7 +130,7 @@ export class SeedLoaderService {
       }
 
       // 2. document-embeddings.json.gz (Non-fatal)
-      onProgress?.({ stage: 'Baixando embeddings semânticos...', percent: 35 });
+      onProgress?.({ stage: 'Baixando embeddings semânticos...', percent: 50 });
       let embeddings: DocumentEmbedding[] = [];
       try {
         embeddings = await this.fetchGzSeedJson<DocumentEmbedding>('document-embeddings.json.gz');
@@ -139,42 +139,13 @@ export class SeedLoaderService {
         console.warn('[SeedLoaderService] Falha ao carregar document-embeddings.json.gz:', err);
       }
 
-      // 3. chunk-entities.json (Non-fatal)
-      onProgress?.({ stage: 'Baixando entidades clínicas (NER)...', percent: 55 });
-      let chunkEntities: ChunkEntityRecord[] = [];
-      try {
-        chunkEntities = await this.fetchSeedJson<ChunkEntityRecord>('chunk-entities.json');
-      } catch (err) {
-        failedFiles.push('chunk-entities.json');
-        console.warn('[SeedLoaderService] Falha ao carregar chunk-entities.json:', err);
-      }
-
-      // 4. chunk-relations.json (Non-fatal)
-      let chunkRelations: ChunkRelationRecord[] = [];
-      try {
-        chunkRelations = await this.fetchSeedJson<ChunkRelationRecord>('chunk-relations.json');
-      } catch (err) {
-        failedFiles.push('chunk-relations.json');
-        console.warn('[SeedLoaderService] Falha ao carregar chunk-relations.json:', err);
-      }
-
-      // 5. canonical-entity-index.json (Non-fatal)
-      onProgress?.({ stage: 'Baixando grafo de conhecimento...', percent: 75 });
-      let canonicalEntities: CanonicalEntityIndexRecord[] = [];
-      try {
-        canonicalEntities = await this.fetchSeedJson<CanonicalEntityIndexRecord>('canonical-entity-index.json');
-      } catch (err) {
-        failedFiles.push('canonical-entity-index.json');
-        console.warn('[SeedLoaderService] Falha ao carregar canonical-entity-index.json:', err);
-      }
-
-      // 6. graph-edges.json (Non-fatal)
+      // 3. graph-edges.json (Non-fatal, optional local cache)
+      onProgress?.({ stage: 'Sincronizando biblioteca de conhecimento...', percent: 75 });
       let graphEdges: GraphEdgeRecord[] = [];
       try {
         graphEdges = await this.fetchSeedJson<GraphEdgeRecord>('graph-edges.json');
-      } catch (err) {
-        failedFiles.push('graph-edges.json');
-        console.warn('[SeedLoaderService] Falha ao carregar graph-edges.json:', err);
+      } catch {
+        // Grafo servido nativamente via medicalTerminology.db (SQLite)
       }
 
       if (failedFiles.length > 0) {
@@ -188,20 +159,15 @@ export class SeedLoaderService {
         [
           db.knowledgeAssets,
           db.documentEmbeddings,
-          db.chunkEntities,
-          db.chunkRelations,
-          db.canonicalEntityIndex,
           db.graphEdges,
         ],
         async () => {
           if (assets.length > 0) await db.knowledgeAssets.bulkPut(assets);
           if (embeddings.length > 0) await db.documentEmbeddings.bulkPut(embeddings);
-          if (chunkEntities.length > 0) await db.chunkEntities.bulkPut(chunkEntities);
-          if (chunkRelations.length > 0) await db.chunkRelations.bulkPut(chunkRelations);
-          if (canonicalEntities.length > 0) await db.canonicalEntityIndex.bulkPut(canonicalEntities);
           if (graphEdges.length > 0) await db.graphEdges.bulkPut(graphEdges);
         }
       );
+
 
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(SEED_STORAGE_KEY, CURRENT_SEED_VERSION);

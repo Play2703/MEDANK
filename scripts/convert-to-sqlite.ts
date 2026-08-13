@@ -1,7 +1,7 @@
 /**
- * Conversion Script: medicalTerminologyPt.json -> medicalTerminology.db (SQLite)
+ * Conversion Script: medicalTerminologyPt.json & Knowledge Graph JSONs -> medicalTerminology.db (SQLite)
  *
- * Migrates static JSON medical dictionary into a high-performance, indexed SQLite database.
+ * Migrates static JSON medical dictionary and knowledge graph into high-performance, indexed SQLite database.
  * Run with: npm run db:build
  */
 
@@ -43,16 +43,35 @@ export function resolveCodesForEntry(entry: any): { codeSystem: string | null; c
 
 interface TermRecord {
   term: string;
+  normalized_term: string;
   system: string | null;
   code: string | null;
   category: string;
   canonical_term: string;
 }
 
+interface GraphNodeRecord {
+  id: string;
+  canonical_code: string;
+  code_system: string | null;
+  type: string;
+  display_text: string;
+  occurrence_count: number;
+}
+
+interface GraphEdgeRecord {
+  id: string;
+  source_code: string;
+  target_code: string;
+  predicate: string;
+  occurrence_count: number;
+  confidence: number;
+}
+
 export function convertJsonToSqlite(
   jsonFilePath?: string,
   targetDbPath?: string
-): { totalEntries: number; totalRows: number; dbPath: string } {
+): { totalEntries: number; totalRows: number; totalNodes: number; totalEdges: number; dbPath: string } {
   const jsonPath = jsonFilePath || path.resolve(process.cwd(), 'src/core/ner/medicalTerminologyPt.json');
   const dbPath = targetDbPath || path.resolve(process.cwd(), 'src/core/ner/medicalTerminology.db');
   const rootDbPath = path.resolve(process.cwd(), 'medicalTerminology.db');
@@ -76,22 +95,46 @@ export function convertJsonToSqlite(
   db.pragma('journal_mode = OFF');
   db.pragma('synchronous = OFF');
 
-  // Create table and index
+  // Create tables and indexes
   db.exec(`
     CREATE TABLE terms (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       term TEXT NOT NULL,
+      normalized_term TEXT NOT NULL,
       system TEXT,
       code TEXT,
       category TEXT,
       canonical_term TEXT
     );
     CREATE INDEX idx_term ON terms(term);
+    CREATE INDEX idx_terms_normalized_term ON terms(normalized_term);
+
+    CREATE TABLE graph_nodes (
+      id TEXT PRIMARY KEY,
+      canonical_code TEXT NOT NULL,
+      code_system TEXT,
+      type TEXT NOT NULL,
+      display_text TEXT,
+      occurrence_count INTEGER DEFAULT 1
+    );
+    CREATE INDEX idx_graph_nodes_canonical ON graph_nodes(canonical_code);
+
+    CREATE TABLE graph_edges (
+      id TEXT PRIMARY KEY,
+      source_code TEXT NOT NULL,
+      target_code TEXT NOT NULL,
+      predicate TEXT NOT NULL,
+      occurrence_count INTEGER DEFAULT 1,
+      confidence REAL DEFAULT 1.0
+    );
+    CREATE INDEX idx_graph_edges_source ON graph_edges(source_code);
+    CREATE INDEX idx_graph_edges_target ON graph_edges(target_code);
+    CREATE INDEX idx_graph_edges_predicate ON graph_edges(predicate);
   `);
 
-  const insertStmt = db.prepare(`
-    INSERT INTO terms (term, system, code, category, canonical_term)
-    VALUES (@term, @system, @code, @category, @canonical_term)
+  const insertTermStmt = db.prepare(`
+    INSERT INTO terms (term, normalized_term, system, code, category, canonical_term)
+    VALUES (@term, @normalized_term, @system, @code, @category, @canonical_term)
   `);
 
   console.log('⚡ Mapeando e deduplicando termos...');
@@ -104,7 +147,6 @@ export function convertJsonToSqlite(
     if (!existing) {
       termsMap.set(termKey, record);
     } else {
-      // Enrich existing record with codes if missing
       if (!existing.code && record.code) {
         existing.system = record.system;
         existing.code = record.code;
@@ -117,8 +159,12 @@ export function convertJsonToSqlite(
     const category = entry.category || 'DOENCA';
     const canonicalTerm = entry.term;
 
+    const trimmedCanon = canonicalTerm.trim();
+    const normCanon = normalizeText(trimmedCanon);
+
     const baseRecord: TermRecord = {
-      term: canonicalTerm,
+      term: trimmedCanon,
+      normalized_term: normCanon,
       system: codeSystem,
       code,
       category,
@@ -126,11 +172,9 @@ export function convertJsonToSqlite(
     };
 
     // 1. Canonical term
-    const trimmedCanon = canonicalTerm.trim();
-    const normCanon = normalizeText(trimmedCanon);
-    registerTerm(normCanon, { ...baseRecord, term: normCanon });
+    registerTerm(normCanon, { ...baseRecord, term: normCanon, normalized_term: normCanon });
     if (trimmedCanon !== normCanon) {
-      registerTerm(trimmedCanon, { ...baseRecord, term: trimmedCanon });
+      registerTerm(trimmedCanon, { ...baseRecord, term: trimmedCanon, normalized_term: normCanon });
     }
 
     // 2. Synonyms
@@ -148,6 +192,7 @@ export function convertJsonToSqlite(
 
         const synRecord: TermRecord = {
           term: normSyn,
+          normalized_term: normSyn,
           system: sys,
           code: c,
           category,
@@ -156,19 +201,20 @@ export function convertJsonToSqlite(
 
         registerTerm(normSyn, synRecord);
         if (trimmedSyn !== normSyn) {
-          registerTerm(trimmedSyn, { ...synRecord, term: trimmedSyn });
+          registerTerm(trimmedSyn, { ...synRecord, term: trimmedSyn, normalized_term: normSyn });
         }
       }
     }
   }
 
   console.log(`⚡ Inserindo ${termsMap.size} termos únicos no SQLite com transação...`);
-  console.time('Tempo de Inserção');
+  console.time('Tempo de Inserção de Termos');
 
-  const insertTransaction = db.transaction((records: TermRecord[]) => {
+  const insertTermsTx = db.transaction((records: TermRecord[]) => {
     for (const rec of records) {
-      insertStmt.run({
+      insertTermStmt.run({
         term: rec.term,
+        normalized_term: rec.normalized_term,
         system: rec.system,
         code: rec.code,
         category: rec.category,
@@ -177,8 +223,121 @@ export function convertJsonToSqlite(
     }
   });
 
-  insertTransaction(Array.from(termsMap.values()));
-  console.timeEnd('Tempo de Inserção');
+  insertTermsTx(Array.from(termsMap.values()));
+  console.timeEnd('Tempo de Inserção de Termos');
+
+  // --- KNOWLEDGE GRAPH SEED MIGRATION ---
+  console.log('⚡ Migrando Knowledge Graph (nodes & edges) para SQLite...');
+  const nodesMap = new Map<string, GraphNodeRecord>();
+  const edgesMap = new Map<string, GraphEdgeRecord>();
+
+  // 1. Check for canonical-entity-index.json
+  const canonicalPaths = [
+    path.resolve(process.cwd(), 'public/seed-data/canonical-entity-index.json'),
+    path.resolve(process.cwd(), 'scripts/seed-source/canonical-entity-index.json'),
+  ];
+  for (const cPath of canonicalPaths) {
+    if (fs.existsSync(cPath)) {
+      try {
+        const canonicalList: any[] = JSON.parse(fs.readFileSync(cPath, 'utf-8'));
+        for (const item of canonicalList) {
+          const key = item.canonicalKey || item.canonical_code;
+          if (!key) continue;
+          nodesMap.set(key, {
+            id: key,
+            canonical_code: key,
+            code_system: item.code_system || item.codeSystem || null,
+            type: item.type || 'entity',
+            display_text: item.displayText || item.display_text || item.canonicalKey || key,
+            occurrence_count: item.occurrenceCount || 1,
+          });
+        }
+        console.log(`  -> Carregados ${canonicalList.length} nós de ${cPath}`);
+        break;
+      } catch (err) {
+        console.warn(`  ⚠️ Erro ao ler nós de ${cPath}:`, err);
+      }
+    }
+  }
+
+  // 2. Check for graph-edges.json
+  const graphEdgePaths = [
+    path.resolve(process.cwd(), 'public/seed-data/graph-edges.json'),
+    path.resolve(process.cwd(), 'scripts/seed-source/graph-edges.json'),
+  ];
+  for (const ePath of graphEdgePaths) {
+    if (fs.existsSync(ePath)) {
+      try {
+        const edgeList: any[] = JSON.parse(fs.readFileSync(ePath, 'utf-8'));
+        for (const edge of edgeList) {
+          const source = edge.subjectCanonicalKey || edge.source_code;
+          const target = edge.objectCanonicalKey || edge.target_code;
+          const predicate = edge.predicate;
+          if (!source || !target || !predicate) continue;
+
+          const edgeId = edge.id || `${source}::${predicate}::${target}`;
+          edgesMap.set(edgeId, {
+            id: edgeId,
+            source_code: source,
+            target_code: target,
+            predicate,
+            occurrence_count: edge.occurrenceCount || 1,
+            confidence: edge.maxConfidence || edge.confidence || 1.0,
+          });
+
+          // Ensure node existence
+          if (!nodesMap.has(source)) {
+            nodesMap.set(source, {
+              id: source,
+              canonical_code: source,
+              code_system: null,
+              type: 'entity',
+              display_text: source,
+              occurrence_count: 1,
+            });
+          }
+          if (!nodesMap.has(target)) {
+            nodesMap.set(target, {
+              id: target,
+              canonical_code: target,
+              code_system: null,
+              type: 'entity',
+              display_text: target,
+              occurrence_count: 1,
+            });
+          }
+        }
+        console.log(`  -> Carregadas ${edgeList.length} arestas de ${ePath}`);
+        break;
+      } catch (err) {
+        console.warn(`  ⚠️ Erro ao ler arestas de ${ePath}:`, err);
+      }
+    }
+  }
+
+  // Insert Graph Nodes
+  const insertNodeStmt = db.prepare(`
+    INSERT OR REPLACE INTO graph_nodes (id, canonical_code, code_system, type, display_text, occurrence_count)
+    VALUES (@id, @canonical_code, @code_system, @type, @display_text, @occurrence_count)
+  `);
+  const insertNodesTx = db.transaction((nodes: GraphNodeRecord[]) => {
+    for (const node of nodes) {
+      insertNodeStmt.run(node);
+    }
+  });
+  insertNodesTx(Array.from(nodesMap.values()));
+
+  // Insert Graph Edges
+  const insertEdgeStmt = db.prepare(`
+    INSERT OR REPLACE INTO graph_edges (id, source_code, target_code, predicate, occurrence_count, confidence)
+    VALUES (@id, @source_code, @target_code, @predicate, @occurrence_count, @confidence)
+  `);
+  const insertEdgesTx = db.transaction((edges: GraphEdgeRecord[]) => {
+    for (const edge of edges) {
+      insertEdgeStmt.run(edge);
+    }
+  });
+  insertEdgesTx(Array.from(edgesMap.values()));
 
   // Switch back to normal journaling and optimize
   db.pragma('journal_mode = DELETE');
@@ -186,6 +345,9 @@ export function convertJsonToSqlite(
 
   const countRow = db.prepare('SELECT COUNT(*) as count FROM terms').get() as { count: number };
   const totalRows = countRow.count;
+
+  const nodeCountRow = db.prepare('SELECT COUNT(*) as count FROM graph_nodes').get() as { count: number };
+  const edgeCountRow = db.prepare('SELECT COUNT(*) as count FROM graph_edges').get() as { count: number };
 
   db.close();
 
@@ -201,13 +363,17 @@ export function convertJsonToSqlite(
   console.log(`- Localização:            ${dbPath}`);
   console.log(`- Cópia Raiz:             ${rootDbPath}`);
   console.log(`- Termos principais JSON: ${rawData.length}`);
-  console.log(`- Total de linhas no DB:  ${totalRows}`);
+  console.log(`- Total de linhas termos: ${totalRows}`);
+  console.log(`- Total nós do Grafo:     ${nodeCountRow.count}`);
+  console.log(`- Total arestas do Grafo: ${edgeCountRow.count}`);
   console.log(`- Tamanho em disco:       ${sizeMb} MB`);
   console.log(`==================================================\n`);
 
   return {
     totalEntries: rawData.length,
     totalRows,
+    totalNodes: nodeCountRow.count,
+    totalEdges: edgeCountRow.count,
     dbPath,
   };
 }

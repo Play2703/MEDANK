@@ -56,12 +56,67 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
+export function levenshteinDistance(a: string, b: string, maxThreshold = 2): number {
+  if (a === b) return 0;
+  if (!a) return b ? b.length : 0;
+  if (!b) return a.length;
+
+  const lenA = a.length;
+  const lenB = b.length;
+
+  if (Math.abs(lenA - lenB) > maxThreshold) {
+    return maxThreshold + 1;
+  }
+
+  const s1 = lenA >= lenB ? a : b;
+  const s2 = lenA >= lenB ? b : a;
+  const n = s1.length;
+  const m = s2.length;
+
+  let prevRow = new Array<number>(m + 1);
+  let currRow = new Array<number>(m + 1);
+
+  for (let j = 0; j <= m; j++) prevRow[j] = j;
+
+  for (let i = 1; i <= n; i++) {
+    currRow[0] = i;
+    const char1 = s1[i - 1];
+    let minInRow = currRow[0];
+
+    for (let j = 1; j <= m; j++) {
+      const char2 = s2[j - 1];
+      const cost = char1 === char2 ? 0 : 1;
+
+      currRow[j] = Math.min(
+        prevRow[j] + 1,
+        currRow[j - 1] + 1,
+        prevRow[j - 1] + cost
+      );
+
+      if (currRow[j] < minInRow) {
+        minInRow = currRow[j];
+      }
+    }
+
+    if (minInRow > maxThreshold) {
+      return maxThreshold + 1;
+    }
+
+    const temp = prevRow;
+    prevRow = currRow;
+    currRow = temp;
+  }
+
+  return prevRow[m];
+}
+
 export function estimateCoverage(text: string, entities: MatchedEntity[]): number {
   if (!text || text.trim().length === 0) return 0;
   if (!entities || entities.length === 0) return 0;
   const totalRecognizedChars = entities.reduce((sum, ent) => sum + (ent.endIndex - ent.startIndex), 0);
   return totalRecognizedChars / text.length;
 }
+
 
 interface Token {
   text: string;
@@ -269,10 +324,59 @@ export class WorkerNEREngine {
     this.loadTerms(baseTerms);
   }
 
-  public lookupTerm(term: string): TermEntry | undefined {
+  public lookupTerm(term: string, enableTypoTolerance = true): TermEntry | undefined {
+    if (!term || typeof term !== 'string') return undefined;
     const norm = normalizeText(term);
-    return this.termMap.get(norm) || this.termMap.get(term.trim().toLowerCase());
+    if (!norm) return undefined;
+
+    // Step A: Exact normalized match
+    const exactMatch = this.termMap.get(norm);
+    if (exactMatch) return exactMatch;
+
+    const trimmedMatch = this.termMap.get(term.trim().toLowerCase());
+    if (trimmedMatch) return trimmedMatch;
+
+    // Step B: Typo-tolerance fallback via Levenshtein
+    if (enableTypoTolerance) {
+      if (norm.length < 5) return undefined;
+
+      const normWordCount = norm.split(' ').length;
+      const prefixLen = norm.length <= 5 ? 3 : 4;
+      const prefix = norm.slice(0, prefixLen);
+
+      let bestMatch: TermEntry | undefined;
+      let minDistance = 3;
+      let minLenDiff = 999;
+
+      for (const [key, entry] of this.termMap.entries()) {
+        if (key.startsWith(prefix)) {
+          if (key.split(' ').length !== normWordCount) continue;
+
+          const lenDiff = Math.abs(norm.length - key.length);
+          const maxLenDiff = norm.length < 7 ? 1 : 2;
+          if (lenDiff > maxLenDiff) continue;
+
+          const maxThreshold = norm.length < 7 ? 1 : 2;
+          const dist = levenshteinDistance(norm, key, maxThreshold);
+          if (dist <= maxThreshold) {
+            if (dist < minDistance || (dist === minDistance && lenDiff < minLenDiff)) {
+              minDistance = dist;
+              minLenDiff = lenDiff;
+              bestMatch = entry;
+            }
+          }
+        }
+      }
+
+      if (bestMatch) {
+        return bestMatch;
+      }
+    }
+
+    return undefined;
   }
+
+
 
   public extractEntities(text: string): MatchedEntity[] {
     if (!text || typeof text !== 'string' || !text.trim()) {
@@ -284,7 +388,7 @@ export class WorkerNEREngine {
       return [];
     }
 
-    const rawMatches: MatchedEntity[] = [];
+    const rawMatches: Array<MatchedEntity & { isExact: boolean }> = [];
     const maxSpanLength = 8;
 
     for (let i = 0; i < tokens.length; i++) {
@@ -296,6 +400,8 @@ export class WorkerNEREngine {
         const row = this.lookupTerm(rawText);
 
         if (row) {
+          const normRaw = normalizeText(rawText);
+          const isExact = normalizeText(row.canonicalTerm || '') === normRaw || this.termMap.has(normRaw);
           rawMatches.push({
             text: rawText,
             normalizedTerm: row.canonicalTerm || rawText,
@@ -304,17 +410,22 @@ export class WorkerNEREngine {
             endIndex: endIdx,
             codeSystem: row.codeSystem ?? null,
             code: row.code ?? null,
+            isExact,
           });
         }
       }
     }
 
     rawMatches.sort((a, b) => {
+      if (a.isExact !== b.isExact) {
+        return a.isExact ? -1 : 1;
+      }
       const lenA = a.endIndex - a.startIndex;
       const lenB = b.endIndex - b.startIndex;
       if (lenB !== lenA) return lenB - lenA;
       return a.startIndex - b.startIndex;
     });
+
 
     const entities: MatchedEntity[] = [];
     const occupied: boolean[] = new Array(text.length).fill(false);
