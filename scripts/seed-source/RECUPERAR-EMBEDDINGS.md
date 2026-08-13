@@ -41,6 +41,29 @@ Ou seja:
    # Deve começar com '[' (JSON), NÃO com 'version https://git-lfs'
    ```
 
+## Opção A2 — `npm run lfs:fetch` (sem instalar Git LFS)
+
+Se você **não pode instalar** o `git-lfs` (ex.: builder do Render, CI com
+filesystem somente-leitura, container sem `sudo`), use o resolvedor em Node puro
+já incluído no projeto:
+
+```bash
+npm run lfs:fetch
+```
+
+Ele lê os ponteiros LFS listados em `.gitattributes`, resolve os objetos pela
+Batch API do GitHub e baixa o conteúdo real validando tamanho e SHA-256.
+Esse comando **já roda automaticamente no `npm run build`**.
+
+Variáveis úteis:
+
+| Variável | Efeito |
+| --- | --- |
+| `SKIP_LFS_FETCH=1` | Pula o download (build mais rápido; app degrada sem busca semântica). |
+| `LFS_STRICT=1` | Faz o build **falhar** se o download não completar (default: só avisa). |
+| `GITHUB_TOKEN` | Necessário apenas se o repositório for privado. |
+| `LFS_REMOTE_URL` | Sobrescreve a URL do repositório (default: `git remote get-url origin`). |
+
 ## Opção B — Regenerar via `npm run seed:build` (sem depender do LFS)
 
 Os embeddings são gerados **localmente** (`transformers.js`, 384d) pelo
