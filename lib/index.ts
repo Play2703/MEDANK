@@ -8,8 +8,11 @@ export * as CoreConfig from './core/config';
 export * as CoreTheme from './core/theme';
 export * as CoreConstants from './core/constants';
 export * as CoreUtils from './core/utils';
+export * as CoreEngines from './core/engines';
+export * as CoreRiverpod from './core/riverpod';
 export * as CoreServices from './core/services';
 export * as CoreRouter from './core/router';
+
 
 // Features Layer
 export * as HomeFeature from './features/home';

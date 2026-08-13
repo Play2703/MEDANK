@@ -18,8 +18,10 @@
     "db:build": "tsx scripts/convert-to-sqlite.ts"
   },
   "dependencies": {
+    "@capacitor-community/sqlite": "^7.0.3",
     "@capacitor/core": "^7.0.0",
     "@capacitor/ios": "^7.0.0",
+    "@capacitor/network": "^7.0.4",
     "@google/genai": "^2.15.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",

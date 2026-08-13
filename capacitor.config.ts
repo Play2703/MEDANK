@@ -7,6 +7,17 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'never',
   },
+  plugins: {
+    CapacitorSQLite: {
+      iosIsEncryption: false,
+      iosKeychainPrefix: 'medanki-sqlite',
+      iosBiometric: {
+        biometricAuth: false,
+        biometricTitle: 'Biometric login for sqlite',
+      },
+    },
+  },
 };
+
 
 export default config;
