@@ -48,7 +48,7 @@ export function SeedLoaderDialog() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in">
       <div className="bg-surface-container-high dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative">
         {!isLoading && !isSuccess && (
           <button
