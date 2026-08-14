@@ -80,12 +80,20 @@ export function importCid10() {
 
   const csvPath = ensureCid10CsvExists();
 
-  const rawDict: DictionaryEntry[] = JSON.parse(fs.readFileSync(DICTIONARY_PATH, 'utf-8'));
+  let rawDict: DictionaryEntry[] = [];
+  if (fs.existsSync(DICTIONARY_PATH)) {
+    try {
+      rawDict = JSON.parse(fs.readFileSync(DICTIONARY_PATH, 'utf-8'));
+    } catch {
+      rawDict = [];
+    }
+  }
   const initialMainTermsCount = rawDict.length;
   let initialTotalTermsWithSynonyms = 0;
   rawDict.forEach((e) => {
     initialTotalTermsWithSynonyms += 1 + (e.synonyms ? e.synonyms.length : 0);
   });
+
 
   console.log(`📊 Dicionário atual: ${initialMainTermsCount} termos principais / ${initialTotalTermsWithSynonyms} com sinônimos.`);
 

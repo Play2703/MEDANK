@@ -1,4 +1,5 @@
-export { KnowledgeCategory, KnowledgeCategoryMapper } from '../../medcore_kernel';
+export { KnowledgeCategory, KnowledgeCategoryMapper } from '../../medcore_kernel/ontology/KnowledgeCategoryMapper';
+
 
 export const KNOWLEDGE_CATEGORIES = [
   { id: 'book', label: 'Livros', icon: '📚' },

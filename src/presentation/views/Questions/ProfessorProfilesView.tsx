@@ -6,8 +6,9 @@ import { M3Card } from '../../components/Material3/M3Card';
 import { M3Button } from '../../components/Material3/M3Button';
 import { DocumentPickerService } from '../../../data/services/DocumentPickerService';
 import { ProfessorProfile, ImportedDocument } from '../../../domain/entities/Question';
-import { professorEngine } from '../../../core/medcore_kernel/engines/ProfessorEngine';
+import { apiUrl } from '../../../lib/apiBaseUrl';
 import { ExamDNARadarChart } from '../../components/ExamDNARadarChart';
+
 import {
   ArrowLeft,
   GraduationCap,
@@ -51,11 +52,39 @@ export const ProfessorProfilesView: React.FC<ProfessorProfilesViewProps> = ({ on
   const handleAnalyzeStyle = async (profile: ProfessorProfile) => {
     setAnalyzingId(profile.id);
     try {
-      const analysis = await professorEngine.analyzeProfessorStyle(profile);
+      const docTexts = (profile.documents || [])
+        .map((d) => (d.extractedExcerpt ? `[Documento: ${d.fileName}]\n${d.extractedExcerpt}` : `[Documento: ${d.fileName}]`))
+        .join('\n\n');
+
+      const res = await fetch(apiUrl('/api/clone-exam-style'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profileName: profile.name,
+          sourceExamName: profile.name,
+          examText: docTexts,
+          documents: profile.documents,
+        }),
+
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Falha na requisição de análise de estilo do professor');
+      }
+
+      const data = await res.json();
+      if (!data.success || !data.profile) {
+        throw new Error(data.error || 'Resposta inválida do servidor');
+      }
+
+      const styleAnalysis = data.profile.styleAnalysis;
+      const examDNA = data.profile.examDNA || styleAnalysis?.examDNA || profile.examDNA;
+
       const updatedProfile: ProfessorProfile = {
         ...profile,
-        styleAnalysis: analysis,
-        examDNA: analysis.examDNA || profile.examDNA,
+        styleAnalysis,
+        examDNA,
         updatedAt: new Date().toISOString(),
       };
       await updateProfessorProfile(updatedProfile);
@@ -65,6 +94,7 @@ export const ProfessorProfilesView: React.FC<ProfessorProfilesViewProps> = ({ on
       setAnalyzingId(null);
     }
   };
+
 
   // Start edit profile
   const handleStartEdit = (profile: ProfessorProfile) => {
