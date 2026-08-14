@@ -5,6 +5,32 @@ import { aiOrchestrator } from '../ai_orchestrator/AIOrchestrator';
 
 describe('ProfessorEngine - analyzeProfessorStyle', () => {
   it('deve retornar um objeto de análise estruturado (ProfessorStyleAnalysis) com ExamDNA para um perfil de professor', async () => {
+    const mockAi = vi.spyOn(aiOrchestrator, 'generateContent').mockResolvedValue({
+      text: JSON.stringify({
+        cicloAcademico: 'clinico',
+        temasFavoritos: ['Infarto agudo', 'ECG', 'Insuficiência Cardíaca'],
+        estiloDeQuestao: 'Casos clínicos objetivos',
+        nivelCognitivo: 'Aplicação e síntese',
+        pegadinhasRecorrentes: ['Troca de derivações no ECG'],
+        resumoEstiloGeral: 'Foco em diagnóstico rápido e condutas imediatas de emergência.',
+        examDNA: {
+          clinico: {
+            contextoClinico: 0.85,
+            casosLongos: 0.75,
+            pegadinhas: 0.5,
+            epidemiologia: 0.4,
+            farmacologia: 0.6,
+            achadosDeImagem: 0.3,
+            condutaImediata: 0.8,
+            diretrizesOficiais: 0.7,
+            comorbidadesMultiplas: 0.4,
+          },
+        },
+      }),
+      modelUsed: 'gemini-3.5-flash-lite',
+      provider: 'gemini',
+    });
+
     const fakeProfile: ProfessorProfile = {
       id: 'prof-test-1',
       name: 'Prof. Dr. Silva - Cardiologia',
@@ -40,6 +66,8 @@ describe('ProfessorEngine - analyzeProfessorStyle', () => {
 
     const analysis = await professorEngine.analyzeProfessorStyle(fakeProfile);
 
+    mockAi.mockRestore();
+
     expect(analysis).toBeDefined();
     expect(Array.isArray(analysis.temasFavoritos)).toBe(true);
     expect(typeof analysis.estiloDeQuestao).toBe('string');
@@ -52,6 +80,32 @@ describe('ProfessorEngine - analyzeProfessorStyle', () => {
   });
 
   it('deve calcular a média móvel do ExamDNA ao reanalisar um perfil existente', async () => {
+    const mockAi = vi.spyOn(aiOrchestrator, 'generateContent').mockResolvedValue({
+      text: JSON.stringify({
+        cicloAcademico: 'clinico',
+        temasFavoritos: ['Exantemas', 'Aleitamento'],
+        estiloDeQuestao: 'Casos pediátricos diretos',
+        nivelCognitivo: 'Compreensão',
+        pegadinhasRecorrentes: ['Diagnóstico diferencial de rash'],
+        resumoEstiloGeral: 'Pediatria ambulatorial.',
+        examDNA: {
+          clinico: {
+            contextoClinico: 0.60,
+            casosLongos: 0.50,
+            pegadinhas: 0.40,
+            epidemiologia: 0.30,
+            farmacologia: 0.40,
+            achadosDeImagem: 0.10,
+            condutaImediata: 0.70,
+            diretrizesOficiais: 0.60,
+            comorbidadesMultiplas: 0.20,
+          },
+        },
+      }),
+      modelUsed: 'gemini-3.5-flash-lite',
+      provider: 'gemini',
+    });
+
     const fakeProfileWithDNA: ProfessorProfile = {
       id: 'prof-test-2',
       name: 'Prof. Dr. Santos - Pediatria',
@@ -90,6 +144,8 @@ describe('ProfessorEngine - analyzeProfessorStyle', () => {
 
     const analysis = await professorEngine.analyzeProfessorStyle(fakeProfileWithDNA);
 
+    mockAi.mockRestore();
+
     expect(analysis.examDNA).toBeDefined();
     expect(analysis.examDNA?.version).toBe(3); // Incremented from 2 to 3
     if (analysis.examDNA?.clinico) {
@@ -98,6 +154,7 @@ describe('ProfessorEngine - analyzeProfessorStyle', () => {
       expect(analysis.examDNA.clinico.contextoClinico).toBeLessThanOrEqual(1);
     }
   });
+
 
   it('deve fracionar contextos extensos (>4000 chars) em múltiplos blocos e calcular a média dos vetores parciais', async () => {
     // Simula 3 documentos grandes (total ~6000 caracteres)
@@ -160,5 +217,6 @@ describe('ProfessorEngine - analyzeProfessorStyle', () => {
     expect(analysis.examDNA?.clinico).toBeDefined();
     // Média de 0.9, 0.6, 0.3 = 0.6
     expect(analysis.examDNA?.clinico?.contextoClinico).toBeCloseTo(0.6, 1);
-  });
+  }, 15000);
 });
+

@@ -192,14 +192,13 @@ export async function classifyAcademicCycleDeterministically(blockText: string):
     // Se estiver em ambiente Node (testes, server, seed)
     if (typeof window === 'undefined' && typeof process !== 'undefined') {
       try {
-        const nerModule: any = await (new Function('specifier', 'return import(specifier)'))('../../ner/DictionaryNEREngine');
-        if (nerModule && nerModule.dictionaryNEREngine) {
-          entities = await nerModule.dictionaryNEREngine.extractEntities(blockText);
-        }
+        const { dictionaryNEREngine } = await import('../../ner/DictionaryNEREngine');
+        entities = dictionaryNEREngine.extractEntities(blockText);
       } catch {
         // Fallback via API
       }
     }
+
 
 
     if (entities.length === 0 && typeof fetch !== 'undefined') {

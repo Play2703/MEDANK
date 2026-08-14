@@ -68,15 +68,27 @@ export function getDbPath(): string {
 let dbInstance: Database.Database | null = null;
 let selectTermStmt: Database.Statement<[string], TermRow> | null = null;
 let selectLikeStmt: Database.Statement<[string], TermRow> | null = null;
+let warmupPromise: Promise<boolean> | null = null;
 
 export function getTerminologyDb(): Database.Database | null {
   if (dbInstance) return dbInstance;
   try {
     if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+      const startTime = Date.now();
       const dbPath = getDbPath();
       if (fs.existsSync(dbPath)) {
+        console.log(`[DictionaryNEREngine] Conectando ao banco SQLite: ${dbPath}...`);
         dbInstance = new Database(dbPath, { readonly: true, fileMustExist: true });
+        
+        // Pragmas de alta performance para leitura (sem lock em concorrência)
+        dbInstance.pragma('query_only = ON');
+        dbInstance.pragma('mmap_size = 67108864'); // 64MB memory-mapped IO
+        
+        const elapsed = Date.now() - startTime;
+        console.log(`[DictionaryNEREngine] Conexão SQLite estabelecida com sucesso em ${elapsed}ms.`);
         return dbInstance;
+      } else {
+        console.warn(`[DictionaryNEREngine] Arquivo medicalTerminology.db não encontrado em: ${dbPath}`);
       }
     }
   } catch (err) {
@@ -89,9 +101,11 @@ export function getSelectTermStatement(): Database.Statement<[string], TermRow> 
   if (selectTermStmt) return selectTermStmt;
   const db = getTerminologyDb();
   if (db) {
+    const t0 = Date.now();
     selectTermStmt = db.prepare<[string], TermRow>(
       'SELECT system, code, category, canonical_term, normalized_term FROM terms WHERE normalized_term = ? LIMIT 1'
     );
+    console.log(`[DictionaryNEREngine] Prepared statement selectTerm compilado em ${Date.now() - t0}ms.`);
   }
   return selectTermStmt;
 }
@@ -100,12 +114,15 @@ export function getSelectLikeStatement(): Database.Statement<[string], TermRow> 
   if (selectLikeStmt) return selectLikeStmt;
   const db = getTerminologyDb();
   if (db) {
+    const t0 = Date.now();
     selectLikeStmt = db.prepare<[string], TermRow>(
       'SELECT system, code, category, canonical_term, normalized_term FROM terms WHERE normalized_term LIKE ? LIMIT 60'
     );
+    console.log(`[DictionaryNEREngine] Prepared statement selectLike compilado em ${Date.now() - t0}ms.`);
   }
   return selectLikeStmt;
 }
+
 
 const COMMON_STOP_WORDS = new Set([
   'pode', 'para', 'como', 'mais', 'pelo', 'pela', 'sobre', 'onde', 'quando',
@@ -138,16 +155,17 @@ export function lookupTerm(term: string, enableTypoTolerance = true): TermRow | 
 
   // Step B: Typo-tolerance fallback via Levenshtein
   if (enableTypoTolerance) {
-    // Avoid noisy typo matching on stop words or short words
-    if (norm.length < 5 || COMMON_STOP_WORDS.has(norm)) {
+    const normWordCount = norm.split(' ').length;
+    // Tolerância a erro via Levenshtein deve focar em palavras simples (evita overhead quadrático em n-grams)
+    if (normWordCount !== 1 || norm.length < 5 || COMMON_STOP_WORDS.has(norm)) {
       return undefined;
     }
 
     const likeStmt = getSelectLikeStatement();
     if (likeStmt) {
-      const normWordCount = norm.split(' ').length;
       const prefixLen = norm.length <= 5 ? 3 : 4;
       const prefix = norm.slice(0, prefixLen);
+
       const candidates = likeStmt.all(`${prefix}%`);
 
       let bestMatch: TermRow | undefined;
@@ -378,9 +396,50 @@ function tokenize(text: string): Token[] {
 }
 
 export class DictionaryNEREngine {
+  private isWarmedUp = false;
+
   constructor() {
-    // Garante inicialização prévia da conexão e do prepared statement
-    getSelectTermStatement();
+    // Construtor totalmente desacoplado de I/O síncrono no boot
+  }
+
+  /**
+   * Inicialização e aquecimento assíncrono do motor terminológico.
+   * Pode ser disparado em background pós-listen do servidor ou aguardado sob demanda.
+   */
+  public async warmup(): Promise<boolean> {
+    if (this.isWarmedUp) return true;
+    if (warmupPromise) return warmupPromise;
+
+    warmupPromise = (async () => {
+      const start = Date.now();
+      console.log('[DictionaryNEREngine] Iniciando warmup do motor terminológico...');
+      try {
+        const db = getTerminologyDb();
+        if (db) {
+          getSelectTermStatement();
+          getSelectLikeStatement();
+
+          // Query de validação e aquecimento do cache
+          const countRow = db.prepare('SELECT COUNT(*) as count FROM terms').get() as { count: number };
+          const testLookup = lookupTerm('hipertensao', false);
+
+          const elapsed = Date.now() - start;
+          console.log(
+            `[DictionaryNEREngine] Warmup concluído com sucesso em ${elapsed}ms (${countRow?.count ?? 0} termos indexados). Termo de teste: "${testLookup?.canonical_term ?? 'ok'}"`
+          );
+          this.isWarmedUp = true;
+          return true;
+        } else {
+          console.warn('[DictionaryNEREngine] Warmup falhou: SQLite database não disponível.');
+          return false;
+        }
+      } catch (err) {
+        console.warn('[DictionaryNEREngine] Erro durante warmup:', err);
+        return false;
+      }
+    })();
+
+    return warmupPromise;
   }
 
   public reload(): void {
@@ -391,8 +450,11 @@ export class DictionaryNEREngine {
       dbInstance = null;
     }
     selectTermStmt = null;
-    getSelectTermStatement();
+    selectLikeStmt = null;
+    this.isWarmedUp = false;
+    warmupPromise = null;
   }
+
 
   extractEntities(text: string): MatchedEntity[] {
     if (!text || typeof text !== 'string' || !text.trim()) {

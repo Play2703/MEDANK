@@ -260,7 +260,15 @@ export class HybridNEREngine {
     return this.provider.isAvailable() ? 'hybrid' : 'local';
   }
 
+  /**
+   * Inicialização preguiçosa/aquecimento assíncrono do motor híbrido.
+   */
+  public async warmup(): Promise<boolean> {
+    return this.localEngine.warmup();
+  }
+
   async extractEntities(text: string): Promise<MatchedEntity[]> {
+
     const local = this.localEngine.extractEntities(text);
     let ai: AiNerEntity[] = [];
     try {

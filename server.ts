@@ -196,10 +196,14 @@ async function startServer() {
         DIAGNOSTICO_POR: 'diagnostica',
       };
 
+      // Garante que o motor terminológico esteja pronto antes do processamento
+      await hybridNEREngine.warmup();
+
       const results = await Promise.all(
         chunks.map(async (item: any) => {
           const text = item.text || '';
           const matchedEntities = await hybridNEREngine.extractEntities(text);
+
           const extractedRelations = hybridNEREngine.extractRelations(text, matchedEntities);
 
           const entities = matchedEntities.map((ent) => ({
@@ -1050,8 +1054,19 @@ Responda de forma clara, didática, embasada nas diretrizes médicas mais recent
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[MedAnki Server] Rodando na porta ${PORT}`);
+    console.log(`[MedAnki Server] 🚀 Servidor pronto e escutando na porta ${PORT}`);
+
+    // Warmup assíncrono dos motores pós-vinculação de porta
+    setImmediate(async () => {
+      console.log("[MedAnki Server] Iniciando warmup do NER/Knowledge Engine em background pós-listen...");
+      try {
+        await hybridNEREngine.warmup();
+      } catch (err) {
+        console.warn("[MedAnki Server] Aviso durante warmup em background pós-listen:", err);
+      }
+    });
   });
 }
 
 startServer();
+
