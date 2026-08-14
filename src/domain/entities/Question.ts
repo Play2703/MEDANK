@@ -15,6 +15,8 @@ export interface QuestionConfiguration {
   topicSpecialtyMap?: Record<string, string>; // Mapeamento assunto -> especialidade de origem
   subtopic?: string;                 // Subtema
   topicDetail?: string;              // Tópico específico
+  selectedSubtopics?: string[];      // Subtópicos / temas específicos selecionados
+  topicSubtopicsMap?: Record<string, string[]>; // Mapeamento tópico -> lista de subtópicos refinados
   quantity: number;                  // Quantidade de questões (ex: 10, 20)
   distributionMode?: DistributionMode; // 'interdisciplinar' | 'distribuido'
   customTopicQuantities?: Record<string, number>; // Se distribuição manual no modo distribuído

@@ -511,7 +511,10 @@ export class QuestionGenerationService {
     const topK = Math.min(30, baseTopK + Math.ceil(quantity / 3));
 
     // 1. Retrieve RAG chunks matching all topics & specialties
-    const searchQuery = `${specialtyStr} ${mainTopic} ${config.subtopic || ''}`.trim();
+    const subtopicStr = (config.selectedSubtopics && config.selectedSubtopics.length > 0)
+      ? config.selectedSubtopics.join(' ')
+      : (config.subtopic || '');
+    const searchQuery = `${specialtyStr} ${mainTopic} ${subtopicStr}`.trim();
     const retrievedChunks = await ragEngine.retrieveContext(searchQuery, {
       banca: isGeneralMode ? undefined : (request.mode === 'banca' ? request.bancaName : undefined),
       professor: isGeneralMode ? undefined : (request.mode === 'professor' ? request.professorName : undefined),
@@ -949,8 +952,12 @@ export class QuestionGenerationService {
       const originSpecialty = topicSpecialtyMap[singleTopic] || defaultSpecialty;
 
       try {
-        // Retrieve RAG context specific to THIS single topic & specialty
-        const searchQuery = `${originSpecialty} ${singleTopic} ${config.subtopic || ''}`.trim();
+        // Retrieve RAG context specific to THIS single topic & specialty (incluindo refinamento por subtópicos se houver)
+        const topicSpecificSubtopics = config.topicSubtopicsMap?.[singleTopic] || [];
+        const subtopicSuffix = topicSpecificSubtopics.length > 0
+          ? topicSpecificSubtopics.join(' ')
+          : (config.subtopic || '');
+        const searchQuery = `${originSpecialty} ${singleTopic} ${subtopicSuffix}`.trim();
         const retrievedChunks = await ragEngine.retrieveContext(searchQuery, {
           banca: isGeneralMode ? undefined : (request.mode === 'banca' ? request.bancaName : undefined),
           professor: isGeneralMode ? undefined : (request.mode === 'professor' ? request.professorName : undefined),
@@ -999,6 +1006,7 @@ export class QuestionGenerationService {
           retrievedChunks,
           specialty: originSpecialty,
           topics: [singleTopic],
+          subtopics: topicSpecificSubtopics.length > 0 ? topicSpecificSubtopics : undefined,
           quantity: countForThisTopic,
           difficulty: config.difficulty,
           questionType: config.questionType,

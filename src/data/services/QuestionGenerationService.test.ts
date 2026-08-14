@@ -526,5 +526,98 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
       expect.arrayContaining(['insuficiencia_cardiaca', 'furosemida', 'enalapril'])
     );
   });
+
+  it('deve incluir subtópicos específicos na busca do RAG e no payload de geração ao refinar por tema', async () => {
+    let capturedBody: any = null;
+    const ragRetrieveSpy = vi.spyOn(ragEngine, 'retrieveContext').mockResolvedValue([
+      {
+        assetId: 'asset-physio-1',
+        chunkIndex: 0,
+        content: 'Na relação ventilação/perfusão (V/Q), o ápice pulmonar apresenta maior relação V/Q comparado à base...',
+        similarity: 0.92,
+      },
+      {
+        assetId: 'asset-physio-1',
+        chunkIndex: 1,
+        content: 'O efeito shunt ocorre quando áreas perfundidas não são ventiladas (V/Q = 0)...',
+        similarity: 0.88,
+      },
+      {
+        assetId: 'asset-physio-1',
+        chunkIndex: 2,
+        content: 'O espaço morto alveolar representa áreas ventiladas mas não perfundidas (V/Q tendendo ao infinito)...',
+        similarity: 0.85,
+      },
+    ]);
+
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+      if (url.toString().includes('/api/generate-questions')) {
+        capturedBody = JSON.parse(init?.body as string);
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            questions: [
+              {
+                id: 'q-physio-1',
+                statement: 'Em relação à fisiologia respiratória e à relação V/Q...',
+                options: [
+                  { id: 'opt-a', letter: 'A', text: 'Opção correta sobre V/Q', isCorrect: true },
+                  { id: 'opt-b', letter: 'B', text: 'Opção incorreta 1', isCorrect: false },
+                  { id: 'opt-c', letter: 'C', text: 'Opção incorreta 2', isCorrect: false },
+                  { id: 'opt-d', letter: 'D', text: 'Opção incorreta 3', isCorrect: false },
+                ],
+                correctOptionLetter: 'A',
+                commentary: { correta: 'Explicação detalhada da relação V/Q' },
+                specialty: 'Fisiologia',
+                topic: 'Mecânica Ventilatória e Trocas Gasosas',
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    const specificSubtopic = 'Fisiologia Respiratória: Ventilação, Perfusão, Relação V/Q';
+    const request: QuestionGenerationRequest = {
+      id: 'req-test-subtopics-e2e',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Fisiologia',
+        topics: ['Mecânica Ventilatória e Trocas Gasosas'],
+        topicSpecialtyMap: {
+          'Mecânica Ventilatória e Trocas Gasosas': 'Fisiologia',
+        },
+        selectedSubtopics: [specificSubtopic],
+        topicSubtopicsMap: {
+          'Mecânica Ventilatória e Trocas Gasosas': [specificSubtopic],
+        },
+        quantity: 1,
+        distributionMode: 'distribuido',
+        difficulty: 'media',
+        questionType: 'caso_clinico',
+        includeCommentary: true,
+        showReferences: true,
+        autoGenerateFlashcards: false,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await service.generateQuestions(request, true);
+
+    expect(result.questionSet).toBeDefined();
+    expect(ragRetrieveSpy).toHaveBeenCalled();
+    const calledSearchQuery = ragRetrieveSpy.mock.calls[0][0];
+    expect(calledSearchQuery).toContain('Fisiologia');
+    expect(calledSearchQuery).toContain('Mecânica Ventilatória e Trocas Gasosas');
+    expect(calledSearchQuery).toContain('Fisiologia Respiratória: Ventilação, Perfusão, Relação V/Q');
+
+    expect(capturedBody).toBeDefined();
+    expect(capturedBody.subtopics).toContain(specificSubtopic);
+
+    ragRetrieveSpy.mockRestore();
+  });
 });
+
 

@@ -10,6 +10,8 @@ import {
   CLINICAL_CYCLE_SPECIALTIES,
   CURRICULUM_GROUPS,
   CURRICULUM_TOPICS_BY_SPECIALTY,
+  SUBTOPICS_BY_TOPIC,
+  getSubtopicsForTopic,
 } from '../../../data/curriculumTopics';
 import { calculateAutoTopicDistribution } from '../../../data/services/QuestionGenerationService';
 import {
@@ -49,7 +51,10 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  Tag,
+  X,
 } from 'lucide-react';
+
 
 interface GenerateQuestionsViewProps {
   onBack: () => void;
@@ -215,6 +220,28 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
     return manualSum === quantity;
   }, [isManualDistribution, distributionMode, manualSum, quantity]);
 
+  // Subtopics (specific topics refinement) state
+  const [isSubtopicsPanelOpen, setIsSubtopicsPanelOpen] = useState<boolean>(false);
+  const [selectedSubtopics, setSelectedSubtopics] = useState<string[]>([]);
+  const [subtopicFilterText, setSubtopicFilterText] = useState<string>('');
+
+  // Map of available subtopics per selected topic
+  const availableSubtopicsMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    selectedTopics.forEach((tp) => {
+      const spec = topicSpecialtyMap[tp] || selectedSpecialties[0];
+      const subs = getSubtopicsForTopic(spec, tp);
+      if (subs && subs.length > 0) {
+        map[tp] = subs;
+      }
+    });
+    return map;
+  }, [selectedTopics, topicSpecialtyMap, selectedSpecialties]);
+
+  const totalAvailableSubtopicsCount = useMemo(() => {
+    return Object.values(availableSubtopicsMap).reduce((acc, list) => acc + list.length, 0);
+  }, [availableSubtopicsMap]);
+
   const toggleSpecialty = (spec: string) => {
     if (selectedSpecialties.includes(spec)) {
       if (selectedSpecialties.length > 1) {
@@ -242,10 +269,19 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
     if (selectedTopics.includes(topicName)) {
       if (selectedTopics.length > 1) {
         setSelectedTopics(selectedTopics.filter((t) => t !== topicName));
+        const spec = topicSpecialtyMap[topicName] || selectedSpecialties[0];
+        const subsForThisTopic = new Set(getSubtopicsForTopic(spec, topicName));
+        setSelectedSubtopics((prev) => prev.filter((s) => !subsForThisTopic.has(s)));
       }
     } else {
       setSelectedTopics([...selectedTopics, topicName]);
     }
+  };
+
+  const toggleSubtopic = (sub: string) => {
+    setSelectedSubtopics((prev) =>
+      prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub]
+    );
   };
 
   const handleManualQuantityChange = (topic: string, delta: number) => {
@@ -280,12 +316,24 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
     }
 
     try {
+      const topicSubtopicsMap: Record<string, string[]> = {};
+      for (const tp of selectedTopics) {
+        const spec = topicSpecialtyMap[tp] || selectedSpecialties[0];
+        const allSubsForTopic = getSubtopicsForTopic(spec, tp);
+        const matchedSubs = selectedSubtopics.filter((s) => allSubsForTopic.includes(s));
+        if (matchedSubs.length > 0) {
+          topicSubtopicsMap[tp] = matchedSubs;
+        }
+      }
+
       const config: QuestionConfiguration = {
         specialty: selectedSpecialties[0],
         specialties: selectedSpecialties,
         topics: selectedTopics,
         topicSpecialtyMap,
         subtopic,
+        selectedSubtopics: selectedSubtopics.length > 0 ? selectedSubtopics : undefined,
+        topicSubtopicsMap: Object.keys(topicSubtopicsMap).length > 0 ? topicSubtopicsMap : undefined,
         quantity,
         distributionMode,
         customTopicQuantities: isManualDistribution ? customQuantities : undefined,
@@ -296,6 +344,7 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
         autoGenerateFlashcards,
         customContext: customContext.trim() || undefined,
       };
+
 
       const matchingProf = mode === 'professor' ? professorProfiles.find((p) => p.name === selectedProfName) : undefined;
 
@@ -777,6 +826,117 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
               );
             })}
           </div>
+
+          {/* Painel Colapsado: Refinar por tema específico (opcional) */}
+          {totalAvailableSubtopicsCount > 0 && (
+            <div className="rounded-2xl border border-purple-500/20 bg-purple-950/10 overflow-hidden transition-all">
+              <button
+                type="button"
+                onClick={() => setIsSubtopicsPanelOpen((prev) => !prev)}
+                className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/5 transition-colors"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Tag className="w-4 h-4 text-purple-400 shrink-0" />
+                  <span className="text-xs font-semibold text-slate-200">
+                    Refinar por tema específico (opcional)
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    ({totalAvailableSubtopicsCount} temas disponíveis)
+                  </span>
+                  {selectedSubtopics.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                      {selectedSubtopics.length} selecionado(s)
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 shrink-0 ml-2">
+                  <span>{isSubtopicsPanelOpen ? 'Ocultar' : 'Expandir'}</span>
+                  {isSubtopicsPanelOpen ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {isSubtopicsPanelOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="p-4 pt-2 border-t border-purple-500/20 space-y-3"
+                  >
+                    {/* Barra de busca interna quando houver mais de 8 subtópicos */}
+                    {totalAvailableSubtopicsCount > 8 && (
+                      <div className="relative w-full">
+                        <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 opacity-50" />
+                        <input
+                          type="text"
+                          value={subtopicFilterText}
+                          onChange={(e) => setSubtopicFilterText(e.target.value)}
+                          placeholder="Filtrar temas específicos..."
+                          className="w-full pl-8 pr-8 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs outline-none focus:border-purple-500"
+                        />
+                        {subtopicFilterText && (
+                          <button
+                            type="button"
+                            onClick={() => setSubtopicFilterText('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Agrupamento por tópico selecionado */}
+                    <div className="max-h-60 overflow-y-auto space-y-3 pr-1">
+                      {selectedTopics.map((tp) => {
+                        const subs = availableSubtopicsMap[tp] || [];
+                        if (!subs || subs.length === 0) return null;
+
+                        const filteredSubs = subtopicFilterText.trim()
+                          ? subs.filter((s) => s.toLowerCase().includes(subtopicFilterText.toLowerCase()))
+                          : subs;
+
+                        if (filteredSubs.length === 0) return null;
+
+                        return (
+                          <div key={tp} className="space-y-1.5">
+                            <div className="text-[11px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                              <span>{tp}</span>
+                              <span className="text-[10px] text-slate-400 font-normal">({subs.length} temas)</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {filteredSubs.map((sub) => {
+                                const isSelected = selectedSubtopics.includes(sub);
+                                return (
+                                  <button
+                                    key={sub}
+                                    type="button"
+                                    onClick={() => toggleSubtopic(sub)}
+                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all text-left flex items-center gap-1.5 ${
+                                      isSelected
+                                        ? 'bg-purple-600 text-white border-purple-400 shadow-xs'
+                                        : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+                                    }`}
+                                  >
+                                    {isSelected && <Check className="w-3 h-3 text-white shrink-0" />}
+                                    <span>{sub}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
 
         {/* OBJETIVO 3: ALOCAÇÃO VISUAL E TÁTIL COM STACKED BAR, STEPPERS +/- E CONTADOR VIVO */}

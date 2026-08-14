@@ -841,3 +841,265 @@ export const CURRICULUM_TOPICS_BY_SPECIALTY: Record<string, string[]> = {
     'Controle de Qualidade Laboratorial e Erros Pré-Analíticos',
   ],
 };
+
+import sanarTopicsSeed from './sanarTopicsSeed.json';
+
+function normTopic(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getTopicKeywords(str: string): string[] {
+  const stopwords = new Set([
+    'de', 'do', 'da', 'dos', 'das', 'em', 'no', 'na', 'nos', 'nas',
+    'para', 'com', 'por', 'e', 'ou', 'a', 'o', 'as', 'os', 'se', 'suas', 'seus', 'que',
+  ]);
+  return normTopic(str)
+    .split(' ')
+    .filter((w) => w.length >= 3 && !stopwords.has(w));
+}
+
+function resolveBestParentTopic(specialty: string, theme: string, parentTopics: string[]): string {
+  if (!parentTopics || parentTopics.length === 0) return 'Geral';
+  if (parentTopics.length === 1) return parentTopics[0];
+
+  const normTheme = normTopic(theme);
+  const themeKeywords = getTopicKeywords(theme);
+
+  let bestScore = -1;
+  let bestTopic = parentTopics[0];
+
+  for (const parent of parentTopics) {
+    const normParent = normTopic(parent);
+    const parentKeywords = getTopicKeywords(parent);
+
+    let score = 0;
+
+    if (normParent.includes(normTheme) || normTheme.includes(normParent)) {
+      score += 20;
+    }
+
+    for (const pKw of parentKeywords) {
+      if (themeKeywords.includes(pKw)) {
+        score += 5;
+      } else if (normTheme.includes(pKw)) {
+        score += 3;
+      }
+    }
+
+    // Regras de afinidade contextual médica específicas:
+    if (specialty === 'Fisiologia') {
+      if (
+        normTheme.includes('respirat') ||
+        normTheme.includes('ventilacao') ||
+        normTheme.includes('pulm') ||
+        normTheme.includes('gases') ||
+        normTheme.includes('vq')
+      ) {
+        if (
+          parent.includes('Mecânica Ventilatória') ||
+          parent.includes('Trocas Gasosas') ||
+          parent.includes('Transporte de Gases')
+        ) {
+          score += 15;
+        }
+      }
+      if (
+        normTheme.includes('cardiac') ||
+        normTheme.includes('coracao') ||
+        normTheme.includes('arritm') ||
+        normTheme.includes('eletrofisiologia')
+      ) {
+        if (parent.includes('Eletrofisiologia Cardíaca') || parent.includes('Ciclo Cardíaco')) {
+          score += 15;
+        }
+      }
+      if (
+        normTheme.includes('pressao') ||
+        normTheme.includes('hemodinamica') ||
+        normTheme.includes('vasos') ||
+        normTheme.includes('circulacao')
+      ) {
+        if (parent.includes('Hemodinâmica')) {
+          score += 15;
+        }
+      }
+      if (
+        normTheme.includes('renal') ||
+        normTheme.includes('rim') ||
+        normTheme.includes('glomerul') ||
+        normTheme.includes('tubular') ||
+        normTheme.includes('miccao')
+      ) {
+        if (parent.includes('Filtração Glomerular') || parent.includes('Concentração Urinária')) {
+          score += 15;
+        }
+      }
+      if (
+        normTheme.includes('digest') ||
+        normTheme.includes('estomago') ||
+        normTheme.includes('intestino') ||
+        normTheme.includes('absorcao') ||
+        normTheme.includes('motilidade')
+      ) {
+        if (parent.includes('Motilidade') || parent.includes('Digestão e Absorção')) {
+          score += 15;
+        }
+      }
+      if (
+        normTheme.includes('endocrin') ||
+        normTheme.includes('hormon') ||
+        normTheme.includes('pancreas') ||
+        normTheme.includes('hipofise') ||
+        normTheme.includes('insulina')
+      ) {
+        if (parent.includes('Pâncreas Endócrino') || parent.includes('Hipotálamo-Hipófise')) {
+          score += 15;
+        }
+      }
+    }
+
+    if (specialty === 'Farmacologia Básica') {
+      if (
+        normTheme.includes('antibi') ||
+        normTheme.includes('penicil') ||
+        normTheme.includes('cefalosp') ||
+        normTheme.includes('carbapen') ||
+        normTheme.includes('quinol') ||
+        normTheme.includes('macrol') ||
+        normTheme.includes('aminoglicos') ||
+        normTheme.includes('glicopept')
+      ) {
+        if (
+          parent.includes('Antimicrobianos') ||
+          parent.includes('Antibióticos') ||
+          parent.includes('Antibioticoterapia')
+        ) {
+          score += 25;
+        }
+      }
+      if (
+        normTheme.includes('anti-inflam') ||
+        normTheme.includes('aine') ||
+        normTheme.includes('cortico') ||
+        normTheme.includes('analges')
+      ) {
+        if (
+          parent.includes('Anti-inflamatórios') ||
+          parent.includes('AINEs') ||
+          parent.includes('Glicocorticoides')
+        ) {
+          score += 20;
+        }
+      }
+      if (
+        normTheme.includes('hipertens') ||
+        normTheme.includes('ieca') ||
+        normTheme.includes('bra') ||
+        normTheme.includes('betabloq') ||
+        normTheme.includes('diuret')
+      ) {
+        if (
+          parent.includes('Cardiovascular') ||
+          parent.includes('Anti-hipertensivos') ||
+          parent.includes('Diuréticos')
+        ) {
+          score += 20;
+        }
+      }
+    }
+
+    if (specialty === 'Cirurgia Geral') {
+      if (
+        normTheme.includes('trauma') ||
+        normTheme.includes('atls') ||
+        normTheme.includes('queimadur') ||
+        normTheme.includes('choque')
+      ) {
+        if (parent.includes('Trauma') || parent.includes('Atendimento Inicial')) {
+          score += 20;
+        }
+      }
+      if (
+        normTheme.includes('abdome agudo') ||
+        normTheme.includes('apendic') ||
+        normTheme.includes('colecist') ||
+        normTheme.includes('obstrucao') ||
+        normTheme.includes('perfur')
+      ) {
+        if (parent.includes('Abdome Agudo') || parent.includes('Apendicite')) {
+          score += 20;
+        }
+      }
+      if (
+        normTheme.includes('hernia') ||
+        normTheme.includes('inguinal') ||
+        normTheme.includes('femoral') ||
+        normTheme.includes('ventral')
+      ) {
+        if (parent.includes('Hérnias') || parent.includes('Parede Abdominal')) {
+          score += 20;
+        }
+      }
+      if (
+        normTheme.includes('sutura') ||
+        normTheme.includes('fios') ||
+        normTheme.includes('cicatriz') ||
+        normTheme.includes('curativo') ||
+        normTheme.includes('nodos')
+      ) {
+        if (
+          parent.includes('Cicatrização') ||
+          parent.includes('Feridas') ||
+          parent.includes('Princípios de Técnica Cirúrgica') ||
+          parent.includes('Pré e Pós-Operatório')
+        ) {
+          score += 20;
+        }
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestTopic = parent;
+    }
+  }
+
+  return bestTopic;
+}
+
+function buildSubtopicsByTopicMap(): Record<string, Record<string, string[]>> {
+  const result: Record<string, Record<string, string[]>> = {};
+  const seed = sanarTopicsSeed as Record<string, string[]>;
+
+  for (const [specialty, themes] of Object.entries(seed)) {
+    const parentTopics = CURRICULUM_TOPICS_BY_SPECIALTY[specialty] || [];
+    result[specialty] = {};
+
+    for (const parent of parentTopics) {
+      result[specialty][parent] = [];
+    }
+
+    for (const theme of themes) {
+      const bestParent = resolveBestParentTopic(specialty, theme, parentTopics);
+      if (!result[specialty][bestParent]) {
+        result[specialty][bestParent] = [];
+      }
+      result[specialty][bestParent].push(theme);
+    }
+  }
+
+  return result;
+}
+
+export const SUBTOPICS_BY_TOPIC: Record<string, Record<string, string[]>> = buildSubtopicsByTopicMap();
+
+export function getSubtopicsForTopic(specialty: string, topic: string): string[] {
+  return SUBTOPICS_BY_TOPIC[specialty]?.[topic] || [];
+}
+
