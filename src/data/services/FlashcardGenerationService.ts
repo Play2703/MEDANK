@@ -12,6 +12,9 @@ import { mapWithConcurrency } from '../../core/utils/asyncUtils';
 import { cosineSimilarity } from './cosineSimilarity';
 import { formatCompactAntiDuplicationList } from '../../core/utils/termExtractor';
 import { apiUrl } from '../../lib/apiBaseUrl';
+import { pruneObjectByTokenBudget, MAX_TOTAL_PAYLOAD_TOKENS } from './tokenBudget';
+
+
 
 export class FlashcardGenerationService {
   public async generateFlashcards(options: FlashcardGenerationOptions): Promise<FlashCard[]> {
@@ -65,7 +68,7 @@ export class FlashcardGenerationService {
     const allRawCards: any[] = [];
 
     const batchResults = await mapWithConcurrency(batchQuantities, 3, async (batchQty, batchIdx) => {
-      const payload = {
+      const rawPayload = {
         ...options,
         cardCount: batchQty,
         retrievedChunks,
@@ -76,11 +79,14 @@ export class FlashcardGenerationService {
             : existingCardsSummary,
       };
 
+      const payload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
+
       const response = await fetch(apiUrl('/api/generate-cards'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));

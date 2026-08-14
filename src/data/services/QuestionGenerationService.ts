@@ -14,6 +14,9 @@ import { balanceAndShuffleQuestionOptions } from '../../core/utils/optionBalance
 import { QuestionRepositoryImpl } from '../repositories_impl/QuestionRepositoryImpl';
 import { apiUrl } from '../../lib/apiBaseUrl';
 import { questionSimilarityEngine, SIMILARITY_THRESHOLD, MAX_REGENERATION_ATTEMPTS } from './QuestionSimilarityEngine';
+import { pruneObjectByTokenBudget, MAX_TOTAL_PAYLOAD_TOKENS } from './tokenBudget';
+
+
 
 const questionRepo = new QuestionRepositoryImpl();
 
@@ -475,7 +478,7 @@ export class QuestionGenerationService {
     }
 
     const batchResults = await mapWithConcurrency(batchQuantities, 3, async (batchQty, batchIdx) => {
-      const postPayload = {
+      const rawPayload = {
         retrievedChunks,
         specialty: specialtyStr,
         topics: config.topics,
@@ -495,11 +498,14 @@ export class QuestionGenerationService {
             : undefined,
       };
 
+      const postPayload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
+
       const res = await fetch(apiUrl('/api/generate-questions'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(postPayload),
       });
+
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -840,7 +846,7 @@ export class QuestionGenerationService {
         }
 
 
-        const postPayload = {
+        const rawPayload = {
           retrievedChunks,
           specialty: originSpecialty,
           topics: [singleTopic],
@@ -856,11 +862,14 @@ export class QuestionGenerationService {
           customContext: config.customContext,
         };
 
+        const postPayload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
+
         const res = await fetch(apiUrl('/api/generate-questions'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(postPayload),
         });
+
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));

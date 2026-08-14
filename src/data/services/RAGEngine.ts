@@ -14,6 +14,21 @@ import { db } from '../db/database';
 import { realSemanticSearchService, SemanticChunkResult } from './RealSemanticSearchService';
 import { medicalEntityExtractionService } from './MedicalEntityExtractionService';
 import { apiUrl } from '../../lib/apiBaseUrl';
+import {
+  MAX_CONTEXT_TOKENS_PER_CALL,
+  MAX_TOTAL_PAYLOAD_TOKENS,
+  estimateTokenCount,
+  pruneChunksByTokenBudget,
+  pruneObjectByTokenBudget,
+} from './tokenBudget';
+
+export {
+  MAX_CONTEXT_TOKENS_PER_CALL,
+  MAX_TOTAL_PAYLOAD_TOKENS,
+  estimateTokenCount,
+  pruneChunksByTokenBudget,
+  pruneObjectByTokenBudget,
+};
 
 export interface RAGRetrievalOptions {
   topK?: number;
@@ -21,32 +36,6 @@ export interface RAGRetrievalOptions {
   deckId?: string;
   banca?: string;
   professor?: string;
-}
-
-export const MAX_CONTEXT_TOKENS_PER_CALL = 6000;
-
-export function estimateTokenCount(text: string): number {
-  if (!text) return 0;
-  return Math.ceil(text.length / 4);
-}
-
-export function pruneChunksByTokenBudget(
-  chunks: SemanticChunkResult[],
-  maxTokens = MAX_CONTEXT_TOKENS_PER_CALL
-): SemanticChunkResult[] {
-  let accumulatedTokens = 0;
-  const pruned: SemanticChunkResult[] = [];
-
-  for (const chunk of chunks) {
-    const chunkTokens = estimateTokenCount(chunk.content);
-    if (accumulatedTokens + chunkTokens > maxTokens && pruned.length > 0) {
-      break;
-    }
-    pruned.push(chunk);
-    accumulatedTokens += chunkTokens;
-  }
-
-  return pruned;
 }
 
 export class RAGEngine {
