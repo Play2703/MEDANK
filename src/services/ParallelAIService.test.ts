@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ParallelAIService } from './ParallelAIService';
 import * as aiGateway from '../core/config/aiGateway';
 
-describe('ParallelAIService - Resiliência e Fallbacks', () => {
+describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validação Local)', () => {
   let service: ParallelAIService;
   let mockGenerateContent: any;
 
@@ -20,9 +20,14 @@ describe('ParallelAIService - Resiliência e Fallbacks', () => {
     });
   });
 
-  it('deve retornar sucesso com Gemini quando a chamada principal responder corretamente', async () => {
+  it('Caminho Feliz: Gemini sucesso deve responder imediatamente e NÃO deve acionar o 9Router', async () => {
     mockGenerateContent.mockResolvedValue({
-      text: JSON.stringify([{ front: 'Pergunta 1', back: 'Resposta 1' }]),
+      text: JSON.stringify([
+        {
+          front: 'Qual a conduta inicial no IAM com supra de ST?',
+          back: 'Reperfusão coronariana imediata com ICP ou trombólise.',
+        },
+      ]),
       usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 20, totalTokenCount: 30 },
     });
 
@@ -33,21 +38,26 @@ describe('ParallelAIService - Resiliência e Fallbacks', () => {
 
     const result = await service.executeParallel('prompt principal', 'prompt helper', {
       temperature: 0.2,
-      context: 'test-success',
+      context: 'test-happy-path',
       initialDelayMs: 10,
     });
 
     expect(result.success).toBe(true);
     expect(result.mainModel).toContain('gemini');
-    expect(result.mainData).toBeDefined();
+    expect(result.helperModel).toBe('local-validation');
+    expect(result.helperData).toBeNull();
+    expect(result.localValidation).toBeDefined();
+    expect(result.localValidation?.engine).toContain('DictionaryNEREngine');
+    expect(mockRouter).not.toHaveBeenCalled(); // 9Router NUNCA deve ser disparado no caminho feliz!
+
     mockRouter.mockRestore();
   });
 
-  it('deve realizar retry com backoff e ter sucesso se o Gemini retornar 503 temporário', async () => {
+  it('deve realizar retry no Gemini em caso de 503 transitório sem acionar o 9Router', async () => {
     mockGenerateContent
       .mockRejectedValueOnce({ status: 503, message: 'Gemini overloaded / 503 UNAVAILABLE' })
       .mockResolvedValueOnce({
-        text: JSON.stringify({ recuperado: true }),
+        text: JSON.stringify([{ front: 'Pergunta', back: 'Resposta' }]),
         usageMetadata: {},
       });
 
@@ -64,18 +74,20 @@ describe('ParallelAIService - Resiliência e Fallbacks', () => {
 
     expect(result.success).toBe(true);
     expect(mockGenerateContent).toHaveBeenCalledTimes(2);
-    expect(result.mainData).toEqual({ recuperado: true });
+    expect(mockRouter).not.toHaveBeenCalled();
+    expect(result.helperModel).toBe('local-validation');
+
     mockRouter.mockRestore();
   });
 
-  it('deve realizar fallback fluido para o 9Router se o Gemini falhar após esgotar todos os retries', async () => {
+  it('Fallback: se o Gemini falhar após todos os retries, aciona o 9Router com teto de timeout', async () => {
     mockGenerateContent.mockRejectedValue({
       status: 503,
       message: 'Persistent 503 Service Unavailable',
     });
 
     const mockRouter = vi.spyOn(aiGateway, 'generateWithFallback').mockResolvedValue({
-      text: JSON.stringify({ fallbackCards: [{ q: 'Q1', a: 'A1' }] }),
+      text: JSON.stringify([{ front: 'Card Fallback', back: 'Resposta Fallback' }]),
       modelUsed: 'claude-3-haiku',
     });
 
@@ -83,12 +95,20 @@ describe('ParallelAIService - Resiliência e Fallbacks', () => {
       temperature: 0.2,
       context: 'test-fallback-9router',
       initialDelayMs: 10,
+      fallbackTimeoutMs: 30000,
     });
 
     expect(result.success).toBe(true);
     expect(result.mainModel).toBe('claude-3-haiku');
-    expect(result.mainData).toEqual({ fallbackCards: [{ q: 'Q1', a: 'A1' }] });
-    expect(mockGenerateContent).toHaveBeenCalledTimes(3); // 3 tentativas antes de desistir
+    expect(result.helperModel).toBe('claude-3-haiku');
+    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
+    expect(mockRouter).toHaveBeenCalledTimes(1);
+    expect(mockRouter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxTotalTimeMs: 30000,
+      })
+    );
+
     mockRouter.mockRestore();
   });
 
@@ -112,7 +132,7 @@ describe('ParallelAIService - Resiliência e Fallbacks', () => {
     expect(result.error).toContain('Falha em todos os provedores de IA');
     expect(result.error).toContain('Gemini');
     expect(result.error).toContain('9Router');
+
     mockRouter.mockRestore();
   });
-
 });

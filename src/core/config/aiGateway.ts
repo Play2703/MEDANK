@@ -19,6 +19,8 @@ export interface GatewayGenerateOptions {
   temperature?: number;
   responseFormat?: "json_object" | "text";
   context?: string;
+  /** Teto de tempo total em ms para todo o processo de fallback em cascata (default: 35000 ms) */
+  maxTotalTimeMs?: number;
 }
 
 export interface GatewayGenerateResult {
@@ -36,6 +38,8 @@ export async function generateWithFallback(
 ): Promise<GatewayGenerateResult> {
   const contextTag = options.context ? `:${options.context}` : "";
   const { baseUrl, apiKey, models } = getGatewayConfig();
+  const maxTotalTimeMs = options.maxTotalTimeMs ?? 35000;
+  const startTime = Date.now();
 
   if (!baseUrl || !apiKey) {
     throw new Error(
@@ -51,11 +55,21 @@ export async function generateWithFallback(
   let lastError: any = null;
 
   for (let mIdx = 0; mIdx < models.length; mIdx++) {
+    const elapsed = Date.now() - startTime;
+    if (elapsed >= maxTotalTimeMs) {
+      console.warn(
+        `[aiGateway${contextTag}] ⏱️ Teto de tempo total (${maxTotalTimeMs}ms) excedido (${elapsed}ms decorridos). Interrompendo cascata no modelo ${mIdx + 1}/${models.length}.`
+      );
+      break;
+    }
+
     const model = models[mIdx];
     const modelContext = `9router:${model}${contextTag}`;
+    const remainingTimeMs = Math.max(3000, maxTotalTimeMs - (Date.now() - startTime));
+    const requestTimeoutMs = Math.min(20000, remainingTimeMs);
 
     try {
-      // Executa o modelo atual com retry e backoff automático para 503 / 429 transitórios
+      // 1 tentativa por modelo com timeout proporcional para permitir cascata fluida dentro do teto
       const result = await retryWithBackoff(
         async () => {
           const format = options.responseFormat ?? "json_object";
@@ -63,6 +77,7 @@ export async function generateWithFallback(
             model,
             messages: [{ role: "user", content: options.prompt }],
             temperature: options.temperature ?? 0.2,
+            stream: false, // Força desativação explícita de Server-Sent Events (SSE)
           };
           if (format === "json_object") {
             requestBody.response_format = { type: "json_object" };
@@ -75,7 +90,7 @@ export async function generateWithFallback(
               Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify(requestBody),
-            signal: AbortSignal.timeout(45000),
+            signal: AbortSignal.timeout(requestTimeoutMs),
           });
 
           if (!response.ok) {
@@ -87,19 +102,33 @@ export async function generateWithFallback(
             throw errObj;
           }
 
-          const data = await response.json();
-          const text = data?.choices?.[0]?.message?.content;
-          if (!text || !text.trim()) {
-            throw new Error(`Modelo "${model}" retornou conteúdo vazio.`);
-          }
+          const rawText = await response.text();
+          let text = "";
+          let usageMetadata: any = undefined;
 
-          const usageMetadata = data?.usage
-            ? {
+          // Suporta tanto JSON padrão quanto resposta Server-Sent Events (data: {...}) caso o provedor force SSE
+          if (rawText.trim().startsWith("data:") || rawText.includes("\ndata:")) {
+            const parsed = parseJsonLoose(rawText);
+            if (parsed && typeof parsed === "object") {
+              text = typeof parsed.content === "string" ? parsed.content : JSON.stringify(parsed);
+            } else {
+              text = String(parsed || "");
+            }
+          } else {
+            const data = JSON.parse(rawText);
+            text = data?.choices?.[0]?.message?.content || "";
+            if (data?.usage) {
+              usageMetadata = {
                 promptTokenCount: data.usage.prompt_tokens || 0,
                 candidatesTokenCount: data.usage.completion_tokens || 0,
                 totalTokenCount: data.usage.total_tokens || 0,
-              }
-            : undefined;
+              };
+            }
+          }
+
+          if (!text || !text.trim()) {
+            throw new Error(`Modelo "${model}" retornou conteúdo vazio.`);
+          }
 
           if (usageMetadata) {
             console.debug(
@@ -117,8 +146,8 @@ export async function generateWithFallback(
           return { text, modelUsed: model, usage: usageMetadata };
         },
         {
-          maxRetries: 2, // Até 2 tentativas rápidas com backoff antes de avançar para o próximo modelo do fallback
-          initialDelayMs: 1500,
+          maxRetries: 1, // 1 tentativa por modelo para transição ágil na lista de fallback
+          initialDelayMs: 1000,
           contextTag: modelContext,
         }
       );
@@ -129,26 +158,58 @@ export async function generateWithFallback(
       const isLastModel = mIdx === models.length - 1;
       if (!isLastModel) {
         console.warn(
-          `[aiGateway${contextTag}] 🔄 Modelo "${model}" falhou (${err.status || err.message}). Isolando erro e avançando para o próximo modelo da lista de fallback ("${models[mIdx + 1]}")...`
+          `[aiGateway${contextTag}] 🔄 Modelo "${model}" falhou (${err.status || err.message}). Avançando para o próximo modelo do fallback ("${models[mIdx + 1]}")...`
         );
       } else {
-        console.error(`[aiGateway${contextTag}] ❌ Último modelo do fallback ("${model}") falhou.`);
+        console.error(`[aiGateway${contextTag}] ❌ Último modelo testado do fallback ("${model}") falhou.`);
       }
       continue;
     }
   }
 
   throw new Error(
-    `[aiGateway${contextTag}] Todos os ${models.length} modelos do fallback falharam. Último erro: ${lastError?.message || lastError}`
+    `[aiGateway${contextTag}] Todos os modelos do fallback falharam (ou limite de ${maxTotalTimeMs}ms atingido). Último erro: ${lastError?.message || lastError}`
   );
 }
 
 export function parseJsonLoose(rawText: string): any {
+  if (!rawText || !rawText.trim()) return null;
+  let text = rawText.trim();
+
+  // Tratamento para Server-Sent Events (SSE) que começam com "data: "
+  if (text.startsWith("data:") || text.includes("\ndata:")) {
+    const dataLines = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith("data:") && line !== "data: [DONE]")
+      .map((line) => line.replace(/^data:\s*/, ""));
+
+    // Tenta obter o texto consolidado a partir dos deltas do stream
+    let aggregatedContent = "";
+    for (const line of dataLines) {
+      try {
+        const p = JSON.parse(line);
+        const delta = p?.choices?.[0]?.delta?.content || p?.choices?.[0]?.message?.content || "";
+        aggregatedContent += delta;
+      } catch {
+        // Ignora linha inválida
+      }
+    }
+
+    if (aggregatedContent.trim()) {
+      return parseJsonLoose(aggregatedContent);
+    }
+  }
 
   try {
-    return JSON.parse(rawText);
+    return JSON.parse(text);
   } catch {
-    const cleaned = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+    const cleaned = text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
     return JSON.parse(cleaned);
   }
 }
+

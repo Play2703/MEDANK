@@ -374,6 +374,7 @@ Retorne a resposta EXCLUSIVAMENTE em formato JSON VÁLIDO (sem texto extra, sem 
         modelUsed: result.mainModel,
         helperModel: result.helperModel,
         helperData: result.helperData,
+        localValidation: result.localValidation,
       });
     } catch (error: any) {
       console.error("Erro ao gerar flashcards via ParallelAIService:", error);
@@ -617,6 +618,7 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
         modelUsed: result.mainModel,
         helperModel: result.helperModel,
         helperData: result.helperData,
+        localValidation: result.localValidation,
       });
     } catch (error: any) {
       console.error("Erro ao gerar simulado de questões via ParallelAIService:", error);

@@ -1,11 +1,40 @@
 /**
- * Parallel AI Service - Arquitetura Concomitante
- * Gemini (Principal) + 9Router (Ajudante)
+ * Parallel AI Service - Arquitetura Concomitante Otimizada
+ * Gemini (Principal Direto) + Validação Local (NER / Dicionário DeCS & CID-10)
+ * 9Router (Fallback Estrito com Teto de Timeout)
  */
 
 import { GoogleGenAI } from "@google/genai";
 import { generateWithFallback, parseJsonLoose } from "../core/config/aiGateway";
 import { retryWithBackoff } from "../core/utils/retryUtils";
+import { dictionaryNEREngine, MatchedEntity } from "../core/ner/DictionaryNEREngine";
+
+export interface RecognizedMedicalEntity {
+  term: string;
+  canonicalTerm: string;
+  category: string;
+  codeSystem?: string | null;
+  code?: string | null;
+}
+
+export interface LocalValidationItem {
+  index: number;
+  itemType: "card" | "question" | "general";
+  recognizedEntities: RecognizedMedicalEntity[];
+  unrecognizedTerms?: string[];
+  anchoringConfidence: number; // 0.0 a 1.0
+  status: "well_anchored" | "moderate" | "low_anchoring";
+}
+
+export interface LocalValidationResult {
+  engine: "DictionaryNEREngine (Local SQLite / DeCS & CID-10)";
+  validatedAt: string;
+  totalItems: number;
+  overallConfidence: number;
+  totalRecognizedEntities: number;
+  items: LocalValidationItem[];
+  unrecognizedTermsSummary: string[];
+}
 
 export interface ParallelResult {
   success: boolean;
@@ -15,6 +44,7 @@ export interface ParallelResult {
   helperData?: any;
   mainModel?: string;
   helperModel?: string;
+  localValidation?: LocalValidationResult;
   error?: string;
 }
 
@@ -23,6 +53,8 @@ export interface ParallelExecutionOptions {
   context?: string;
   maxRetries?: number;
   initialDelayMs?: number;
+  /** Teto de timeout total para o fallback do 9Router em ms (default: 35000) */
+  fallbackTimeoutMs?: number;
 }
 
 export class ParallelAIService {
@@ -39,9 +71,14 @@ export class ParallelAIService {
     return this.geminiClient;
   }
 
+  /**
+   * Executa a geração com Gemini como fonte primária ultra-rápida.
+   * Se o Gemini tiver sucesso, enriquece via Validação Local (NER/CID-10/DeCS) em <5ms sem chamar APIs externas.
+   * O 9Router é acionado estritamente como fallback apenas se o Gemini falhar após retries.
+   */
   async executeParallel(
     mainPrompt: string,
-    helperPrompt: string,
+    helperPrompt?: string,
     temperatureOrOptions: number | ParallelExecutionOptions = 0.2,
     contextParam = "generic"
   ): Promise<ParallelResult> {
@@ -54,109 +91,207 @@ export class ParallelAIService {
     const context = opts.context ?? contextParam;
     const maxRetries = opts.maxRetries ?? 3;
     const initialDelayMs = opts.initialDelayMs ?? 2000;
+    const fallbackTimeoutMs = opts.fallbackTimeoutMs ?? 35000;
 
     try {
-      console.log(`[ParallelAI:${context}] 🚀 Iniciando chamadas com resiliência (Gemini principal + 9Router)...`);
+      console.log(`[ParallelAI:${context}] 🚀 Executando Gemini como principal...`);
 
-      // ══ AMBAS AS CHAMADAS EM PARALELO COM RETRY AUTOMÁTICO ══
-      const geminiPromise = this.callGemini(mainPrompt, temperature, context, maxRetries, initialDelayMs);
-      const routerPromise = this.call9Router(helperPrompt, temperature, context);
+      // ══ 1. GEMINI COMO PRINCIPAL DIRETO ══
+      const geminiResult = await this.callGemini(mainPrompt, temperature, context, maxRetries, initialDelayMs);
 
-
-      const [geminiResult, routerResult] = await Promise.allSettled([geminiPromise, routerPromise]);
-
-      let mainText = "";
-      let mainModel = "gemini-3.6-flash";
-      let helperText = "";
-      let helperModel = "";
-
-      if (geminiResult.status === "fulfilled" && geminiResult.value.success) {
-        mainText = geminiResult.value.text;
-        mainModel = geminiResult.value.model;
-      }
-
-      if (routerResult.status === "fulfilled" && routerResult.value.success) {
-        helperText = routerResult.value.text;
-        helperModel = routerResult.value.model;
-      }
-
-      // Se o Gemini falhou após retries mas o 9Router teve sucesso -> Fallback fluído para o 9Router
-      if (!mainText && helperText) {
-        console.log(
-          `[ParallelAI:${context}] 🔀 Gemini indisponível após retries. Utilizando resposta do 9Router (${helperModel}) como fallback transparente.`
-        );
-        let helperFallbackData;
+      if (geminiResult.success && geminiResult.text) {
+        let mainData;
         try {
-          helperFallbackData = parseJsonLoose(helperText);
+          mainData = parseJsonLoose(geminiResult.text);
         } catch {
-          helperFallbackData = { content: helperText };
+          mainData = { content: geminiResult.text };
         }
+
+        // ══ 2. VALIDAÇÃO LOCAL ULTRA-RÁPIDA (NER/DeCS/CID-10) ══
+        const localValidation = this.runLocalValidation(mainData, context);
+
+        console.log(
+          `[ParallelAI:${context}] ✅ Sucesso via ${geminiResult.model} (Validação local concluída em memória; 9Router não foi necessário)`
+        );
+
         return {
           success: true,
-          mainText: helperText,
-          mainModel: helperModel || "9router-fallback",
+          mainText: geminiResult.text,
+          mainData,
+          mainModel: geminiResult.model,
           helperText: "",
-          mainData: helperFallbackData,
           helperData: null,
-          helperModel: "",
+          helperModel: "local-validation",
+          localValidation,
         };
       }
 
-      // Se ambos os canais falharam esgotados
-      if (!mainText) {
-        const geminiErr =
-          geminiResult.status === "rejected"
-            ? geminiResult.reason?.message
-            : geminiResult.status === "fulfilled" && !geminiResult.value.success
-            ? geminiResult.value.error
-            : "Gemini indisponível";
-        const routerErr =
-          routerResult.status === "rejected"
-            ? routerResult.reason?.message
-            : routerResult.status === "fulfilled" && !routerResult.value.success
-            ? routerResult.value.error
-            : "9Router indisponível";
-        console.error(`[ParallelAI:${context}] ❌ Todas as tentativas de IA falharam (Gemini + 9Router).`);
-        return {
-          success: false,
-          error: `[${context}] Falha em todos os provedores de IA. Gemini: ${geminiErr} | 9Router: ${routerErr}`,
-        };
-      }
+      // ══ 3. GEMINI FALHOU -> 9ROUTER ESTREITAMENTE COMO FALLBACK COM TETO DE TEMPO ══
+      console.warn(
+        `[ParallelAI:${context}] ⚠️ Gemini indisponível após retries (${geminiResult.error}). Acionando 9Router como fallback estrito (teto ${fallbackTimeoutMs}ms)...`
+      );
 
-      let mainData;
-      try {
-        mainData = parseJsonLoose(mainText);
-      } catch {
-        mainData = { content: mainText };
-      }
+      const routerResult = await this.call9Router(
+        helperPrompt || mainPrompt,
+        temperature,
+        context,
+        fallbackTimeoutMs
+      );
 
-      let helperData;
-      if (helperText) {
+      if (routerResult.success && routerResult.text) {
+        let fallbackData;
         try {
-          helperData = parseJsonLoose(helperText);
+          fallbackData = parseJsonLoose(routerResult.text);
         } catch {
-          helperData = { raw: helperText };
+          fallbackData = { content: routerResult.text };
         }
+
+        const localValidation = this.runLocalValidation(fallbackData, context);
+
+        console.log(
+          `[ParallelAI:${context}] 🔀 Sucesso via fallback do 9Router (${routerResult.model}) com validação local.`
+        );
+
+        return {
+          success: true,
+          mainText: routerResult.text,
+          mainData: fallbackData,
+          mainModel: routerResult.model,
+          helperText: routerResult.text,
+          helperData: fallbackData,
+          helperModel: routerResult.model,
+          localValidation,
+        };
       }
 
-      console.log(`[ParallelAI:${context}] ✅ Sucesso via ${mainModel} (helper: ${helperModel || "none"})`);
-
+      // ══ 4. AMBOS FALHARAM ══
+      console.error(
+        `[ParallelAI:${context}] ❌ Todas as estratégias falharam (Gemini retries + 9Router fallback teto ${fallbackTimeoutMs}ms).`
+      );
       return {
-        success: true,
-        mainText,
-        helperText,
-        mainData,
-        helperData,
-        mainModel,
-        helperModel,
+        success: false,
+        error: `[${context}] Falha em todos os provedores de IA. Gemini: ${geminiResult.error} | 9Router: ${routerResult.error}`,
       };
     } catch (error: any) {
-      console.error(`[ParallelAI:${context}] Erro inesperado na orquestração paralela:`, error);
+      console.error(`[ParallelAI:${context}] Erro inesperado na orquestração de IA:`, error);
       return { success: false, error: error.message || String(error) };
     }
   }
 
-  private async callGemini(prompt: string, temp: number, context = "generic", maxRetries = 3, initialDelayMs = 2000) {
+  /**
+   * Executa a validação local determinística com base no DictionaryNEREngine.
+   * Não realiza chamadas de rede externas e roda em <5ms.
+   */
+  public runLocalValidation(data: any, context = "generic"): LocalValidationResult {
+    const rawItems: any[] = Array.isArray(data)
+      ? data
+      : data?.cards || data?.questions || (data?.content ? [data] : [data]);
+
+    const validatedItems: LocalValidationItem[] = [];
+    const allUnrecognized: Set<string> = new Set();
+    let totalRecognized = 0;
+
+    rawItems.forEach((item, index) => {
+      if (!item || typeof item !== "object") return;
+
+      const isQuestion = Boolean(item.statement || item.enunciado || item.options || item.alternativas);
+      const isCard = Boolean(item.front || item.frente || item.back || item.verso);
+
+      let textToScan = "";
+      if (isQuestion) {
+        const stmt = item.statement || item.enunciado || "";
+        const opts = Array.isArray(item.options)
+          ? item.options.map((o: any) => o.text || o.texto || "").join(" ")
+          : Array.isArray(item.alternativas)
+          ? item.alternativas.join(" ")
+          : "";
+        const comm =
+          typeof item.commentary === "string"
+            ? item.commentary
+            : item.commentary?.correta || item.comentario || "";
+        textToScan = `${stmt} ${opts} ${comm}`.trim();
+      } else if (isCard) {
+        const front = item.front || item.frente || "";
+        const back = item.back || item.verso || "";
+        const hint = item.hint || item.dica || "";
+        textToScan = `${front} ${back} ${hint}`.trim();
+      } else {
+        textToScan = JSON.stringify(item);
+      }
+
+      let matches: MatchedEntity[] = [];
+      try {
+        matches = dictionaryNEREngine.extractEntities(textToScan);
+      } catch (err) {
+        // Degradação graciosa em caso de indisponibilidade de banco
+        matches = [];
+      }
+
+      const recognizedEntities: RecognizedMedicalEntity[] = matches.map((m) => ({
+        term: m.text,
+        canonicalTerm: m.normalizedTerm,
+        category: m.category,
+        codeSystem: m.codeSystem,
+        code: m.code,
+      }));
+
+      totalRecognized += recognizedEntities.length;
+
+      // Estima a contagem aproximada de palavras
+      const words = textToScan.split(/\s+/).filter((w) => w.length > 2);
+      const recognizedCount = recognizedEntities.length;
+      
+      // Cálculo de ancoragem: densidade de termos médicos conhecidos
+      let anchoringConfidence = 0.5;
+      if (words.length > 0) {
+        const density = recognizedCount / (words.length / 10);
+        anchoringConfidence = Math.min(1.0, Math.max(0.2, Number((density * 0.5 + 0.3).toFixed(2))));
+      }
+
+      let status: "well_anchored" | "moderate" | "low_anchoring" = "moderate";
+      if (recognizedCount >= 2 || anchoringConfidence >= 0.7) {
+        status = "well_anchored";
+      } else if (recognizedCount === 0 && words.length > 10) {
+        status = "low_anchoring";
+      }
+
+      validatedItems.push({
+        index,
+        itemType: isQuestion ? "question" : isCard ? "card" : "general",
+        recognizedEntities,
+        anchoringConfidence,
+        status,
+      });
+    });
+
+    const overallConfidence =
+      validatedItems.length > 0
+        ? Number(
+            (
+              validatedItems.reduce((acc, it) => acc + it.anchoringConfidence, 0) /
+              validatedItems.length
+            ).toFixed(2)
+          )
+        : 0.85;
+
+    return {
+      engine: "DictionaryNEREngine (Local SQLite / DeCS & CID-10)",
+      validatedAt: new Date().toISOString(),
+      totalItems: validatedItems.length,
+      overallConfidence,
+      totalRecognizedEntities: totalRecognized,
+      items: validatedItems,
+      unrecognizedTermsSummary: Array.from(allUnrecognized),
+    };
+  }
+
+  private async callGemini(
+    prompt: string,
+    temp: number,
+    context = "generic",
+    maxRetries = 3,
+    initialDelayMs = 2000
+  ) {
     try {
       const client = this.getGeminiClient();
       const model = process.env.PRIMARY_AI_MODEL || "gemini-3.6-flash";
@@ -203,17 +338,33 @@ export class ParallelAIService {
 
       return { success: true, text: r.text || "", model };
     } catch (e: any) {
-      console.warn(`[ParallelAI:callGemini:${context}] ⚠️ Falha persistente no Gemini após retries:`, e.message || String(e));
+      console.warn(
+        `[ParallelAI:callGemini:${context}] ⚠️ Falha persistente no Gemini após retries:`,
+        e.message || String(e)
+      );
       return { success: false, text: "", model: "gemini", error: e.message || String(e) };
     }
   }
 
-  private async call9Router(prompt: string, temp: number, context = "generic") {
+  private async call9Router(
+    prompt: string,
+    temp: number,
+    context = "generic",
+    maxTotalTimeMs = 35000
+  ) {
     try {
-      const r = await generateWithFallback({ prompt, temperature: temp, context: `parallel-9router:${context}` });
+      const r = await generateWithFallback({
+        prompt,
+        temperature: temp,
+        context: `fallback-9router:${context}`,
+        maxTotalTimeMs,
+      });
       return { success: true, text: r.text, model: r.modelUsed };
     } catch (e: any) {
-      console.warn(`[ParallelAI:call9Router:${context}] ⚠️ Falha no 9Router em todos os modelos:`, e.message || String(e));
+      console.warn(
+        `[ParallelAI:call9Router:${context}] ⚠️ Falha no 9Router em todos os modelos de fallback:`,
+        e.message || String(e)
+      );
       return { success: false, text: "", model: "9router", error: e.message || String(e) };
     }
   }
@@ -224,8 +375,7 @@ export class ParallelAIService {
     temperatureOrOptions: number | ParallelExecutionOptions = 0.2,
     context = "generate-cards"
   ): Promise<ParallelResult> {
-    const hPrompt = helperPrompt || `Valide e enriqueça este material para flashcards:\n${mainPrompt.slice(0, 1000)}`;
-    return this.executeParallel(mainPrompt, hPrompt, temperatureOrOptions, context);
+    return this.executeParallel(mainPrompt, helperPrompt, temperatureOrOptions, context);
   }
 
   async generateQuestionsParallel(
@@ -234,10 +384,8 @@ export class ParallelAIService {
     temperatureOrOptions: number | ParallelExecutionOptions = 0.35,
     context = "generate-questions"
   ): Promise<ParallelResult> {
-    const hPrompt = helperPrompt || `Valide e enriqueça estas questões médicas:\n${mainPrompt.slice(0, 1000)}`;
-    return this.executeParallel(mainPrompt, hPrompt, temperatureOrOptions, context);
+    return this.executeParallel(mainPrompt, helperPrompt, temperatureOrOptions, context);
   }
 }
 
 export const parallelAIService = new ParallelAIService();
-
