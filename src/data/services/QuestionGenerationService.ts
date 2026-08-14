@@ -19,9 +19,12 @@ import {
   pruneChunksByTokenBudget,
   truncateChunkText,
   estimateTokenCount,
+  extractRelevantContextForTopic,
+  condenseProfessorProfileForDistribution,
   MAX_TOTAL_PAYLOAD_TOKENS,
   SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL,
 } from './tokenBudget';
+
 
 
 
@@ -978,6 +981,20 @@ export class QuestionGenerationService {
         }
 
 
+        // Contexto recortado especificamente para o tópico atual
+        const topicContext = extractRelevantContextForTopic(
+          config.customContext,
+          singleTopic,
+          originSpecialty,
+          1500
+        );
+
+        // Condensação do perfil de professor e examDNA para geração distribuída
+        const {
+          professorStyleAnalysis: condensedStyle,
+          examDNA: condensedDNA,
+        } = condenseProfessorProfileForDistribution(professorStyleAnalysis, examDNA);
+
         const rawPayload = {
           retrievedChunks,
           specialty: originSpecialty,
@@ -987,14 +1004,15 @@ export class QuestionGenerationService {
           questionType: config.questionType,
           bancaName: request.bancaName,
           professorName: request.professorName,
-          professorStyleAnalysis,
-          examDNA,
+          professorStyleAnalysis: condensedStyle,
+          examDNA: condensedDNA,
           mode: request.mode || 'geral',
           distractorHints,
-          customContext: config.customContext,
+          customContext: topicContext || undefined,
         };
 
         const postPayload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
+
 
         const res = await fetch(apiUrl('/api/generate-questions'), {
           method: 'POST',
