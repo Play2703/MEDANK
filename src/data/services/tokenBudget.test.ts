@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   estimateTokenCount,
+  truncateChunkText,
   pruneChunksByTokenBudget,
   pruneObjectByTokenBudget,
   MAX_CONTEXT_TOKENS_PER_CALL,
+  SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL,
   MAX_TOTAL_PAYLOAD_TOKENS,
 } from './tokenBudget';
 import { SemanticChunkResult } from './RealSemanticSearchService';
@@ -12,6 +14,26 @@ import { ProfessorStyleAnalysis } from '../../domain/entities/Question';
 describe('tokenBudget - Full Payload Token Budgeting & Pruning', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('truncateChunkText', () => {
+    it('deve retornar texto original se for menor ou igual ao limite (padrão 600 chars)', () => {
+      const shortText = 'Insuficiência cardíaca com fração de ejeção reduzida.';
+      expect(truncateChunkText(shortText)).toBe(shortText);
+    });
+
+    it('deve retornar string vazia para entradas nulas ou vazias', () => {
+      expect(truncateChunkText('')).toBe('');
+      expect(truncateChunkText(null as any)).toBe('');
+      expect(truncateChunkText(undefined as any)).toBe('');
+    });
+
+    it('deve truncar textos longos para maxChars com reticências no final', () => {
+      const longText = 'A'.repeat(800);
+      const truncated = truncateChunkText(longText, 600);
+      expect(truncated.length).toBe(601); // 600 chars + '…'
+      expect(truncated.endsWith('…')).toBe(true);
+    });
   });
 
   describe('estimateTokenCount', () => {
@@ -57,6 +79,72 @@ describe('tokenBudget - Full Payload Token Budgeting & Pruning', () => {
       expect(pruned.length).toBe(1);
       expect(pruned[0].chunkIndex).toBe(0);
     });
+
+    it('deve respeitar SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL (4500) para lotes secundários', () => {
+      expect(SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL).toBe(4500);
+      expect(MAX_CONTEXT_TOKENS_PER_CALL).toBe(6000);
+
+      // Criar 15 chunks de 400 tokens cada (total = 6000 tokens)
+      const chunks: SemanticChunkResult[] = Array.from({ length: 15 }, (_, i) => ({
+        assetId: `asset-${i}`,
+        chunkIndex: i,
+        content: 'C'.repeat(1600), // 1600 chars = 400 tokens
+        similarity: 0.9 - i * 0.01,
+      }));
+
+      // No lote principal (6000 tokens), cabem todos os 15 chunks
+      const primaryBatch = pruneChunksByTokenBudget(chunks, MAX_CONTEXT_TOKENS_PER_CALL);
+      expect(primaryBatch.length).toBe(15);
+
+      // No lote secundário (4500 tokens), cabem no máximo 11 chunks (11 * 400 = 4400 <= 4500)
+      const secondaryBatch = pruneChunksByTokenBudget(chunks, SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL);
+      expect(secondaryBatch.length).toBe(11);
+    });
+  });
+
+  describe('Multi-batch Context Truncation Simulation', () => {
+    it('deve manter contexto completo no lote 0 e aplicar truncamento de 600 chars nos lotes 1 e 2', () => {
+      const originalChunks: SemanticChunkResult[] = Array.from({ length: 10 }, (_, i) => ({
+        assetId: `doc-${i}`,
+        chunkIndex: i,
+        content: `Diretriz médica detalhada sobre o tema ${i}: `.padEnd(1200, 'X'), // 1200 caracteres cada
+        similarity: 0.95 - i * 0.02,
+      }));
+
+      // Simulação para 3 lotes (ex: 24 flashcards divididos em 3 lotes de 8)
+      const batches = [8, 8, 8].map((qty, batchIdx) => {
+        const chunksForBatch = batchIdx === 0
+          ? originalChunks
+          : pruneChunksByTokenBudget(
+              originalChunks.map((c) => ({
+                ...c,
+                content: truncateChunkText(c.content, 600),
+              })),
+              SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL
+            );
+
+        return {
+          batchIdx,
+          qty,
+          chunks: chunksForBatch,
+          tokens: estimateTokenCount(chunksForBatch),
+        };
+      });
+
+      // Lote 0: contexto completo
+      expect(batches[0].chunks[0].content.length).toBe(1200);
+      expect(batches[0].chunks.length).toBe(10);
+
+      // Lotes 1 e 2: truncados para 600 chars + reticências
+      expect(batches[1].chunks[0].content.length).toBe(601);
+      expect(batches[1].chunks[0].content.endsWith('…')).toBe(true);
+      expect(batches[2].chunks[0].content.length).toBe(601);
+      expect(batches[2].chunks[0].content.endsWith('…')).toBe(true);
+
+      // Tokens dos lotes secundários devem ser significativamente menores que o lote 0 (~metade)
+      expect(batches[1].tokens).toBeLessThan(batches[0].tokens * 0.6);
+      expect(batches[2].tokens).toBeLessThan(batches[0].tokens * 0.6);
+    });
   });
 
   describe('pruneObjectByTokenBudget', () => {
@@ -86,7 +174,6 @@ describe('tokenBudget - Full Payload Token Budgeting & Pruning', () => {
     it('deve podar professorStyleAnalysis artificialmente grande abaixo do orçamento SEM cortar os retrievedChunks quando não for necessário', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      // 500 pegadinhas e 500 temas favoritos geram um objeto com dezenas de milhares de caracteres (> 10.000 tokens)
       const massivePegadinhas = Array.from({ length: 500 }, (_, i) => `Pegadinha recorrente de prova número ${i}: confunde diagnóstico diferencial com detalhes minuciosos`);
       const massiveTemas = Array.from({ length: 500 }, (_, i) => `Tema favorito número ${i}: fisiopatologia detalhada`);
 
@@ -112,7 +199,7 @@ describe('tokenBudget - Full Payload Token Budgeting & Pruning', () => {
         distractorHints: [{ text: 'Digoxina', source: 'grafo' }],
       };
 
-      const budget = 2000; // Limite restrito para forçar poda
+      const budget = 2000;
       const initialTokens = estimateTokenCount(bigPayload);
       expect(initialTokens).toBeGreaterThan(budget);
 

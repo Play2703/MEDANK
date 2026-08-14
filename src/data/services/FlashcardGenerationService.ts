@@ -12,7 +12,15 @@ import { mapWithConcurrency } from '../../core/utils/asyncUtils';
 import { cosineSimilarity } from './cosineSimilarity';
 import { formatCompactAntiDuplicationList } from '../../core/utils/termExtractor';
 import { apiUrl } from '../../lib/apiBaseUrl';
-import { pruneObjectByTokenBudget, MAX_TOTAL_PAYLOAD_TOKENS } from './tokenBudget';
+import {
+  pruneObjectByTokenBudget,
+  pruneChunksByTokenBudget,
+  truncateChunkText,
+  estimateTokenCount,
+  MAX_TOTAL_PAYLOAD_TOKENS,
+  SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL,
+} from './tokenBudget';
+
 
 
 
@@ -68,10 +76,27 @@ export class FlashcardGenerationService {
     const allRawCards: any[] = [];
 
     const batchResults = await mapWithConcurrency(batchQuantities, 3, async (batchQty, batchIdx) => {
+      const chunksForThisBatch = batchIdx === 0
+        ? retrievedChunks
+        : pruneChunksByTokenBudget(
+            retrievedChunks.map((c) => ({
+              ...c,
+              content: truncateChunkText(c.content, 600),
+            })),
+            SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL
+          );
+
+      const estimatedContextTokens = estimateTokenCount(chunksForThisBatch);
+      console.debug(
+        `[FlashcardGenerationService] Lote ${batchIdx + 1}/${batchQuantities.length}: ` +
+        `${chunksForThisBatch.length} chunks (~${estimatedContextTokens} tokens de contexto, ` +
+        `modo: ${batchIdx === 0 ? 'completo' : 'truncado 600ch/4500tok'}).`
+      );
+
       const rawPayload = {
         ...options,
         cardCount: batchQty,
-        retrievedChunks,
+        retrievedChunks: chunksForThisBatch,
         topK, // Passar topK calculado para o servidor (para logging/validação)
         existingCardsSummary:
           batchIdx > 0 && allRawCards.length > 0
@@ -80,6 +105,7 @@ export class FlashcardGenerationService {
       };
 
       const payload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
+
 
       const response = await fetch(apiUrl('/api/generate-cards'), {
         method: 'POST',

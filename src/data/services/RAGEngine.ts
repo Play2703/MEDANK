@@ -16,19 +16,24 @@ import { medicalEntityExtractionService } from './MedicalEntityExtractionService
 import { apiUrl } from '../../lib/apiBaseUrl';
 import {
   MAX_CONTEXT_TOKENS_PER_CALL,
+  SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL,
   MAX_TOTAL_PAYLOAD_TOKENS,
   estimateTokenCount,
+  truncateChunkText,
   pruneChunksByTokenBudget,
   pruneObjectByTokenBudget,
 } from './tokenBudget';
 
 export {
   MAX_CONTEXT_TOKENS_PER_CALL,
+  SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL,
   MAX_TOTAL_PAYLOAD_TOKENS,
   estimateTokenCount,
+  truncateChunkText,
   pruneChunksByTokenBudget,
   pruneObjectByTokenBudget,
 };
+
 
 export interface RAGRetrievalOptions {
   topK?: number;

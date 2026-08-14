@@ -14,7 +14,15 @@ import { balanceAndShuffleQuestionOptions } from '../../core/utils/optionBalance
 import { QuestionRepositoryImpl } from '../repositories_impl/QuestionRepositoryImpl';
 import { apiUrl } from '../../lib/apiBaseUrl';
 import { questionSimilarityEngine, SIMILARITY_THRESHOLD, MAX_REGENERATION_ATTEMPTS } from './QuestionSimilarityEngine';
-import { pruneObjectByTokenBudget, MAX_TOTAL_PAYLOAD_TOKENS } from './tokenBudget';
+import {
+  pruneObjectByTokenBudget,
+  pruneChunksByTokenBudget,
+  truncateChunkText,
+  estimateTokenCount,
+  MAX_TOTAL_PAYLOAD_TOKENS,
+  SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL,
+} from './tokenBudget';
+
 
 
 
@@ -478,8 +486,25 @@ export class QuestionGenerationService {
     }
 
     const batchResults = await mapWithConcurrency(batchQuantities, 3, async (batchQty, batchIdx) => {
+      const chunksForThisBatch = batchIdx === 0
+        ? retrievedChunks
+        : pruneChunksByTokenBudget(
+            retrievedChunks.map((c) => ({
+              ...c,
+              content: truncateChunkText(c.content, 600),
+            })),
+            SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL
+          );
+
+      const estimatedContextTokens = estimateTokenCount(chunksForThisBatch);
+      console.debug(
+        `[QuestionGenerationService] Lote ${batchIdx + 1}/${batchQuantities.length}: ` +
+        `${chunksForThisBatch.length} chunks (~${estimatedContextTokens} tokens de contexto, ` +
+        `modo: ${batchIdx === 0 ? 'completo' : 'truncado 600ch/4500tok'}).`
+      );
+
       const rawPayload = {
-        retrievedChunks,
+        retrievedChunks: chunksForThisBatch,
         specialty: specialtyStr,
         topics: config.topics,
         quantity: batchQty,
@@ -499,6 +524,7 @@ export class QuestionGenerationService {
       };
 
       const postPayload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
+
 
       const res = await fetch(apiUrl('/api/generate-questions'), {
         method: 'POST',

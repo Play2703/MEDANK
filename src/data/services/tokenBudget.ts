@@ -8,7 +8,18 @@
 import { SemanticChunkResult } from './RealSemanticSearchService';
 
 export const MAX_CONTEXT_TOKENS_PER_CALL = 6000;
+export const SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL = 4500;
 export const MAX_TOTAL_PAYLOAD_TOKENS = 9000;
+
+/**
+ * Truncates chunk text to a maximum character length (~600 chars ~ 150 tokens)
+ * for secondary concurrent batches (batchIdx > 0), preserving the core clinical
+ * concept without repetitive context.
+ */
+export function truncateChunkText(text: string, maxChars = 600): string {
+  if (!text || text.length <= maxChars) return text || '';
+  return text.slice(0, maxChars).trim() + '…';
+}
 
 /**
  * Estimates token count for raw strings, objects, or arrays using character heuristic (~4 chars/token).
