@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import { QuestionGenerationService } from './QuestionGenerationService';
 import { questionSimilarityEngine } from './QuestionSimilarityEngine';
+import { distractorEngine } from './distractorEngine/DistractorEngine';
+import { ragEngine } from './RAGEngine';
 import { QuestionGenerationRequest } from '../../domain/entities/Question';
+
 
 describe('QuestionGenerationService customContext Unit Tests', () => {
   let service: QuestionGenerationService;
@@ -413,4 +416,115 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
     const repPayload = capturedReplacementPayloads[0];
     expect(repPayload.avoidTopics).toContain('Amiloidose');
   }, 15000);
+
+  it('deve extrair canonicalKeys dos chunks recuperados e repassar para o DistractorEngine', async () => {
+    const distractorSpy = vi.spyOn(distractorEngine, 'getCandidates');
+    vi.spyOn(ragEngine, 'retrieveContext').mockResolvedValue([
+      {
+        assetId: 'asset-1',
+        chunkIndex: 0,
+        content: 'Paciente com insuficiência cardíaca crônica...',
+        similarity: 0.9,
+        entities: [
+          {
+            text: 'insuficiência cardíaca',
+            normalizedText: 'insuficiencia cardiaca',
+            canonicalKey: 'insuficiencia_cardiaca',
+            type: 'disease',
+            code_system: 'CID-10',
+            code: 'I50',
+            confidence: 0.95,
+          },
+          {
+            text: 'furosemida',
+            normalizedText: 'furosemida',
+            canonicalKey: 'furosemida',
+            type: 'medication',
+            code_system: 'DeCS',
+            code: null,
+            confidence: 0.9,
+          },
+        ],
+      },
+      {
+        assetId: 'asset-1',
+        chunkIndex: 1,
+        content: 'IECA como enalapril...',
+        similarity: 0.85,
+        entities: [
+          {
+            text: 'enalapril',
+            normalizedText: 'enalapril',
+            canonicalKey: 'enalapril',
+            type: 'medication',
+            code_system: 'DeCS',
+            code: null,
+            confidence: 0.92,
+          },
+        ],
+      },
+
+
+      {
+        assetId: 'asset-1',
+        chunkIndex: 2,
+        content: 'Ecocardiograma com fração de ejeção reduzida...',
+        similarity: 0.8,
+      },
+    ]);
+
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request) => {
+      if (url.toString().includes('/api/generate-questions')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            questions: [
+              {
+                id: 'q-distractor-test',
+                statement: 'Enunciado de IC',
+                options: [
+                  { id: 'opt-a', letter: 'A', text: 'Opção A', isCorrect: true },
+                  { id: 'opt-b', letter: 'B', text: 'Opção B', isCorrect: false },
+                  { id: 'opt-c', letter: 'C', text: 'Opção C', isCorrect: false },
+                  { id: 'opt-d', letter: 'D', text: 'Opção D', isCorrect: false },
+                ],
+                correctOptionLetter: 'A',
+                commentary: { correta: 'Comentário' },
+                specialty: 'Cardiologia',
+                topic: 'Insuficiência Cardíaca',
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    const request: QuestionGenerationRequest = {
+      id: 'req-test-distractor-graph',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Cardiologia',
+        topics: ['Insuficiência Cardíaca'],
+        quantity: 1,
+        distributionMode: 'interdisciplinar',
+        difficulty: 'media',
+        questionType: 'caso_clinico',
+        includeCommentary: true,
+        showReferences: true,
+        autoGenerateFlashcards: false,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    await service.generateQuestions(request, true);
+
+    expect(distractorSpy).toHaveBeenCalled();
+    const lastDistractorCall = distractorSpy.mock.calls[0][0];
+    expect(lastDistractorCall.topicCanonicalKeys).toEqual(
+      expect.arrayContaining(['insuficiencia_cardiaca', 'furosemida', 'enalapril'])
+    );
+  });
 });
+

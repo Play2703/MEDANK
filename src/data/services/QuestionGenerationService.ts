@@ -415,11 +415,21 @@ export class QuestionGenerationService {
       };
     }
 
-    // 2. Distractor Engine Candidates Generation
+    // 2. Distractor Engine Candidates Generation anchored on extracted entity keys
+    const topicCanonicalKeys: string[] = [];
+    for (const c of retrievedChunks) {
+      if (c.entities) {
+        for (const e of c.entities) {
+          if (e.canonicalKey) topicCanonicalKeys.push(e.canonicalKey);
+        }
+      }
+    }
+
     let distractorHints: any[] = [];
     try {
       distractorHints = await distractorEngine.getCandidates({
         correctAnswerText: '',
+        topicCanonicalKeys,
         specialty: specialtyStr,
         topics: config.topics || [],
         limit: 10,
@@ -427,6 +437,7 @@ export class QuestionGenerationService {
     } catch (err) {
       console.warn('[QuestionGenerationService] DistractorEngine error:', err);
     }
+
 
     // Split quantity into batches of up to MAX_ITEMS_PER_AI_CALL (8)
     const batchQuantities: number[] = [];
@@ -814,11 +825,12 @@ export class QuestionGenerationService {
           }
         }
 
-        // Generate distractor hints for this specific topic block
+        // Generate distractor hints for this specific topic block anchored on extracted entity keys
         let distractorHints: any[] = [];
         try {
           distractorHints = await distractorEngine.getCandidates({
             correctAnswerText: '',
+            topicCanonicalKeys,
             specialty: originSpecialty,
             topics: [singleTopic],
             limit: 10,
@@ -826,6 +838,7 @@ export class QuestionGenerationService {
         } catch (err) {
           console.warn('[QuestionGenerationService] DistractorEngine error:', err);
         }
+
 
         const postPayload = {
           retrievedChunks,

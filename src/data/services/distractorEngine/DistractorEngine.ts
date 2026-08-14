@@ -9,6 +9,22 @@ export interface DistractorCandidate {
   rationale?: string;
 }
 
+export interface DistractorCandidateOptions {
+  /**
+   * Chave canônica de uma resposta correta conhecida (opcional, para cenários com gabarito já existente)
+   */
+  correctEntityCanonicalKey?: string;
+  /**
+   * Lista de chaves canônicas de entidades extraídas dos chunks de contexto/tópico
+   */
+  topicCanonicalKeys?: string[];
+  correctAnswerText?: string;
+  entityType?: MedicalEntityType;
+  specialty: string;
+  topics: string[];
+  limit?: number;
+}
+
 function normalizeStr(str: string): string {
   return (str || '')
     .toLowerCase()
@@ -170,19 +186,17 @@ export class DistractorEngine {
   }
 
   /**
-   * Combina as duas fontes, deduplica (case-insensitive por `text`), prioriza
-   * 'grafo' sobre 'banco_estatico' em caso de duplicata, corta em `limit` (default 8).
+   * Combina as duas fontes (Grafo relacional de conhecimento e Confusion Sets estáticos),
+   * deduplica (case-insensitive por `text`), prioriza 'grafo' sobre 'banco_estatico' em caso
+   * de duplicata e limita ao número solicitado (default 8).
+   *
+   * Suporta consultas baseadas em topicCanonicalKeys (múltiplas chaves canônicas de contexto)
+   * e/ou correctEntityCanonicalKey (chave única de gabarito pré-existente).
    */
-  async getCandidates(params: {
-    correctEntityCanonicalKey?: string;
-    correctAnswerText?: string;
-    entityType?: MedicalEntityType;
-    specialty: string;
-    topics: string[];
-    limit?: number;
-  }): Promise<DistractorCandidate[]> {
+  async getCandidates(params: DistractorCandidateOptions): Promise<DistractorCandidate[]> {
     const {
       correctEntityCanonicalKey,
+      topicCanonicalKeys = [],
       correctAnswerText = '',
       entityType,
       specialty,
@@ -190,12 +204,24 @@ export class DistractorEngine {
       limit = 8,
     } = params;
 
-    let graphCandidates: DistractorCandidate[] = [];
-    if (correctEntityCanonicalKey) {
-      graphCandidates = await this.getGraphCandidates(
-        correctEntityCanonicalKey,
-        entityType
-      );
+    // Coleta até 5 chaves canônicas únicas para buscar no grafo sem sobrecarregar o IndexedDB
+    const keysToSearch = Array.from(
+      new Set(
+        [
+          correctEntityCanonicalKey,
+          ...(topicCanonicalKeys || []),
+        ].filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
+      )
+    ).slice(0, 5);
+
+    const graphCandidates: DistractorCandidate[] = [];
+    for (const key of keysToSearch) {
+      try {
+        const candidatesForKey = await this.getGraphCandidates(key, entityType);
+        graphCandidates.push(...candidatesForKey);
+      } catch (err) {
+        console.warn(`[DistractorEngine] Error fetching graph candidates for key "${key}":`, err);
+      }
     }
 
     const staticCandidates = this.getStaticCandidates(
@@ -207,7 +233,7 @@ export class DistractorEngine {
     const normCorrect = normalizeStr(correctAnswerText);
     const resultMap = new Map<string, DistractorCandidate>();
 
-    // 1. Add Graph candidates first (prioritized over static in case of duplicate)
+    // 1. Prioriza candidatos dinâmicos do grafo relacional
     for (const item of graphCandidates) {
       const normText = normalizeStr(item.text);
       if (normCorrect && normText === normCorrect) continue;
@@ -216,7 +242,7 @@ export class DistractorEngine {
       }
     }
 
-    // 2. Add Static candidates
+    // 2. Complementa com candidatos estáticos dos confusion sets
     for (const item of staticCandidates) {
       const normText = normalizeStr(item.text);
       if (normCorrect && normText === normCorrect) continue;
@@ -228,6 +254,13 @@ export class DistractorEngine {
     const resultList = Array.from(resultMap.values());
 
     return resultList.slice(0, limit);
+  }
+
+  /**
+   * Alias semântico para obtenção de distratores ancorados no contexto temático
+   */
+  async getCandidatesForTopic(params: DistractorCandidateOptions): Promise<DistractorCandidate[]> {
+    return this.getCandidates(params);
   }
 }
 
