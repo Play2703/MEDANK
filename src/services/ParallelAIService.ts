@@ -5,6 +5,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { generateWithFallback, parseJsonLoose } from "../core/config/aiGateway";
+import { retryWithBackoff } from "../core/utils/retryUtils";
 
 export interface ParallelResult {
   success: boolean;
@@ -15,6 +16,13 @@ export interface ParallelResult {
   mainModel?: string;
   helperModel?: string;
   error?: string;
+}
+
+export interface ParallelExecutionOptions {
+  temperature?: number;
+  context?: string;
+  maxRetries?: number;
+  initialDelayMs?: number;
 }
 
 export class ParallelAIService {
@@ -31,11 +39,29 @@ export class ParallelAIService {
     return this.geminiClient;
   }
 
-  async executeParallel(mainPrompt: string, helperPrompt: string, temperature = 0.2, context = "generic"): Promise<ParallelResult> {
+  async executeParallel(
+    mainPrompt: string,
+    helperPrompt: string,
+    temperatureOrOptions: number | ParallelExecutionOptions = 0.2,
+    contextParam = "generic"
+  ): Promise<ParallelResult> {
+    const opts: ParallelExecutionOptions =
+      typeof temperatureOrOptions === "object"
+        ? temperatureOrOptions
+        : { temperature: temperatureOrOptions, context: contextParam };
+
+    const temperature = opts.temperature ?? 0.2;
+    const context = opts.context ?? contextParam;
+    const maxRetries = opts.maxRetries ?? 3;
+    const initialDelayMs = opts.initialDelayMs ?? 2000;
+
     try {
-      // ══ AMBAS AS CHAMADAS EM PARALELO ══
-      const geminiPromise = this.callGemini(mainPrompt, temperature, context);
+      console.log(`[ParallelAI:${context}] 🚀 Iniciando chamadas com resiliência (Gemini principal + 9Router)...`);
+
+      // ══ AMBAS AS CHAMADAS EM PARALELO COM RETRY AUTOMÁTICO ══
+      const geminiPromise = this.callGemini(mainPrompt, temperature, context, maxRetries, initialDelayMs);
       const routerPromise = this.call9Router(helperPrompt, temperature, context);
+
 
       const [geminiResult, routerResult] = await Promise.allSettled([geminiPromise, routerPromise]);
 
@@ -54,8 +80,11 @@ export class ParallelAIService {
         helperModel = routerResult.value.model;
       }
 
+      // Se o Gemini falhou após retries mas o 9Router teve sucesso -> Fallback fluído para o 9Router
       if (!mainText && helperText) {
-        // Fallback para 9Router
+        console.log(
+          `[ParallelAI:${context}] 🔀 Gemini indisponível após retries. Utilizando resposta do 9Router (${helperModel}) como fallback transparente.`
+        );
         let helperFallbackData;
         try {
           helperFallbackData = parseJsonLoose(helperText);
@@ -73,12 +102,24 @@ export class ParallelAIService {
         };
       }
 
+      // Se ambos os canais falharam esgotados
       if (!mainText) {
-        const geminiErr = geminiResult.status === "rejected" ? geminiResult.reason?.message : (geminiResult.status === "fulfilled" && !geminiResult.value.success ? geminiResult.value.error : "Gemini indisponível");
-        const routerErr = routerResult.status === "rejected" ? routerResult.reason?.message : (routerResult.status === "fulfilled" && !routerResult.value.success ? routerResult.value.error : "9Router indisponível");
+        const geminiErr =
+          geminiResult.status === "rejected"
+            ? geminiResult.reason?.message
+            : geminiResult.status === "fulfilled" && !geminiResult.value.success
+            ? geminiResult.value.error
+            : "Gemini indisponível";
+        const routerErr =
+          routerResult.status === "rejected"
+            ? routerResult.reason?.message
+            : routerResult.status === "fulfilled" && !routerResult.value.success
+            ? routerResult.value.error
+            : "9Router indisponível";
+        console.error(`[ParallelAI:${context}] ❌ Todas as tentativas de IA falharam (Gemini + 9Router).`);
         return {
           success: false,
-          error: `[${context}] Ambas APIs falharam. Gemini: ${geminiErr} | 9Router: ${routerErr}`,
+          error: `[${context}] Falha em todos os provedores de IA. Gemini: ${geminiErr} | 9Router: ${routerErr}`,
         };
       }
 
@@ -98,7 +139,7 @@ export class ParallelAIService {
         }
       }
 
-      console.log(`[ParallelAI:${context}] Sucesso via ${mainModel} (helper: ${helperModel || "none"})`);
+      console.log(`[ParallelAI:${context}] ✅ Sucesso via ${mainModel} (helper: ${helperModel || "none"})`);
 
       return {
         success: true,
@@ -110,22 +151,40 @@ export class ParallelAIService {
         helperModel,
       };
     } catch (error: any) {
+      console.error(`[ParallelAI:${context}] Erro inesperado na orquestração paralela:`, error);
       return { success: false, error: error.message || String(error) };
     }
   }
 
-  private async callGemini(prompt: string, temp: number, context = "generic") {
+  private async callGemini(prompt: string, temp: number, context = "generic", maxRetries = 3, initialDelayMs = 2000) {
     try {
       const client = this.getGeminiClient();
       const model = process.env.PRIMARY_AI_MODEL || "gemini-3.6-flash";
-      const r = await client.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: temp,
+
+      const r = await retryWithBackoff(
+        async () => {
+          const res = await client.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              temperature: temp,
+            },
+          });
+
+          if (!res.text || !res.text.trim()) {
+            throw new Error(`Gemini (${model}) retornou texto vazio.`);
+          }
+
+          return res;
         },
-      });
+        {
+          maxRetries,
+          initialDelayMs,
+          maxDelayMs: 8000,
+          contextTag: `ParallelAI:Gemini:${context}`,
+        }
+      );
 
       if (r.usageMetadata) {
         console.debug(
@@ -144,7 +203,7 @@ export class ParallelAIService {
 
       return { success: true, text: r.text || "", model };
     } catch (e: any) {
-      console.warn(`[ParallelAI:callGemini:${context}] Error:`, e.message || String(e));
+      console.warn(`[ParallelAI:callGemini:${context}] ⚠️ Falha persistente no Gemini após retries:`, e.message || String(e));
       return { success: false, text: "", model: "gemini", error: e.message || String(e) };
     }
   }
@@ -154,20 +213,31 @@ export class ParallelAIService {
       const r = await generateWithFallback({ prompt, temperature: temp, context: `parallel-9router:${context}` });
       return { success: true, text: r.text, model: r.modelUsed };
     } catch (e: any) {
-      console.warn(`[ParallelAI:call9Router:${context}] Error:`, e.message || String(e));
+      console.warn(`[ParallelAI:call9Router:${context}] ⚠️ Falha no 9Router em todos os modelos:`, e.message || String(e));
       return { success: false, text: "", model: "9router", error: e.message || String(e) };
     }
   }
 
-  async generateFlashcardsParallel(mainPrompt: string, helperPrompt?: string, temperature = 0.2, context = "generate-cards"): Promise<ParallelResult> {
+  async generateFlashcardsParallel(
+    mainPrompt: string,
+    helperPrompt?: string,
+    temperatureOrOptions: number | ParallelExecutionOptions = 0.2,
+    context = "generate-cards"
+  ): Promise<ParallelResult> {
     const hPrompt = helperPrompt || `Valide e enriqueça este material para flashcards:\n${mainPrompt.slice(0, 1000)}`;
-    return this.executeParallel(mainPrompt, hPrompt, temperature, context);
+    return this.executeParallel(mainPrompt, hPrompt, temperatureOrOptions, context);
   }
 
-  async generateQuestionsParallel(mainPrompt: string, helperPrompt?: string, temperature = 0.35, context = "generate-questions"): Promise<ParallelResult> {
+  async generateQuestionsParallel(
+    mainPrompt: string,
+    helperPrompt?: string,
+    temperatureOrOptions: number | ParallelExecutionOptions = 0.35,
+    context = "generate-questions"
+  ): Promise<ParallelResult> {
     const hPrompt = helperPrompt || `Valide e enriqueça estas questões médicas:\n${mainPrompt.slice(0, 1000)}`;
-    return this.executeParallel(mainPrompt, hPrompt, temperature, context);
+    return this.executeParallel(mainPrompt, hPrompt, temperatureOrOptions, context);
   }
 }
 
 export const parallelAIService = new ParallelAIService();
+

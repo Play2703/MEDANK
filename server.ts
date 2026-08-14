@@ -8,7 +8,9 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { generateWithFallback, parseJsonLoose, LIGHT_AI_MODEL } from "./src/core/config/aiGateway";
 import { mapWithConcurrency } from "./src/core/utils/asyncUtils";
+import { retryWithBackoff } from "./src/core/utils/retryUtils";
 import { parallelAIService } from "./src/services/ParallelAIService";
+
 import { PDFExamRenderService } from "./src/services/PDFExamRenderService";
 import { interpretExamDNA } from "./src/core/medcore_kernel/engines/ExamDNAInterpreter";
 import { professorEngine } from "./src/core/medcore_kernel/engines/ProfessorEngine";
@@ -664,20 +666,29 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
       }
 
       const ai = getGeminiClient();
-      const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: [
-          {
-            inlineData: {
-              data: imageBase64,
-              mimeType: mimeType,
-            },
-          },
-          {
-            text: `Execute OCR neste documento/imagem médica. Extraia todo o texto legível, incluindo conteúdo de tabelas (célula por célula, na ordem em que aparecem) e qualquer achado textual visível em imagens médicas (ECG/RX/etc). Ignore cabeçalhos, rodapés, números de página e marcas d'água repetitivas. Não formate ainda — apenas extraia o texto bruto, preservando a ordem de leitura.`,
-          },
-        ],
-      });
+      const response = await retryWithBackoff(
+        async () => {
+          return await ai.models.generateContent({
+            model: "gemini-3.6-flash",
+            contents: [
+              {
+                inlineData: {
+                  data: imageBase64,
+                  mimeType: mimeType,
+                },
+              },
+              {
+                text: `Execute OCR neste documento/imagem médica. Extraia todo o texto legível, incluindo conteúdo de tabelas (célula por célula, na ordem em que aparecem) e qualquer achado textual visível em imagens médicas (ECG/RX/etc). Ignore cabeçalhos, rodapés, números de página e marcas d'água repetitivas. Não formate ainda — apenas extraia o texto bruto, preservando a ordem de leitura.`,
+              },
+            ],
+          });
+        },
+        {
+          maxRetries: 3,
+          initialDelayMs: 2000,
+          contextTag: "server:ocr",
+        }
+      );
 
       const rawOcrText = response.text || "";
 
@@ -753,14 +764,23 @@ Retorne um JSON VÁLIDO no seguinte formato:
   "mnemonic": "Mnemônico aprimorado (se aplicável)"
 }`;
 
-      const response = await ai.models.generateContent({
-        model: LIGHT_AI_MODEL,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.3,
+      const response = await retryWithBackoff(
+        async () => {
+          return await ai.models.generateContent({
+            model: LIGHT_AI_MODEL,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              temperature: 0.3,
+            },
+          });
         },
-      });
+        {
+          maxRetries: 3,
+          initialDelayMs: 2000,
+          contextTag: "server:regenerate-card",
+        }
+      );
 
 
       const updatedCard = JSON.parse(response.text || "{}");
@@ -852,14 +872,23 @@ REGRAS RÍGIDAS DE REFORMULAÇÃO E QUALIDADE DO ANKI (OBRIGATÓRIO):
 ]`;
 
       const ai = getGeminiClient();
-      const response = await ai.models.generateContent({
-        model: LIGHT_AI_MODEL,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2,
+      const response = await retryWithBackoff(
+        async () => {
+          return await ai.models.generateContent({
+            model: LIGHT_AI_MODEL,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              temperature: 0.2,
+            },
+          });
         },
-      });
+        {
+          maxRetries: 3,
+          initialDelayMs: 2000,
+          contextTag: "server:reformulate-question",
+        }
+      );
 
 
       const parsedCards = JSON.parse(response.text || "[]");
@@ -897,14 +926,23 @@ Responda em formato JSON:
   "clinicalTip": "Pulo do gato para a prova de residência médica"
 }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.4,
+      const response = await retryWithBackoff(
+        async () => {
+          return await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              temperature: 0.4,
+            },
+          });
         },
-      });
+        {
+          maxRetries: 3,
+          initialDelayMs: 2000,
+          contextTag: "server:generate-mnemonic",
+        }
+      );
 
       const data = JSON.parse(response.text || "{}");
       return res.json({ success: true, ...data });
