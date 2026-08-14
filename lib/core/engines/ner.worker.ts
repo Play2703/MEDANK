@@ -29,23 +29,50 @@ export interface NERAnalysisResult {
   coverage: number;
 }
 
+export interface DocumentEmbeddingItem {
+  id: string;
+  assetId: string;
+  chunkIndex: number;
+  content: string;
+  vector: number[];
+  dimension?: number;
+  model?: string;
+  examBoard?: string;
+  professor?: string;
+  createdAt?: string;
+}
+
+export interface SemanticSearchResult {
+  id: string;
+  assetId: string;
+  chunkIndex: number;
+  content: string;
+  similarity: number;
+  examBoard?: string;
+  professor?: string;
+}
+
 export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 
 export type NERWorkerRequest =
-  | { id: string; type: 'INIT'; payload?: { customTerms?: Array<{ term: string; category: string; codeSystem?: string; code?: string }> } }
+  | { id: string; type: 'INIT'; payload?: { customTerms?: Array<{ term: string; category: string; codeSystem?: string; code?: string }>; embeddings?: DocumentEmbeddingItem[] } }
   | { id: string; type: 'EXTRACT_ENTITIES'; text: string }
   | { id: string; type: 'EXTRACT_RELATIONS'; text: string; entities: MatchedEntity[] }
-  | { id: string; type: 'ANALYZE_TEXT'; text: string };
+  | { id: string; type: 'ANALYZE_TEXT'; text: string }
+  | { id: string; type: 'LOAD_EMBEDDINGS'; payload?: { embeddings?: DocumentEmbeddingItem[] } }
+  | { id: string; type: 'SEMANTIC_SEARCH'; queryVector: number[]; topK?: number; minScore?: number };
 
 export type NERWorkerRequestInput = DistributiveOmit<NERWorkerRequest, 'id'>;
-
 
 export type NERWorkerResponse =
   | { id: string; type: 'INIT_SUCCESS' }
   | { id: string; type: 'EXTRACT_ENTITIES_SUCCESS'; entities: MatchedEntity[] }
   | { id: string; type: 'EXTRACT_RELATIONS_SUCCESS'; relations: ExtractedRelation[] }
   | { id: string; type: 'ANALYZE_TEXT_SUCCESS'; result: NERAnalysisResult }
+  | { id: string; type: 'LOAD_EMBEDDINGS_SUCCESS'; count: number }
+  | { id: string; type: 'SEMANTIC_SEARCH_SUCCESS'; results: SemanticSearchResult[] }
   | { id: string; type: 'ERROR'; error: string };
+
 
 export function normalizeText(text: string): string {
   return text
@@ -110,7 +137,40 @@ export function levenshteinDistance(a: string, b: string, maxThreshold = 2): num
   return prevRow[m];
 }
 
+/**
+ * High-Performance Pure Math Cosine Similarity
+ * Calculates normalized dot product between two float vectors.
+ * Returns similarity score in [-1.0, 1.0], or 0 on empty/zero-magnitude vectors.
+ */
+export function cosineSimilarity(
+  vecA: number[] | Float32Array,
+  vecB: number[] | Float32Array
+): number {
+  if (!vecA || !vecB || vecA.length === 0 || vecB.length === 0) return 0;
+  const len = Math.min(vecA.length, vecB.length);
+  if (len === 0) return 0;
+
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < len; i++) {
+    const a = vecA[i];
+    const b = vecB[i];
+    dotProduct += a * b;
+    normA += a * a;
+    normB += b * b;
+  }
+
+  if (normA === 0 || normB === 0) return 0;
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  if (magnitude === 0) return 0;
+
+  return dotProduct / magnitude;
+}
+
 export function estimateCoverage(text: string, entities: MatchedEntity[]): number {
+
   if (!text || text.trim().length === 0) return 0;
   if (!entities || entities.length === 0) return 0;
   const totalRecognizedChars = entities.reduce((sum, ent) => sum + (ent.endIndex - ent.startIndex), 0);
@@ -538,14 +598,85 @@ export class WorkerNEREngine {
       coverage,
     };
   }
+
+  // --- SEMANTIC SEARCH & VECTOR OPERATIONS ---
+  private embeddings: DocumentEmbeddingItem[] = [];
+
+  public loadEmbeddings(items: DocumentEmbeddingItem[]): number {
+    if (!Array.isArray(items)) return 0;
+    this.embeddings = items.filter(
+      (item) => item && Array.isArray(item.vector) && item.vector.length > 0
+    );
+    return this.embeddings.length;
+  }
+
+  public async loadDefaultEmbeddings(): Promise<number> {
+    if (typeof fetch !== 'undefined') {
+      try {
+        const res = await fetch('/seed-data/document-embeddings.json');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            return this.loadEmbeddings(data);
+          }
+        }
+      } catch {
+        // Fallback silencioso em caso de arquivo não encontrado ou offline
+      }
+    }
+    return this.embeddings.length;
+  }
+
+  public searchSemantically(
+    queryVector: number[],
+    topK = 5,
+    minScore = 0
+  ): SemanticSearchResult[] {
+    if (!queryVector || !Array.isArray(queryVector) || queryVector.length === 0) {
+      return [];
+    }
+    if (this.embeddings.length === 0) {
+      return [];
+    }
+
+    const scored: SemanticSearchResult[] = [];
+    for (let i = 0; i < this.embeddings.length; i++) {
+      const doc = this.embeddings[i];
+      const sim = cosineSimilarity(queryVector, doc.vector);
+      if (sim >= minScore) {
+        scored.push({
+          id: doc.id,
+          assetId: doc.assetId,
+          chunkIndex: doc.chunkIndex,
+          content: doc.content,
+          similarity: sim,
+          examBoard: doc.examBoard,
+          professor: doc.professor,
+        });
+      }
+    }
+
+    scored.sort((a, b) => b.similarity - a.similarity);
+    return scored.slice(0, Math.max(1, topK));
+  }
+
+  public getEmbeddingsCount(): number {
+    return this.embeddings.length;
+  }
 }
 
 // Singleton instance inside Worker
-const engine = new WorkerNEREngine();
+export const workerNEREngine = new WorkerNEREngine();
+const engine = workerNEREngine;
+
+// Auto-load default embeddings on worker startup
+if (typeof self !== 'undefined') {
+  engine.loadDefaultEmbeddings().catch(() => {});
+}
 
 // Handle messages if executed in a Web Worker environment
 if (typeof self !== 'undefined' && 'postMessage' in self && typeof (self as any).importScripts === 'function') {
-  self.onmessage = (event: MessageEvent<NERWorkerRequest>) => {
+  self.onmessage = async (event: MessageEvent<NERWorkerRequest>) => {
     const req = event.data;
     if (!req || !req.id) return;
 
@@ -554,6 +685,9 @@ if (typeof self !== 'undefined' && 'postMessage' in self && typeof (self as any)
         case 'INIT': {
           if (req.payload?.customTerms) {
             engine.loadTerms(req.payload.customTerms);
+          }
+          if (req.payload?.embeddings) {
+            engine.loadEmbeddings(req.payload.embeddings);
           }
           const response: NERWorkerResponse = { id: req.id, type: 'INIT_SUCCESS' };
           self.postMessage(response);
@@ -577,6 +711,23 @@ if (typeof self !== 'undefined' && 'postMessage' in self && typeof (self as any)
           self.postMessage(response);
           break;
         }
+        case 'LOAD_EMBEDDINGS': {
+          let count = 0;
+          if (req.payload?.embeddings) {
+            count = engine.loadEmbeddings(req.payload.embeddings);
+          } else {
+            count = await engine.loadDefaultEmbeddings();
+          }
+          const response: NERWorkerResponse = { id: req.id, type: 'LOAD_EMBEDDINGS_SUCCESS', count };
+          self.postMessage(response);
+          break;
+        }
+        case 'SEMANTIC_SEARCH': {
+          const results = engine.searchSemantically(req.queryVector, req.topK ?? 5, req.minScore ?? 0);
+          const response: NERWorkerResponse = { id: req.id, type: 'SEMANTIC_SEARCH_SUCCESS', results };
+          self.postMessage(response);
+          break;
+        }
         default: {
           const reqId = (req as any).id || 'unknown';
           const response: NERWorkerResponse = { id: reqId, type: 'ERROR', error: 'Unknown request type' };
@@ -590,4 +741,5 @@ if (typeof self !== 'undefined' && 'postMessage' in self && typeof (self as any)
     }
   };
 }
+
 

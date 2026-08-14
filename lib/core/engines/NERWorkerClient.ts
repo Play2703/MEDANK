@@ -2,16 +2,18 @@ import {
   MatchedEntity,
   ExtractedRelation,
   NERAnalysisResult,
+  DocumentEmbeddingItem,
+  SemanticSearchResult,
   NERWorkerRequest,
   NERWorkerRequestInput,
   NERWorkerResponse,
   WorkerNEREngine,
 } from './ner.worker';
 
-
 /**
- * High-Performance Asynchronous NER Client
- * Offloads NER processing to Web Worker in background thread to guarantee 60fps UI.
+ * High-Performance Asynchronous NER & Semantic Search Client
+ * Offloads NER processing and Vector Cosine Similarity to Web Worker in background thread
+ * to guarantee 60fps UI performance.
  * Provides zero-cost graceful fallback in SSR or Node/Vitest test environments.
  */
 export class NERWorkerClient {
@@ -87,6 +89,12 @@ export class NERWorkerClient {
       case 'ANALYZE_TEXT_SUCCESS':
         pending.resolve(response.result);
         break;
+      case 'LOAD_EMBEDDINGS_SUCCESS':
+        pending.resolve(response.count);
+        break;
+      case 'SEMANTIC_SEARCH_SUCCESS':
+        pending.resolve(response.results);
+        break;
       default:
         pending.reject(new Error('Unknown response type'));
     }
@@ -95,7 +103,6 @@ export class NERWorkerClient {
   private postRequest<T>(req: NERWorkerRequestInput, timeoutMs = 15000): Promise<T> {
     const id = `ner_req_${Date.now()}_${++this.requestCounter}`;
     const fullRequest = { ...req, id } as NERWorkerRequest;
-
 
     if (!this.worker || this.fallbackEngine) {
       // Execute in-process asynchronously via microtask queue
@@ -119,7 +126,25 @@ export class NERWorkerClient {
               if (fullRequest.payload?.customTerms) {
                 this.fallbackEngine.loadTerms(fullRequest.payload.customTerms);
               }
+              if (fullRequest.payload?.embeddings) {
+                this.fallbackEngine.loadEmbeddings(fullRequest.payload.embeddings);
+              }
               resolve(true as unknown as T);
+            } else if (fullRequest.type === 'LOAD_EMBEDDINGS') {
+              let count = 0;
+              if (fullRequest.payload?.embeddings) {
+                count = this.fallbackEngine.loadEmbeddings(fullRequest.payload.embeddings);
+              } else {
+                count = this.fallbackEngine.getEmbeddingsCount();
+              }
+              resolve(count as unknown as T);
+            } else if (fullRequest.type === 'SEMANTIC_SEARCH') {
+              const results = this.fallbackEngine.searchSemantically(
+                fullRequest.queryVector,
+                fullRequest.topK ?? 5,
+                fullRequest.minScore ?? 0
+              );
+              resolve(results as unknown as T);
             } else {
               reject(new Error('Unsupported action in fallback engine'));
             }
@@ -145,6 +170,10 @@ export class NERWorkerClient {
     return this.postRequest<boolean>({ type: 'INIT', payload: { customTerms } });
   }
 
+  public async loadEmbeddings(embeddings?: DocumentEmbeddingItem[]): Promise<number> {
+    return this.postRequest<number>({ type: 'LOAD_EMBEDDINGS', payload: { embeddings } });
+  }
+
   public async extractEntities(text: string): Promise<MatchedEntity[]> {
     if (!text || !text.trim()) return [];
     return this.postRequest<MatchedEntity[]>({ type: 'EXTRACT_ENTITIES', text });
@@ -160,6 +189,20 @@ export class NERWorkerClient {
       return { text: '', entities: [], relations: [], coverage: 0 };
     }
     return this.postRequest<NERAnalysisResult>({ type: 'ANALYZE_TEXT', text });
+  }
+
+  public async searchSemantically(
+    queryVector: number[],
+    topK = 5,
+    minScore = 0
+  ): Promise<SemanticSearchResult[]> {
+    if (!queryVector || !Array.isArray(queryVector) || queryVector.length === 0) return [];
+    return this.postRequest<SemanticSearchResult[]>({
+      type: 'SEMANTIC_SEARCH',
+      queryVector,
+      topK,
+      minScore,
+    });
   }
 
   public terminate(): void {
