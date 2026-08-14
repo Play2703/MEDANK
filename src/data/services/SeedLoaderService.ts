@@ -13,6 +13,8 @@ import {
   CanonicalEntityIndexRecord,
   GraphEdgeRecord,
 } from '../../domain/entities/ChunkEntity';
+import { realSemanticSearchService } from './RealSemanticSearchService';
+
 
 const SEED_STORAGE_KEY = 'MEDANKI_SEED_LOADED_VERSION';
 const SEED_DISMISSED_KEY = 'MEDANKI_SEED_DISMISSED_VERSION';
@@ -167,6 +169,9 @@ export class SeedLoaderService {
           if (graphEdges.length > 0) await db.graphEdges.bulkPut(graphEdges);
         }
       );
+
+      realSemanticSearchService.invalidateEmbeddingsCache();
+
 
 
       if (typeof localStorage !== 'undefined') {

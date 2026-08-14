@@ -2,8 +2,8 @@
  * Real Semantic Search Service (RAG)
  *
  * Handles chunking, local browser embedding generation via LocalEmbeddingClient (transformers.js),
- * hybrid search (0.7 cosine similarity + 0.3 lexical BM25/keyword matching),
- * Dexie IndexedDB persistence with schema versioning, and in-memory LRU caching.
+ * hybrid search (0.7 cosine similarity + 0.3 lexical BM25/keyword matching) offloaded to Web Workers,
+ * Dexie IndexedDB persistence with schema versioning, in-memory embedding caching, and LRU search caching.
  *
  * ZERO mock data or fake vectors.
  */
@@ -17,6 +17,9 @@ import { computeSimilaritiesInWorker } from './workerPool';
 import { localEmbeddingClient } from './embeddings/LocalEmbeddingClient';
 import { LOCAL_EMBEDDING_CONFIG } from './embeddings/localEmbeddingConfig';
 import { livingCardEngine } from './LivingCardEngine';
+import { computeLexicalScore, computeHybridScore } from './lexicalScore';
+
+export { computeLexicalScore, computeHybridScore };
 
 export interface IndexDocumentMetadata {
   examBoard?: string;
@@ -40,29 +43,6 @@ export interface SemanticChunkResult {
 }
 
 /**
- * Computes lexical keyword match score (0.0 to 1.0) between query and chunk text
- */
-export function computeLexicalScore(query: string, chunkContent: string): number {
-  if (!query || !chunkContent) return 0;
-  const queryTerms = query
-    .toLowerCase()
-    .replace(/[^\w\s\u00C0-\u024F]/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length >= 3);
-
-  if (queryTerms.length === 0) return 0;
-
-  const chunkLower = chunkContent.toLowerCase();
-  let matches = 0;
-  for (const term of queryTerms) {
-    if (chunkLower.includes(term)) {
-      matches++;
-    }
-  }
-  return matches / queryTerms.length;
-}
-
-/**
  * Normalizes text prior to embedding generation to reduce noise
  */
 export function normalizeTextForEmbedding(text: string): string {
@@ -82,6 +62,39 @@ export interface SemanticSearchResult {
 export class RealSemanticSearchService {
   private searchCache = new Map<string, SemanticSearchResult>();
   private readonly maxCacheSize = 20;
+
+  // In-memory cache of raw document embeddings to avoid IndexedDB disk read on every search
+  private memoryEmbeddingsCache: DocumentEmbedding[] | null = null;
+
+  /**
+   * Invalidates the in-memory embeddings cache and the query result LRU cache.
+   * Call after new documents are indexed, re-indexed, or bulk loaded.
+   */
+  public invalidateEmbeddingsCache(): void {
+    this.memoryEmbeddingsCache = null;
+    this.searchCache.clear();
+  }
+
+  /**
+   * Loads all document embeddings from Dexie IndexedDB into memory once, converting
+   * vectors to Float32Array for maximum memory efficiency and fast zero-copy transfers.
+   */
+  private async getOrLoadAllDocumentEmbeddings(): Promise<DocumentEmbedding[]> {
+    if (this.memoryEmbeddingsCache !== null) {
+      return this.memoryEmbeddingsCache;
+    }
+
+    const rawDocs = await db.documentEmbeddings.toArray();
+    this.memoryEmbeddingsCache = rawDocs.map((doc) => ({
+      ...doc,
+      vector:
+        doc.vector instanceof Float32Array
+          ? doc.vector
+          : new Float32Array(doc.vector || []),
+    }));
+
+    return this.memoryEmbeddingsCache;
+  }
 
   private getCacheKey(query: string, topK: number, filter?: SemanticSearchFilter): string {
     const bancaStr = filter?.banca ? filter.banca.trim().toLowerCase() : '';
@@ -103,7 +116,7 @@ export class RealSemanticSearchService {
    * Checks whether IndexedDB contains document embeddings with outdated schema version
    */
   async checkForOutdatedEmbeddings(): Promise<boolean> {
-    const allDocs = await db.documentEmbeddings.toArray();
+    const allDocs = await this.getOrLoadAllDocumentEmbeddings();
     if (allDocs.length === 0) return false;
     return allDocs.some((doc) => doc.embeddingSchemaVersion !== LOCAL_EMBEDDING_CONFIG.embeddingSchemaVersion);
   }
@@ -168,7 +181,7 @@ export class RealSemanticSearchService {
       assetId,
       chunkIndex: idx,
       content,
-      vector: allEmbeddings[idx] || [],
+      vector: new Float32Array(allEmbeddings[idx] || []),
       dimension: LOCAL_EMBEDDING_CONFIG.outputDimension,
       model: LOCAL_EMBEDDING_CONFIG.modelName,
       embeddingSchemaVersion: LOCAL_EMBEDDING_CONFIG.embeddingSchemaVersion,
@@ -184,6 +197,9 @@ export class RealSemanticSearchService {
       await db.documentEmbeddings.bulkAdd(records);
     });
 
+    // Invalidate in-memory embeddings cache so subsequent searches see the new document
+    this.invalidateEmbeddingsCache();
+
     try {
       const [nerRes] = await Promise.allSettled([nerPromise]);
       if (nerRes.status === 'rejected') {
@@ -197,13 +213,12 @@ export class RealSemanticSearchService {
       console.warn('[RealSemanticSearchService] Medical entity extraction failed:', nerErr);
     }
 
-    this.searchCache.clear();
     return records.length;
   }
 
   /**
    * Search top-K most relevant chunks using Hybrid Search (0.7 Cosine Similarity + 0.3 Lexical Score)
-   * on Dexie embeddings matching the current local embedding schema version.
+   * offloaded to Web Workers on in-memory cached embeddings matching the current local embedding schema version.
    */
   async searchTopChunks(queryText: string, topK = 5, filter?: SemanticSearchFilter): Promise<SemanticSearchResult> {
     if (!queryText || !queryText.trim()) return { results: [], hasOutdatedEmbeddings: false };
@@ -219,14 +234,14 @@ export class RealSemanticSearchService {
     const queryVector = queryEmbeddings[0] || [];
     if (queryVector.length === 0) return { results: [], hasOutdatedEmbeddings: false };
 
-    let allDocs = await db.documentEmbeddings.toArray();
+    const allDocs = await this.getOrLoadAllDocumentEmbeddings();
     if (allDocs.length === 0) return { results: [], hasOutdatedEmbeddings: false };
 
     const hasOutdatedEmbeddings = allDocs.some(
       (doc) => doc.embeddingSchemaVersion !== LOCAL_EMBEDDING_CONFIG.embeddingSchemaVersion
     );
 
-    // Filter strictly embeddings matching current local schema version
+    // Filter strictly embeddings matching current local schema version in-memory
     let candidates = allDocs.filter(
       (doc) => doc.embeddingSchemaVersion === LOCAL_EMBEDDING_CONFIG.embeddingSchemaVersion
     );
@@ -254,33 +269,31 @@ export class RealSemanticSearchService {
     const candidateMap = new Map<string, DocumentEmbedding>();
     const workerCandidates = candidates.map((doc) => {
       candidateMap.set(doc.id, doc);
-      return { id: doc.id, vector: doc.vector };
+      return { id: doc.id, content: doc.content, vector: doc.vector };
     });
 
-    const cosineResults = await computeSimilaritiesInWorker(queryVector, workerCandidates, candidates.length);
+    // Delegate both Cosine Similarity & BM25 Lexical Score completely to Web Worker Pool
+    const workerResults = await computeSimilaritiesInWorker(
+      normalizedQuery,
+      queryVector,
+      workerCandidates,
+      topK,
+      LOCAL_EMBEDDING_CONFIG.outputDimension
+    );
 
-    // Combine Cosine Similarity (70%) + Lexical BM25 Score (30%)
-    const hybridScored = cosineResults.map((item) => {
+    const finalResults: SemanticChunkResult[] = workerResults.map((item) => {
       const doc = candidateMap.get(item.id)!;
-      const cosSim = item.score;
-      const lexScore = computeLexicalScore(queryText, doc.content);
-      const hybridScore = 0.7 * cosSim + 0.3 * lexScore;
-
       return {
         assetId: doc.assetId,
         chunkIndex: doc.chunkIndex,
         content: doc.content,
-        similarity: cosSim,
-        lexicalScore: lexScore,
-        hybridScore,
+        similarity: item.cosineScore,
+        lexicalScore: item.lexicalScore,
+        hybridScore: item.hybridScore,
       };
     });
 
-    hybridScored.sort((a, b) => b.hybridScore - a.hybridScore);
-
-    const finalResults: SemanticChunkResult[] = hybridScored.slice(0, topK);
     const searchResult: SemanticSearchResult = { results: finalResults, hasOutdatedEmbeddings };
-
     this.setCachedResults(cacheKey, searchResult);
     return searchResult;
   }
@@ -289,7 +302,7 @@ export class RealSemanticSearchService {
    * Scans IndexedDB for outdated embeddings and re-indexes them with the new local engine
    */
   async reindexOutdatedEmbeddings(onProgress?: (current: number, total: number) => void): Promise<number> {
-    const allDocs = await db.documentEmbeddings.toArray();
+    const allDocs = await this.getOrLoadAllDocumentEmbeddings();
     const outdatedAssetIds = Array.from(
       new Set(
         allDocs
@@ -313,6 +326,7 @@ export class RealSemanticSearchService {
       }
     }
 
+    this.invalidateEmbeddingsCache();
     return count;
   }
 }
