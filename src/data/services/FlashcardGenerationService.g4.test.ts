@@ -204,4 +204,109 @@ describe('FlashcardGenerationService - Tarefa G4: Cenários de Validação', () 
     expect(capturedTopKs[0]).toBeLessThan(capturedTopKs[1]); // resumido < intermediario
     expect(capturedTopKs[1]).toBeLessThanOrEqual(capturedTopKs[2]); // intermediario <= completo
   });
+
+  it('G4-5: Deve disparar UMA tentativa de reposição quando houver cards inválidos no lote original', async () => {
+    const { ragEngine } = await import('./RAGEngine');
+    (ragEngine.retrieveContext as any).mockResolvedValue([]);
+    (ragEngine.getExistingDeckConcepts as any).mockResolvedValue('');
+    (ragEngine.getExistingDeckConceptsWithEmbeddings as any).mockResolvedValue([]);
+
+    // 1ª chamada: 2 cards válidos e 1 inválido (front vazio) de um total pedido de 3
+    // 2ª chamada (reposição): 1 card válido
+    let callCount = 0;
+    (global.fetch as any).mockImplementation(async (url: string) => {
+      if (url.includes('/api/generate-cards')) {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            ok: true,
+            json: async () => ({
+              cards: [
+                { type: 'basic', front: 'Card Válido 1', back: 'Verso 1' },
+                { type: 'basic', front: '', back: 'Verso Inválido Sem Frente' }, // Inválido
+                { type: 'basic', front: 'Card Válido 2', back: 'Verso 2' },
+              ],
+            }),
+          };
+        } else if (callCount === 2) {
+          return {
+            ok: true,
+            json: async () => ({
+              cards: [
+                { type: 'basic', front: 'Card Reposto Válido 3', back: 'Verso 3' },
+              ],
+            }),
+          };
+        }
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    const options: FlashcardGenerationOptions = {
+      text: 'Texto',
+      deckId: 'deck-1',
+      subject: 'Cardiologia',
+      cardCount: 3,
+      cardType: 'basic',
+      level: 'intermediario',
+    };
+
+    const cards = await service.generateFlashcards(options);
+
+    // Assert: deve ter feito 2 chamadas no total (1 geração + 1 reposição) e retornado 3 cards válidos
+    expect(callCount).toBe(2);
+    expect(cards.length).toBe(3);
+    expect(cards[2].front).toBe('Card Reposto Válido 3');
+  });
+
+  it('G4-6: Se a tentativa de reposição falhar, deve degradar graciosamente e retornar os válidos existentes sem erro', async () => {
+    const { ragEngine } = await import('./RAGEngine');
+    (ragEngine.retrieveContext as any).mockResolvedValue([]);
+    (ragEngine.getExistingDeckConcepts as any).mockResolvedValue('');
+    (ragEngine.getExistingDeckConceptsWithEmbeddings as any).mockResolvedValue([]);
+
+    let callCount = 0;
+    (global.fetch as any).mockImplementation(async (url: string) => {
+      if (url.includes('/api/generate-cards')) {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            ok: true,
+            json: async () => ({
+              cards: [
+                { type: 'basic', front: 'Card Válido 1', back: 'Verso 1' },
+                { type: 'basic', front: '', back: 'Inválido' },
+              ],
+            }),
+          };
+        } else if (callCount === 2) {
+          // Falha na chamada de reposição (ex: erro 500)
+          return {
+            ok: false,
+            status: 500,
+            json: async () => ({ error: 'Erro no servidor' }),
+          };
+        }
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    const options: FlashcardGenerationOptions = {
+      text: 'Texto',
+      deckId: 'deck-1',
+      subject: 'Cardiologia',
+      cardCount: 2,
+      cardType: 'basic',
+      level: 'intermediario',
+    };
+
+
+    // Não deve lançar erro
+    const cards = await service.generateFlashcards(options);
+
+    expect(callCount).toBe(2);
+    expect(cards.length).toBe(1);
+    expect(cards[0].front).toBe('Card Válido 1');
+  });
 });
+

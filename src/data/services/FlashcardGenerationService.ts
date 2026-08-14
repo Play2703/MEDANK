@@ -134,6 +134,56 @@ export class FlashcardGenerationService {
       );
     }
 
+    const shortfall = totalQuantity - validRawCards.length;
+    let finalCards = validRawCards;
+
+    if (shortfall > 0) {
+      console.warn(
+        `[FlashcardGenerationService] ${shortfall} card(s) inválido(s) descartado(s). Tentando repor...`
+      );
+      try {
+        const topUpAntiDupList = formatCompactAntiDuplicationList(
+          validRawCards.map((c) => c.front),
+          30
+        );
+
+        const combinedSummary = existingCardsSummary
+          ? `${existingCardsSummary}\n${topUpAntiDupList}`
+          : topUpAntiDupList;
+
+        const topUpPayload = pruneObjectByTokenBudget(
+          {
+            ...options,
+            cardCount: shortfall,
+            retrievedChunks,
+            topK,
+            existingCardsSummary: combinedSummary,
+          },
+          MAX_TOTAL_PAYLOAD_TOKENS
+        );
+
+        const topUpResponse = await fetch(apiUrl('/api/generate-cards'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(topUpPayload),
+        });
+
+        if (topUpResponse.ok) {
+          const topUpData = await topUpResponse.json();
+          const topUpValidCards = (topUpData.cards || []).filter(isValidGeneratedCard);
+          finalCards = [...validRawCards, ...topUpValidCards];
+          console.log(
+            `[FlashcardGenerationService] Reposição: +${topUpValidCards.length} card(s) válido(s) adicionado(s).`
+          );
+        }
+      } catch (topUpErr) {
+        console.warn(
+          '[FlashcardGenerationService] Falha na tentativa de reposição, seguindo com o total parcial:',
+          topUpErr
+        );
+      }
+    }
+
     const canonicalKeys = Array.from(
       new Set(
         retrievedChunks
@@ -143,7 +193,7 @@ export class FlashcardGenerationService {
       )
     );
 
-    let cards: FlashCard[] = validRawCards.map((rc: any, index: number) => ({
+    let cards: FlashCard[] = finalCards.map((rc: any, index: number) => ({
       id: `ai-card-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
       deckId: options.deckId,
       type: rc.type || (options.cardType === 'cloze' ? 'cloze' : 'basic'),
@@ -158,6 +208,7 @@ export class FlashcardGenerationService {
       updatedAt: new Date().toISOString(),
       sm2State: createInitialSM2State(),
     }));
+
 
     if (canonicalKeys.length > 0) {
       for (const card of cards) {

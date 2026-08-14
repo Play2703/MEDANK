@@ -715,7 +715,7 @@ Verso: ${card.back}
 Tipo: ${card.type}
 
 Contexto Médico Relevante:
-${contextText.slice(0, 5000)}
+${contextText.slice(0, 2000)}
 
 Retorne um JSON VÁLIDO no seguinte formato:
 {
@@ -730,13 +730,14 @@ Retorne um JSON VÁLIDO no seguinte formato:
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: LIGHT_AI_MODEL,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
           temperature: 0.3,
         },
       });
+
 
       const updatedCard = JSON.parse(response.text || "{}");
       return res.json({ success: true, card: updatedCard });
@@ -828,13 +829,14 @@ REGRAS RÍGIDAS DE REFORMULAÇÃO E QUALIDADE DO ANKI (OBRIGATÓRIO):
 
       const ai = getGeminiClient();
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: LIGHT_AI_MODEL,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
           temperature: 0.2,
         },
       });
+
 
       const parsedCards = JSON.parse(response.text || "[]");
       return res.json({ success: true, cards: Array.isArray(parsedCards) ? parsedCards : [parsedCards] });
