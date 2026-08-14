@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DeviceProvider, useDevice } from './core/responsive/DeviceContext';
+import { DeviceProvider } from './core/responsive/DeviceContext';
 import { DeviceFrame } from './presentation/components/DeviceFrame/DeviceFrame';
 import { M3TopAppBar } from './presentation/components/Material3/M3TopAppBar';
 import { M3BottomBar } from './presentation/components/Material3/M3BottomBar';
@@ -35,12 +35,9 @@ const DeveloperConsoleView = lazy(() =>
   import('./developer_console/views/DeveloperConsoleView').then((m) => ({ default: m.DeveloperConsoleView }))
 );
 
-const MAIN_TABS = ['decks', 'ai-generator', 'questions', 'notes', 'stats'];
-
 function MainAppContent() {
   const { location, go } = useGoRouter();
   const { totalDueCards, refreshDecks } = useDeckViewModel();
-  const { isMobileViewport } = useDevice();
 
   const handleStartStudy = (deckId: string) => {
     go('/study/:deckId', { deckId });
@@ -81,23 +78,6 @@ function MainAppContent() {
     }
   };
 
-  const isMainTabRoute = ['/decks', '/ai-generator', '/questions', '/notes', '/stats'].includes(location.path);
-
-  const handleDragEnd = (_: any, info: { offset: { x: number } }) => {
-    if (!isMainTabRoute) return;
-    const swipeThreshold = 50;
-    const currentIndex = MAIN_TABS.indexOf(currentTab);
-    if (currentIndex === -1) return;
-
-    if (info.offset.x < -swipeThreshold && currentIndex < MAIN_TABS.length - 1) {
-      // Swiped left -> Next tab
-      handleSelectTab(MAIN_TABS[currentIndex + 1]);
-    } else if (info.offset.x > swipeThreshold && currentIndex > 0) {
-      // Swiped right -> Previous tab
-      handleSelectTab(MAIN_TABS[currentIndex - 1]);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden">
       <M3TopAppBar
@@ -110,10 +90,6 @@ function MainAppContent() {
         <AnimatePresence mode="wait">
           <motion.div
             key={location.path}
-            drag={isMainTabRoute && isMobileViewport ? 'x' : false}
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.15}
-            onDragEnd={handleDragEnd}
             initial={{ opacity: 0, x: 15 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -15 }}
