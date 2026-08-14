@@ -1,4 +1,7 @@
 /**
+ * ⚠️ NODE-ONLY: nunca importar este arquivo de código que roda no navegador (usa DictionaryNEREngine / better-sqlite3).
+ * O cliente web/mobile deve sempre usar fetch('/api/extract-entities') ou o Web Worker (lib/core/engines/ner.worker.ts).
+ * ---------------------------------------------------------------------------
  * HybridNEREngine
  * ---------------------------------------------------------------------------
  * Reconhecimento de Entidades Nomeadas (NER) HÍBRIDO para o MedAnki.

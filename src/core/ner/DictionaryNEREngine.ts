@@ -1,6 +1,12 @@
+/**
+ * ⚠️ NODE-ONLY: nunca importar este arquivo de código que roda no navegador (usa better-sqlite3/fs/path).
+ * O cliente web/mobile deve sempre usar fetch('/api/extract-entities') ou o Web Worker (lib/core/engines/ner.worker.ts).
+ */
+
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
+
 
 export interface MatchedEntity {
   text: string;           // trecho exato encontrado no texto original

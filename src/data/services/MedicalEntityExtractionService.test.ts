@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { db } from '../db/database';
 import { medicalEntityExtractionService } from './MedicalEntityExtractionService';
 
-describe('MedicalEntityExtractionService - NER Híbrido (Local vs API Fallback)', () => {
+describe('MedicalEntityExtractionService - NER API Client', () => {
   const originalFetch = global.fetch;
 
   beforeEach(async () => {
@@ -18,30 +18,7 @@ describe('MedicalEntityExtractionService - NER Híbrido (Local vs API Fallback)'
     vi.restoreAllMocks();
   });
 
-  it('TAREFA H4 — deve resolver localmente sem NENHUMA chamada de rede para chunk com vocabulário médico reconhecido pelo dicionário', async () => {
-    const fetchSpy = vi.fn();
-    global.fetch = fetchSpy;
-
-    const assetId = 'asset-test-local-ner';
-    const chunks = ['O paciente apresentou hipertensão arterial sistêmica e diabetes mellitus tipo 2 com dispneia.'];
-
-    const count = await medicalEntityExtractionService.extractAndSaveEntities(assetId, chunks);
-
-    expect(count).toBe(1);
-
-    // Confirma que NENHUMA chamada HTTP /api/extract-entities foi realizada
-    expect(fetchSpy).not.toHaveBeenCalled();
-
-    const storedRecords = await db.chunkEntities.where('assetId').equals(assetId).toArray();
-    expect(storedRecords.length).toBe(1);
-    expect(storedRecords[0].entities.length).toBeGreaterThan(0);
-
-    const entityTexts = storedRecords[0].entities.map((e) => e.text);
-    expect(entityTexts).toContain('hipertensão arterial sistêmica');
-    expect(entityTexts).toContain('diabetes mellitus tipo 2');
-  });
-
-  it('TAREFA H4 — deve acionar o fallback para /api/extract-entities (Gemini) quando a cobertura do chunk for baixa (< 3%)', async () => {
+  it('deve delegar a extração NER para /api/extract-entities e persistir entidades e relações no Dexie', async () => {
     const fetchSpy = vi.fn().mockImplementation(async () => {
       return {
         ok: true,
@@ -53,14 +30,38 @@ describe('MedicalEntityExtractionService - NER Híbrido (Local vs API Fallback)'
               chunkIndex: 0,
               entities: [
                 {
-                  text: 'Investimentos',
-                  type: 'finding',
-                  code_system: null,
-                  code: null,
-                  confidence: 0.8,
+                  text: 'hipertensão arterial sistêmica',
+                  normalizedText: 'hipertensao arterial sistemica',
+                  canonicalKey: 'CID-10:I10',
+                  type: 'disease',
+                  code_system: 'CID-10',
+                  code: 'I10',
+                  confidence: 1.0,
+                },
+                {
+                  text: 'diabetes mellitus tipo 2',
+                  normalizedText: 'diabetes mellitus tipo 2',
+                  canonicalKey: 'CID-10:E11',
+                  type: 'disease',
+                  code_system: 'CID-10',
+                  code: 'E11',
+                  confidence: 1.0,
                 },
               ],
-              relations: [],
+              relations: [
+                {
+                  subjectText: 'hipertensão arterial sistêmica',
+                  subjectNormalized: 'hipertensao arterial sistemica',
+                  subjectCanonicalKey: 'CID-10:I10',
+                  subjectType: 'disease',
+                  predicate: 'associado_a',
+                  objectText: 'diabetes mellitus tipo 2',
+                  objectNormalized: 'diabetes mellitus tipo 2',
+                  objectCanonicalKey: 'CID-10:E11',
+                  objectType: 'disease',
+                  confidence: 0.9,
+                },
+              ],
             },
           ],
         }),
@@ -68,14 +69,14 @@ describe('MedicalEntityExtractionService - NER Híbrido (Local vs API Fallback)'
     });
     global.fetch = fetchSpy;
 
-    const assetId = 'asset-test-fallback-gemini';
-    const chunks = ['Reunião sobre planejamento estratégico de mercado e finanças corporativas.'];
+    const assetId = 'asset-test-api-ner';
+    const chunks = ['O paciente apresentou hipertensão arterial sistêmica e diabetes mellitus tipo 2 com dispneia.'];
 
     const count = await medicalEntityExtractionService.extractAndSaveEntities(assetId, chunks);
 
     expect(count).toBe(1);
 
-    // Confirma que a chamada para /api/extract-entities FOI realizada por ter baixa cobertura local
+    // Confirma que a chamada para /api/extract-entities foi realizada com o payload correto
     expect(fetchSpy).toHaveBeenCalled();
     expect(fetchSpy).toHaveBeenCalledWith(
       expect.stringContaining('/api/extract-entities'),
@@ -84,11 +85,22 @@ describe('MedicalEntityExtractionService - NER Híbrido (Local vs API Fallback)'
 
     const storedRecords = await db.chunkEntities.where('assetId').equals(assetId).toArray();
     expect(storedRecords.length).toBe(1);
-    expect(storedRecords[0].entities.length).toBe(1);
-    expect(storedRecords[0].entities[0].text).toBe('Investimentos');
+    expect(storedRecords[0].entities.length).toBe(2);
+
+    const entityTexts = storedRecords[0].entities.map((e) => e.text);
+    expect(entityTexts).toContain('hipertensão arterial sistêmica');
+    expect(entityTexts).toContain('diabetes mellitus tipo 2');
+
+    // Confirma persistência de canonical entities e arestas de grafo
+    const canonical = await db.canonicalEntityIndex.get('CID-10:I10');
+    expect(canonical).toBeDefined();
+
+    const storedRelations = await db.chunkRelations.where('assetId').equals(assetId).toArray();
+    expect(storedRelations.length).toBe(1);
+    expect(storedRelations[0].relations.length).toBe(1);
   });
 
-  it('deve lidar com falha HTTP 500 do fallback Gemini sem crashar', async () => {
+  it('deve lidar com falha HTTP 500 da API sem crashar', async () => {
     global.fetch = vi.fn().mockImplementation(async () => {
       return {
         ok: false,
@@ -110,7 +122,7 @@ describe('MedicalEntityExtractionService - NER Híbrido (Local vs API Fallback)'
     expect(storedEntities[0].assetId).toBe(assetId);
   });
 
-  it('deve lidar com falha HTTP 429 de cota excedida do fallback Gemini sem tratar como sucesso', async () => {
+  it('deve lidar com falha HTTP 429 de cota excedida sem tratar como sucesso', async () => {
     global.fetch = vi.fn().mockImplementation(async () => {
       return {
         ok: false,
