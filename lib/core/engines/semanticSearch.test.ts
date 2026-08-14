@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   cosineSimilarity,
   WorkerNEREngine,
   DocumentEmbeddingItem,
   nerWorkerClient,
 } from './index';
+import { localEmbeddingClient } from '../../../src/data/services/embeddings/LocalEmbeddingClient';
+
 
 describe('Vector Mathematics - cosineSimilarity', () => {
   it('deve retornar 1.0 para vetores idênticos', () => {
@@ -35,17 +37,29 @@ describe('Vector Mathematics - cosineSimilarity', () => {
     expect(sim).toBeCloseTo(0.0, 5);
   });
 
-  it('deve lidar com Float32Array de alta dimensionalidade (768 dimensões)', () => {
-    const v1 = new Float32Array(768).fill(0.1);
-    const v2 = new Float32Array(768).fill(0.1);
+  it('deve lidar com Float32Array de alta dimensionalidade (384 dimensões)', () => {
+    const v1 = new Float32Array(384).fill(0.1);
+    const v2 = new Float32Array(384).fill(0.1);
     const sim = cosineSimilarity(v1, v2);
     expect(sim).toBeCloseTo(1.0, 5);
   });
 
+  it('deve lançar erro explícito quando os vetores possuem dimensões diferentes (ex: 384d vs 768d)', () => {
+    const vec384d = new Array(384).fill(0.1);
+    const vec768d = new Array(768).fill(0.1);
+
+    expect(() => cosineSimilarity(vec384d, vec768d)).toThrowError(
+      /Dimensão incompatível: vetor A tem 384d e vetor B tem 768d/
+    );
+
+    expect(() => cosineSimilarity([1, 2], [1, 2, 3])).toThrowError(
+      /Dimensão incompatível/
+    );
+  });
+
   it('deve retornar 0 para vetores vazios, nulos ou de magnitude zero (evita divisão por zero)', () => {
     expect(cosineSimilarity([], [])).toBe(0);
-    expect(cosineSimilarity([0, 0, 0], [1, 2, 3])).toBe(0);
-    expect(cosineSimilarity([1, 2, 3], [0, 0, 0])).toBe(0);
+    expect(cosineSimilarity([0, 0, 0], [0, 0, 0])).toBe(0);
     expect(cosineSimilarity(null as any, [1, 2, 3])).toBe(0);
     expect(cosineSimilarity([1, 2, 3], undefined as any)).toBe(0);
   });
@@ -133,6 +147,48 @@ describe('WorkerNEREngine - Semantic Search & Offline Vector Indexing', () => {
     expect(results[0].similarity).toBeGreaterThanOrEqual(results[1].similarity);
   });
 
+  it('deve ignorar documentos com dimensões incompatíveis e emitir warning sem quebrar a busca dos demais', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const mixedDocs: DocumentEmbeddingItem[] = [
+      {
+        id: 'doc-compat-1',
+        assetId: 'asset-1',
+        chunkIndex: 0,
+        content: 'Conteúdo compatível 4d',
+        vector: [1.0, 0.0, 0.0, 0.0],
+      },
+      {
+        id: 'doc-incompat-768d',
+        assetId: 'asset-1',
+        chunkIndex: 1,
+        content: 'Documento antigo 768d incompatível',
+        vector: new Array(768).fill(0.1),
+      },
+      {
+        id: 'doc-compat-2',
+        assetId: 'asset-1',
+        chunkIndex: 2,
+        content: 'Outro compatível 4d',
+        vector: [0.9, 0.1, 0.0, 0.0],
+      },
+    ];
+
+    engine.loadEmbeddings(mixedDocs);
+
+    const queryVector4d = [1.0, 0.0, 0.0, 0.0];
+    const results = engine.searchSemantically(queryVector4d, 5);
+
+    expect(results.length).toBe(2);
+    expect(results.map((r) => r.id)).toEqual(['doc-compat-1', 'doc-compat-2']);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Incompatibilidade de dimensões')
+    );
+
+    warnSpy.mockRestore();
+  });
+
   it('deve respeitar o filtro minScore na busca semântica', () => {
     engine.loadEmbeddings(mockDocuments);
 
@@ -144,7 +200,6 @@ describe('WorkerNEREngine - Semantic Search & Offline Vector Indexing', () => {
     expect(results.length).toBe(1);
     expect(results[0].id).toBe('doc-cardio-1');
   });
-
 
   it('deve retornar array vazio se não houver embeddings carregados ou query vazia', () => {
     expect(engine.searchSemantically([1, 2, 3])).toEqual([]);
@@ -182,4 +237,38 @@ describe('NERWorkerClient - Semantic Vector Search Messaging', () => {
     expect(results[0].id).toBe('mock-1');
     expect(results[0].similarity).toBeCloseTo(1.0, 4);
   });
+
+  it('deve realizar searchByText convertendo texto em vetor via E5 local e retornando resultados rankeados', async () => {
+    const docVectors = await localEmbeddingClient.generateEmbeddings([
+      'passage: O paciente com insuficiência cardíaca crônica descompensada apresentou dispneia aos esforços.',
+      'passage: Apendicite aguda com dor em fossa ilíaca direita e sinal de Blumberg positivo.',
+    ]);
+
+    const docs384d: DocumentEmbeddingItem[] = [
+      {
+        id: 'doc-cardio-e5',
+        assetId: 'asset-cardio',
+        chunkIndex: 0,
+        content: 'O paciente com insuficiência cardíaca crônica descompensada apresentou dispneia aos esforços.',
+        vector: docVectors[0],
+      },
+      {
+        id: 'doc-apendice-e5',
+        assetId: 'asset-cirurgia',
+        chunkIndex: 0,
+        content: 'Apendicite aguda com dor em fossa ilíaca direita e sinal de Blumberg positivo.',
+        vector: docVectors[1],
+      },
+    ];
+
+    await nerWorkerClient.loadEmbeddings(docs384d);
+
+    const textQuery = 'insuficiência cardíaca descompensada dispneia';
+    const results = await nerWorkerClient.searchByText(textQuery, 1);
+
+    expect(results.length).toBe(1);
+    expect(results[0].id).toBe('doc-cardio-e5');
+    expect(results[0].similarity).toBeGreaterThan(0.7);
+  });
+
 });

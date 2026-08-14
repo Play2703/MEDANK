@@ -9,6 +9,9 @@ import {
   NERWorkerResponse,
   WorkerNEREngine,
 } from './ner.worker';
+import { localEmbeddingClient } from '../../../src/data/services/embeddings/LocalEmbeddingClient';
+
+
 
 /**
  * High-Performance Asynchronous NER & Semantic Search Client
@@ -204,6 +207,29 @@ export class NERWorkerClient {
       minScore,
     });
   }
+
+  /**
+   * High-Level Semantic Search: converts query text to vector in real-time
+   * using browser-local E5 model (with asymmetric "query: " prefix)
+   * and runs cosine similarity ranking in the background worker.
+   */
+  public async searchByText(
+    text: string,
+    topK = 5,
+    minScore = 0
+  ): Promise<SemanticSearchResult[]> {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return [];
+
+    const formattedQuery = `query: ${trimmed}`;
+    const vectors = await localEmbeddingClient.generateEmbeddings([formattedQuery]);
+    if (!vectors || vectors.length === 0 || !vectors[0] || vectors[0].length === 0) {
+      return [];
+    }
+
+    return this.searchSemantically(vectors[0], topK, minScore);
+  }
+
 
   public terminate(): void {
     if (this.worker) {

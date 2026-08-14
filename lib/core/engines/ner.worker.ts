@@ -141,15 +141,21 @@ export function levenshteinDistance(a: string, b: string, maxThreshold = 2): num
  * High-Performance Pure Math Cosine Similarity
  * Calculates normalized dot product between two float vectors.
  * Returns similarity score in [-1.0, 1.0], or 0 on empty/zero-magnitude vectors.
+ * Throws explicit error if vectors have different dimensions.
  */
 export function cosineSimilarity(
   vecA: number[] | Float32Array,
   vecB: number[] | Float32Array
 ): number {
   if (!vecA || !vecB || vecA.length === 0 || vecB.length === 0) return 0;
-  const len = Math.min(vecA.length, vecB.length);
-  if (len === 0) return 0;
 
+  if (vecA.length !== vecB.length) {
+    throw new Error(
+      `Dimensão incompatível: vetor A tem ${vecA.length}d e vetor B tem ${vecB.length}d — modelos de embedding diferentes não são comparáveis.`
+    );
+  }
+
+  const len = vecA.length;
   let dotProduct = 0;
   let normA = 0;
   let normB = 0;
@@ -168,6 +174,7 @@ export function cosineSimilarity(
 
   return dotProduct / magnitude;
 }
+
 
 export function estimateCoverage(text: string, entities: MatchedEntity[]): number {
 
@@ -639,9 +646,23 @@ export class WorkerNEREngine {
       return [];
     }
 
+    let dimensionMismatchWarned = false;
     const scored: SemanticSearchResult[] = [];
+
     for (let i = 0; i < this.embeddings.length; i++) {
       const doc = this.embeddings[i];
+      if (!doc || !Array.isArray(doc.vector)) continue;
+
+      if (doc.vector.length !== queryVector.length) {
+        if (!dimensionMismatchWarned) {
+          console.warn(
+            `[WorkerNEREngine] Incompatibilidade de dimensões: queryVector tem ${queryVector.length}d, mas documento '${doc.id}' tem ${doc.vector.length}d. Documentos com dimensões divergentes serão desconsiderados.`
+          );
+          dimensionMismatchWarned = true;
+        }
+        continue;
+      }
+
       const sim = cosineSimilarity(queryVector, doc.vector);
       if (sim >= minScore) {
         scored.push({
@@ -659,6 +680,7 @@ export class WorkerNEREngine {
     scored.sort((a, b) => b.similarity - a.similarity);
     return scored.slice(0, Math.max(1, topK));
   }
+
 
   public getEmbeddingsCount(): number {
     return this.embeddings.length;

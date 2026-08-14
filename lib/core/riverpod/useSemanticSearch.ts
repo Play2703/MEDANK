@@ -11,19 +11,27 @@ export interface UseSemanticSearchResult {
   state: SemanticSearchState;
   isSearching: boolean;
   results: SemanticSearchResult[];
+  queryText: string;
   error: string | null;
   embeddingsCount: number;
+  searchByText: (text: string, topK?: number, minScore?: number) => Promise<SemanticSearchResult[]>;
   search: (queryVector: number[], topK?: number, minScore?: number) => Promise<SemanticSearchResult[]>;
   loadEmbeddings: (embeddings?: DocumentEmbeddingItem[]) => Promise<number>;
   reset: () => void;
 }
 
 /**
- * Custom React Hook to perform fast offline vector cosine similarity search
- * in the background Web Worker via Riverpod.
+ * Custom React Hook to perform fast offline semantic search
+ * (text -> local E5 embedding -> worker cosine similarity) via Riverpod.
  */
 export function useSemanticSearch(): UseSemanticSearchResult {
   const [state, notifier] = useRiverpod(semanticSearchProvider);
+
+  const searchByText = useCallback(
+    (text: string, topK = 5, minScore = 0) =>
+      notifier.searchByText(text, topK, minScore),
+    [notifier]
+  );
 
   const search = useCallback(
     (queryVector: number[], topK = 5, minScore = 0) =>
@@ -42,8 +50,10 @@ export function useSemanticSearch(): UseSemanticSearchResult {
     state,
     isSearching: state.isSearching,
     results: state.results,
+    queryText: state.queryText,
     error: state.error,
     embeddingsCount: state.embeddingsCount,
+    searchByText,
     search,
     loadEmbeddings,
     reset,
@@ -52,12 +62,15 @@ export function useSemanticSearch(): UseSemanticSearchResult {
 
 export function useSemanticSearchNotifier(): {
   notifier: SemanticSearchStateNotifier;
+  searchByText: (text: string, topK?: number, minScore?: number) => Promise<SemanticSearchResult[]>;
   search: (queryVector: number[], topK?: number, minScore?: number) => Promise<SemanticSearchResult[]>;
   loadEmbeddings: (embeddings?: DocumentEmbeddingItem[]) => Promise<number>;
 } {
   const notifier = useRiverpodNotifier(semanticSearchProvider);
   return {
     notifier,
+    searchByText: (text: string, topK = 5, minScore = 0) =>
+      notifier.searchByText(text, topK, minScore),
     search: (queryVector: number[], topK = 5, minScore = 0) =>
       notifier.search(queryVector, topK, minScore),
     loadEmbeddings: (embeddings?: DocumentEmbeddingItem[]) =>

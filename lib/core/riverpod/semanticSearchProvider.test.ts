@@ -35,6 +35,7 @@ describe('SemanticSearchStateNotifier Riverpod Provider', () => {
     const state = notifier.state;
     expect(state.isSearching).toBe(false);
     expect(state.results).toEqual([]);
+    expect(state.queryText).toBe('');
     expect(state.error).toBeNull();
     expect(state.embeddingsCount).toBe(0);
   });
@@ -58,6 +59,13 @@ describe('SemanticSearchStateNotifier Riverpod Provider', () => {
     expect(notifier.state.lastSearchedAt).toBeGreaterThan(0);
   });
 
+  it('deve realizar searchByText e atualizar queryText no estado', async () => {
+    const results = await notifier.searchByText('cetoacidose diabética sintomas', 2);
+    expect(Array.isArray(results)).toBe(true);
+    expect(notifier.state.queryText).toBe('cetoacidose diabética sintomas');
+    expect(notifier.state.isSearching).toBe(false);
+  });
+
   it('deve resetar o estado ao chamar reset()', async () => {
     await notifier.loadEmbeddings(mockDocs);
     await notifier.search([1, 0, 0]);
@@ -66,6 +74,7 @@ describe('SemanticSearchStateNotifier Riverpod Provider', () => {
 
     notifier.reset();
     expect(notifier.state.results).toEqual([]);
+    expect(notifier.state.queryText).toBe('');
     expect(notifier.state.isSearching).toBe(false);
   });
 });

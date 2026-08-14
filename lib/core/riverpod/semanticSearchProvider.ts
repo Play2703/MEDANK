@@ -9,6 +9,7 @@ import {
 export interface SemanticSearchState {
   isSearching: boolean;
   results: SemanticSearchResult[];
+  queryText: string;
   error: string | null;
   lastSearchedAt: number | null;
   embeddingsCount: number;
@@ -17,6 +18,7 @@ export interface SemanticSearchState {
 const initialSemanticSearchState: SemanticSearchState = {
   isSearching: false,
   results: [],
+  queryText: '',
   error: null,
   lastSearchedAt: null,
   embeddingsCount: 0,
@@ -32,7 +34,60 @@ export class SemanticSearchStateNotifier extends StateNotifier<SemanticSearchSta
   }
 
   /**
-   * Dispatches semantic vector search to the Web Worker without blocking the main UI thread.
+   * Primary Search API for UI: takes raw text, converts to vector via local E5 model in real-time
+   * (with asymmetric "query: " prefix), and dispatches vector cosine similarity search to background worker.
+   */
+  public async searchByText(
+    text: string,
+    topK = 5,
+    minScore = 0
+  ): Promise<SemanticSearchResult[]> {
+    const trimmed = (text || '').trim();
+    if (!trimmed) {
+      this.state = {
+        ...this.state,
+        results: [],
+        queryText: '',
+        error: null,
+      };
+      return [];
+    }
+
+    const searchId = ++this.currentSearchId;
+    this.state = {
+      ...this.state,
+      isSearching: true,
+      queryText: trimmed,
+      error: null,
+    };
+
+    try {
+      const results = await this.client.searchByText(trimmed, topK, minScore);
+
+      if (searchId === this.currentSearchId) {
+        this.state = {
+          ...this.state,
+          isSearching: false,
+          results,
+          error: null,
+          lastSearchedAt: Date.now(),
+        };
+      }
+      return results;
+    } catch (err: any) {
+      if (searchId === this.currentSearchId) {
+        this.state = {
+          ...this.state,
+          isSearching: false,
+          error: err?.message || 'Error executing text semantic search in worker',
+        };
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Low-Level Vector Search API: directly accepts a pre-computed float query vector.
    */
   public async search(
     queryVector: number[],
