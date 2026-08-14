@@ -1,13 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   extractRelevantContextForTopic,
   condenseProfessorProfileForDistribution,
   extractKeywords,
   normalizeKeyword,
+  clearCustomContextEmbeddingCache,
 } from './contextSegmentation';
 import { estimateTokenCount } from './tokenBudget';
+import { localEmbeddingClient } from './embeddings/LocalEmbeddingClient';
 
-describe('contextSegmentation - Segmentação de Contexto por Tópico e Condensação de Perfil', () => {
+describe('contextSegmentation - Segmentação Semântica por Embeddings Locais e Condensação', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearCustomContextEmbeddingCache();
+  });
+
   describe('normalizeKeyword & extractKeywords', () => {
     it('deve normalizar texto removendo acentos e stopwords', () => {
       const keywords = extractKeywords('Insuficiência Cardíaca Congestiva e Hipertensão');
@@ -19,73 +26,117 @@ describe('contextSegmentation - Segmentação de Contexto por Tópico e Condensa
     });
   });
 
-  describe('extractRelevantContextForTopic', () => {
-    it('deve retornar texto intacto se for menor que maxChars', () => {
+  describe('extractRelevantContextForTopic - Seleção Semântica e Fallback', () => {
+    it('deve retornar texto intacto se for menor ou igual a maxChars sem chamar embeddings', async () => {
+      const spyEmbeddings = vi.spyOn(localEmbeddingClient, 'generateEmbeddings');
       const shortContext = 'Diretrizes básicas de suporte avançado de vida em cardiologia.';
-      const result = extractRelevantContextForTopic(shortContext, 'Parada Cardiorrespiratória', 'Cardiologia', 1500);
+      const result = await extractRelevantContextForTopic(shortContext, 'Parada Cardiorrespiratória', 'Cardiologia', 1500);
+
       expect(result).toBe(shortContext);
+      expect(spyEmbeddings).not.toHaveBeenCalled();
+      spyEmbeddings.mockRestore();
     });
 
-    it('deve retornar string vazia para entradas nulas ou vazias', () => {
-      expect(extractRelevantContextForTopic('', 'Tópico', 'Especialidade')).toBe('');
+    it('deve retornar string vazia para entradas nulas ou vazias', async () => {
+      expect(await extractRelevantContextForTopic('', 'Tópico', 'Especialidade')).toBe('');
       // @ts-ignore
-      expect(extractRelevantContextForTopic(null, 'Tópico', 'Especialidade')).toBe('');
+      expect(await extractRelevantContextForTopic(null, 'Tópico', 'Especialidade')).toBe('');
     });
 
-    it('deve extrair e priorizar apenas os parágrafos relevantes ao tópico em textos longos', () => {
-      const pHeartFailure =
-        'Parágrafo A: A insuficiência cardíaca com fração de ejeção reduzida (ICFEr) exige terapia quádrupla com IECA/BRA ou INRA, betabloqueador (carvedilol, succinato de metoprolol ou bisoprolol), antagonista de receptor mineralocorticoide (espironolactona) e inibidor de SGLT2 (dapagliflozina ou empagliflozina). Essa associação reduz mortalidade cardiovascular.';
+    it('deve selecionar blocos por similaridade semântica de cosseno mesmo quando a nomenclatura usar sinônimos sem overlap léxico literal', async () => {
+      // Bloco 1: fala de síndrome coronariana aguda / oclusão coronária (sinônimo de IAM, sem conter a palavra exata "Infarto")
+      const blockCoronarySyndrome =
+        'No quadro de síndrome coronariana aguda com supradesnivelamento do segmento ST, a oclusão arterial transmural aguda por rotura de placa aterosclerótica requer abertura imediata do vaso por angioplastia primária transluminal ou trombólise química de emergência.';
 
-      const pAsthma =
-        'Parágrafo B: No manejo da asma brônquica aguda grave em sala de emergência, preconiza-se o uso de beta-2 agonista de curta ação (salbutamol inalatório) associado a brometo de ipratrópio e corticoide sistêmico precoce (prednisona ou hidrocortisona). Em casos refratários, considerar sulfato de magnésio intravenoso.';
+      // Bloco 2: fala de cetoacidose e controle glicêmico
+      const blockKetoacidosis =
+        'A descompensação hiperglicêmica com acidose metabólica de ânion gap elevado, hiato osmolar aumentado e cetonemia positiva demanda reposição volêmica com cloreto de sódio a 0,9% e infusão contínua de insulina regular intravenosa.';
 
-      const pDiabetes =
-        'Parágrafo C: O diagnóstico de diabetes mellitus tipo 2 fundamenta-se em glicemia de jejum >= 126 mg/dL em duas ocasiões, hemoglobina glicada (HbA1c) >= 6,5%, ou glicemia >= 200 mg/dL no teste de tolerância oral à glicose (TOTG 75g). A metformina continua como fármaco de primeira linha.';
+      // Bloco 3: fala de hipertensão arterial resistente
+      const blockHypertension =
+        'Na hipertensão arterial resistente, o paciente mantém pressão arterial acima das metas terapêuticas a despeito do uso sinérgico de 3 classes anti-hipertensivas em doses otimizadas, incluindo um diurético tiazídico.';
 
-      const pNephro =
-        'Parágrafo D: Na injúria renal aguda pré-renal, observa-se fração de excreção de sódio (FENa) < 1%, relação ureia/creatinina plasmática > 40 e densidade urinária elevada (> 1.020) com cilindros hialinos no sedimento urinário.';
+      const longContext = `${blockCoronarySyndrome}\n\n${blockKetoacidosis}\n\n${blockHypertension}`.repeat(5);
 
-      const baseSections = [pHeartFailure, pAsthma, pDiabetes, pNephro];
-      const longCustomContext = Array(3).fill(baseSections.join('\n\n')).join('\n\n');
+      // Mock de embeddings controlados:
+      // Query "Cardiologia - IAM" tem vetor [1, 0, 0]
+      // Bloco 1 (Síndrome coronariana) tem vetor [0.95, 0.05, 0] -> Cosseno ~0.95
+      // Bloco 2 (Cetoacidose) tem vetor [0, 1, 0] -> Cosseno ~0
+      // Bloco 3 (Hipertensão) tem vetor [0.5, 0.5, 0] -> Cosseno ~0.5
+      const spyEmbeddings = vi.spyOn(localEmbeddingClient, 'generateEmbeddings').mockImplementation(async (texts) => {
+        return texts.map((t) => {
+          if (t.includes('query:')) return [1, 0, 0];
+          if (t.includes('síndrome coronariana aguda')) return [0.95, 0.05, 0];
+          if (t.includes('descompensação hiperglicêmica')) return [0, 1, 0];
+          return [0.5, 0.5, 0];
+        });
+      });
 
-      expect(longCustomContext.length).toBeGreaterThan(1500);
-
-      // Busca para o tópico de Insuficiência Cardíaca
-      const resultCardio = extractRelevantContextForTopic(
-        longCustomContext,
-        'Insuficiência Cardíaca',
+      const result = await extractRelevantContextForTopic(
+        longContext,
+        'IAM',
         'Cardiologia',
-        1200
+        1000
       );
 
-      expect(resultCardio).toContain('insuficiência cardíaca');
-      expect(resultCardio).toContain('ICFEr');
-      expect(resultCardio).not.toContain('asma brônquica aguda');
-      expect(resultCardio).not.toContain('injúria renal aguda');
-      expect(resultCardio.length).toBeLessThanOrEqual(1200);
+      expect(result).toContain('síndrome coronariana aguda com supradesnivelamento');
+      expect(result).not.toContain('descompensação hiperglicêmica');
+      expect(result.length).toBeLessThanOrEqual(1000);
 
-      // Busca para o tópico de Asma
-      const resultAsthma = extractRelevantContextForTopic(
-        longCustomContext,
-        'Asma Brônquica',
-        'Pneumologia',
-        1200
-      );
-
-      expect(resultAsthma).toContain('asma brônquica aguda');
-      expect(resultAsthma).toContain('salbutamol');
-      expect(resultAsthma).not.toContain('ICFEr');
-      expect(resultAsthma).not.toContain('diabetes mellitus');
+      spyEmbeddings.mockRestore();
     });
 
-    it('deve truncar graciosamente os primeiros maxChars quando nenhum parágrafo tiver match léxico com o tópico', () => {
-      const longGenericText =
-        'Este é um texto genérico médico sem tópicos específicos. '.repeat(60);
-      const result = extractRelevantContextForTopic(longGenericText, 'Tópico Inexistente XYZ', 'Especialidade ABC', 1000);
+    it('deve usar o cache de embeddings de blocos para evitar reprocessar o mesmo customContext em chamadas com tópicos diferentes', async () => {
+      const blockA = 'Manejo clínico da insuficiência cardíaca crônica descompensada e perfil hemodinâmico de Stevenson.';
+      const blockB = 'Abordagem da embolia pulmonar aguda com instabilidade hemodinâmica e indicação de trombólise.';
+      const longContext = `${blockA}\n\n${blockB}`.repeat(10);
 
-      expect(result.length).toBeLessThanOrEqual(1010);
-      expect(result).toContain('Este é um texto genérico médico');
-      expect(result).toContain('[…]');
+      let batchCallsCount = 0;
+      let queryCallsCount = 0;
+
+      const spyEmbeddings = vi.spyOn(localEmbeddingClient, 'generateEmbeddings').mockImplementation(async (texts) => {
+        if (texts.length === 1 && texts[0].startsWith('query:')) {
+          queryCallsCount++;
+          return [[1, 0]];
+        }
+        batchCallsCount++;
+        return texts.map(() => [0.8, 0.2]);
+      });
+
+      // 1ª chamada para Tópico 1
+      await extractRelevantContextForTopic(longContext, 'Insuficiência Cardíaca', 'Cardiologia', 1200);
+      expect(batchCallsCount).toBe(1);
+      expect(queryCallsCount).toBe(1);
+
+      // 2ª chamada para Tópico 2 com o MESMO customContext
+      await extractRelevantContextForTopic(longContext, 'Embolia Pulmonar', 'Pneumologia', 1200);
+      // O lote de blocos NÃO deve ser reprocessado (usou cache!), apenas a nova query
+      expect(batchCallsCount).toBe(1);
+      expect(queryCallsCount).toBe(2);
+
+      spyEmbeddings.mockRestore();
+    });
+
+    it('deve utilizar fallback gracioso caso o gerador de embeddings falhe', async () => {
+      const blockA = 'Parágrafo sobre Pneumonia Adquirida na Comunidade (PAC) e escore CURB-65.';
+      const blockB = 'Parágrafo sobre Apendicite aguda e sinal de Blumberg no ponto de McBurney.';
+      const longContext = `${blockA}\n\n${blockB}`.repeat(15);
+
+      const spyEmbeddings = vi.spyOn(localEmbeddingClient, 'generateEmbeddings').mockRejectedValue(
+        new Error('Worker crashed')
+      );
+
+      const result = await extractRelevantContextForTopic(
+        longContext,
+        'Pneumonia Adquirida na Comunidade',
+        'Pneumologia',
+        1000
+      );
+
+      expect(result).toContain('Pneumonia Adquirida na Comunidade');
+      expect(result.length).toBeLessThanOrEqual(1000);
+
+      spyEmbeddings.mockRestore();
     });
   });
 
@@ -114,12 +165,12 @@ describe('contextSegmentation - Segmentação de Contexto por Tópico e Condensa
       expect(condensed.professorStyleAnalysis.resumoEstiloGeral.length).toBeLessThanOrEqual(310);
       expect(condensed.examDNA).toBeDefined();
       expect(condensed.examDNA.clinicalCaseRatio).toBe(0.85);
-      expect(condensed.examDNA.extraInternalField).toBeUndefined(); // Campos internos não acionáveis são removidos
+      expect(condensed.examDNA.extraInternalField).toBeUndefined();
     });
   });
 
   describe('Medição de Impacto de Tokens (Simulado com 6 Tópicos)', () => {
-    it('deve demonstrar redução de tokens superior a 75% em simulado com customContext longo de 3000 tokens e 6 tópicos', () => {
+    it('deve demonstrar redução de tokens superior a 75% em simulado com customContext longo de 3000 tokens e 6 tópicos', async () => {
       const topics = [
         'Insuficiência Cardíaca',
         'Asma e DPOC',
@@ -129,7 +180,6 @@ describe('contextSegmentation - Segmentação de Contexto por Tópico e Condensa
         'Acidente Vascular Cerebral',
       ];
 
-      // customContext com ~3.000 tokens (~12.000 caracteres)
       const sections = [
         'Seção Cardiologia: Na insuficiência cardíaca crônica descompensada, a classificação hemodinâmica de Stevenson orienta o tratamento com inotrópicos e vasodilatadores...',
         'Seção Pneumologia: No manejo de asma e DPOC exacerbado, a gasometria arterial avalia risco de hipercapnia e fadiga respiratória com necessidade de ventilação não invasiva...',
@@ -139,19 +189,18 @@ describe('contextSegmentation - Segmentação de Contexto por Tópico e Condensa
         'Seção Neurologia: No acidente vascular cerebral isquêmico agudo (AVCi), a trombólise com alteplase até 4,5h e trombectomia mecânica reduzem sequelas neurológicas graves...',
       ];
 
-      // Multiplica para atingir ~12.000+ caracteres (~3.000 tokens)
       const longCustomContext = sections.map((s) => s.repeat(15)).join('\n\n');
       const fullContextTokens = estimateTokenCount(longCustomContext);
 
       expect(fullContextTokens).toBeGreaterThan(2500);
 
-      // Cenário ANTES da mudança: mesmo customContext enviado 6 vezes
+      // Cenário ANTES: mesmo customContext enviado 6 vezes
       const totalTokensBefore = fullContextTokens * topics.length;
 
-      // Cenário DEPOIS da mudança: customContext recortado por tópico
+      // Cenário DEPOIS: customContext recortado por tópico
       let totalTokensAfter = 0;
       for (const topic of topics) {
-        const segmented = extractRelevantContextForTopic(longCustomContext, topic, 'Clínica Médica', 1500);
+        const segmented = await extractRelevantContextForTopic(longCustomContext, topic, 'Clínica Médica', 1500);
         totalTokensAfter += estimateTokenCount(segmented);
       }
 
@@ -162,7 +211,7 @@ describe('contextSegmentation - Segmentação de Contexto por Tópico e Condensa
       console.log(`[TokenSavingsBenchmark] Economia real de tokens: ${(tokenSavingsRatio * 100).toFixed(1)}% (${totalTokensBefore - totalTokensAfter} tokens economizados)`);
 
       expect(totalTokensAfter).toBeLessThan(totalTokensBefore);
-      expect(tokenSavingsRatio).toBeGreaterThan(0.75); // Mais de 75% de economia comprovada!
+      expect(tokenSavingsRatio).toBeGreaterThan(0.75);
     });
   });
 });

@@ -981,8 +981,8 @@ export class QuestionGenerationService {
         }
 
 
-        // Contexto recortado especificamente para o tópico atual
-        const topicContext = extractRelevantContextForTopic(
+        // Contexto recortado especificamente para o tópico atual (via similaridade semântica de embeddings locais)
+        const topicContext = await extractRelevantContextForTopic(
           config.customContext,
           singleTopic,
           originSpecialty,
