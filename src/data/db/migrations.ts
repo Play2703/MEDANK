@@ -1,5 +1,6 @@
 import Dexie from 'dexie';
-import { SCHEMAS_V1, SCHEMAS_V2, SCHEMAS_V3, SCHEMAS_V4, SCHEMAS_V5, SCHEMAS_V6, SCHEMAS_V7, SCHEMAS_V8, SCHEMAS_V9, SCHEMAS_V10, SCHEMAS_V11, SCHEMAS_V12 } from './schema';
+import { SCHEMAS_V1, SCHEMAS_V2, SCHEMAS_V3, SCHEMAS_V4, SCHEMAS_V5, SCHEMAS_V6, SCHEMAS_V7, SCHEMAS_V8, SCHEMAS_V9, SCHEMAS_V10, SCHEMAS_V11, SCHEMAS_V12, SCHEMAS_V13 } from './schema';
+
 
 /**
  * Migration Manager for MedAnki Local Database
@@ -80,4 +81,10 @@ export function applyDatabaseMigrations(db: Dexie): void {
   db.version(12).stores(SCHEMAS_V12).upgrade(async () => {
     console.log('[MedAnki Migration] Upgrading database to Version 12 for Notes Module (Study Notes + AI Chat)...');
   });
+
+  // Version 13: Entity Embeddings Table for Semantic Distractors & Hybrid Graph Retrieval
+  db.version(13).stores(SCHEMAS_V13).upgrade(async () => {
+    console.log('[MedAnki Migration] Upgrading database to Version 13 for Entity Embeddings...');
+  });
 }
+

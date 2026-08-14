@@ -42,6 +42,8 @@ export class MedAnkiDexieDB extends Dexie {
   cardSignals!: Table<CardSignalRecord, string>;
   cardPendingSuggestions!: Table<CardPendingSuggestionRecord, string>;
   notes!: Table<Note, string>;
+  entityEmbeddings!: Table<{ canonicalKey: string; embedding: number[]; updatedAt: string }, string>;
+
 
   constructor() {
     super(DB_NAME);

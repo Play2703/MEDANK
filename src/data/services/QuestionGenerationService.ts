@@ -365,7 +365,110 @@ export function findLongestConsecutiveWordOverlap(text1: string, text2: string):
   };
 }
 
+async function assemblePrescriptiveQuestionOptions(
+  q: any,
+  qId: string,
+  specialtyStr: string,
+  topics: string[],
+  fallbackDistractorHints: any[] = []
+): Promise<QuestionOption[]> {
+  // Se a IA já retornou um array options estruturado (com pelo menos 2 opções), mantém compatibilidade
+  if (Array.isArray(q.options) && q.options.length >= 2) {
+    return q.options.map((opt: any, oIdx: number) => ({
+      id: `opt-${qId}-${opt.letter || String.fromCharCode(65 + oIdx)}`,
+      letter: opt.letter || String.fromCharCode(65 + oIdx),
+      text: opt.text || '',
+      isCorrect: opt.isCorrect ?? (opt.letter === q.correctOptionLetter),
+      explanation: opt.explanation || '',
+    }));
+  }
+
+  const correctAnswerText = (q.correctAnswerText || q.correctAnswer || '').trim();
+  const correctAnswerExplanation =
+    q.correctAnswerExplanation ||
+    (typeof q.commentary === 'string' ? q.commentary : q.commentary?.correta) ||
+    'Resposta correta fundamentada nas diretrizes médicas.';
+
+  // 1. Busca distratores específicos via DistractorEngine
+  let candidates: any[] = [];
+  if (correctAnswerText) {
+    try {
+      candidates = await distractorEngine.getCandidates({
+        correctAnswerText,
+        specialty: specialtyStr,
+        topics: topics || [],
+        limit: 6,
+      });
+    } catch (err) {
+      console.warn('[QuestionGenerationService] DistractorEngine error for question:', err);
+    }
+  }
+
+  // 2. Filtra candidatos distintos (diferentes entre si e da resposta correta)
+  const normCorrect = (correctAnswerText || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  const uniqueCandidates: any[] = [];
+  const seenCandidateTexts = new Set<string>();
+
+  for (const c of candidates) {
+    const cText = (c.text || c.label || '').trim();
+    const normC = cText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    if (!normC || normC === normCorrect || seenCandidateTexts.has(normC)) continue;
+    seenCandidateTexts.add(normC);
+    uniqueCandidates.push({ text: cText, rationale: c.rationale });
+  }
+
+  // 3. Fallback em cascata com pool genérico do lote se houver menos de 3
+  if (uniqueCandidates.length < 3 && Array.isArray(fallbackDistractorHints)) {
+    for (const h of fallbackDistractorHints) {
+      const hText = (h.text || h.label || (typeof h === 'string' ? h : '')).trim();
+      const normH = hText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      if (!normH || normH === normCorrect || seenCandidateTexts.has(normH)) continue;
+      seenCandidateTexts.add(normH);
+      uniqueCandidates.push({ text: hText, rationale: h.rationale });
+      if (uniqueCandidates.length >= 3) break;
+    }
+  }
+
+  // Seleciona até 3 incorretos
+  const selectedDistractors = uniqueCandidates.slice(0, 3);
+
+  // 4. Monta as opções (1 correta + incorretas)
+  const rawOptions = [
+    {
+      text: correctAnswerText || 'Opção correta',
+      isCorrect: true,
+      explanation: correctAnswerExplanation,
+    },
+    ...selectedDistractors.map((d) => ({
+      text: d.text,
+      isCorrect: false,
+      explanation: d.rationale || 'Conduta/diagnóstico incorreto para o quadro apresentado.',
+    })),
+  ];
+
+  // 5. Embaralha com Fisher-Yates
+  for (let i = rawOptions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rawOptions[i], rawOptions[j]] = [rawOptions[j], rawOptions[i]];
+  }
+
+  // 6. Atribui IDs e letras A/B/C/D
+  return rawOptions.map((opt, idx) => ({
+    id: `opt-${qId}-${String.fromCharCode(65 + idx)}`,
+    letter: String.fromCharCode(65 + idx),
+    text: opt.text,
+    isCorrect: opt.isCorrect,
+    explanation: opt.explanation,
+  }));
+}
+
 export class QuestionGenerationService {
+
   /**
    * Main entrypoint for Question Generation
    */
@@ -666,49 +769,52 @@ export class QuestionGenerationService {
       );
     }
 
-    const questions: Question[] = validRawQuestions.map((q: any, idx: number) => {
-      const qId = `q-${Date.now()}-${idx + 1}-${Math.random().toString(36).substring(2, 6)}`;
-      const statementStr = q.statement || `Questão #${idx + 1}`;
+    const questions: Question[] = await Promise.all(
+      validRawQuestions.map(async (q: any, idx: number) => {
+        const qId = `q-${Date.now()}-${idx + 1}-${Math.random().toString(36).substring(2, 6)}`;
+        const statementStr = q.statement || `Questão #${idx + 1}`;
 
-      for (const chunk of retrievedChunks) {
-        const chunkTextStr = typeof chunk === 'string' ? chunk : chunk.content;
-        const overlap = findLongestConsecutiveWordOverlap(statementStr, chunkTextStr);
-        if (overlap.maxOverlapLength > overallMaxWordOverlap) {
-          overallMaxWordOverlap = overlap.maxOverlapLength;
-          overallMatchingSeq = overlap.matchingSequence;
+        for (const chunk of retrievedChunks) {
+          const chunkTextStr = typeof chunk === 'string' ? chunk : chunk.content;
+          const overlap = findLongestConsecutiveWordOverlap(statementStr, chunkTextStr);
+          if (overlap.maxOverlapLength > overallMaxWordOverlap) {
+            overallMaxWordOverlap = overlap.maxOverlapLength;
+            overallMatchingSeq = overlap.matchingSequence;
+          }
         }
-      }
 
-      const options: QuestionOption[] = (q.options || []).map((opt: any, oIdx: number) => ({
-        id: `opt-${qId}-${opt.letter || String.fromCharCode(65 + oIdx)}`,
-        letter: opt.letter || String.fromCharCode(65 + oIdx),
-        text: opt.text || '',
-        isCorrect: opt.isCorrect ?? (opt.letter === q.correctOptionLetter),
-        explanation: opt.explanation || '',
-      }));
+        const options: QuestionOption[] = await assemblePrescriptiveQuestionOptions(
+          q,
+          qId,
+          specialtyStr,
+          config.topics || [],
+          distractorHints
+        );
 
-      const correctOpt = options.find((o) => o.isCorrect) || options[0];
+        const correctOpt = options.find((o) => o.isCorrect) || options[0];
 
-      return {
-        id: qId,
-        setId,
-        statement: statementStr,
-        clinicalContext: q.clinicalContext || undefined,
-        options,
-        correctOptionId: correctOpt.id,
-        commentary: q.commentary || 'Sem comentário fornecido.',
-        references: q.references || undefined,
-        tags: Array.isArray(q.tags) && q.tags.length > 0 ? q.tags : [specialtyStr, mainTopic],
-        specialty: specialtyStr,
-        topic: mainTopic,
-        subtopic: config.subtopic,
-        difficulty: (q.difficulty || config.difficulty) as any,
-        questionType: (q.questionType || config.questionType) as any,
-        originSource: originSourceLabel,
-        isAnswered: false,
-        createdAt: now,
-      };
-    });
+        return {
+          id: qId,
+          setId,
+          statement: statementStr,
+          clinicalContext: q.clinicalContext || undefined,
+          options,
+          correctOptionId: correctOpt.id,
+          commentary: q.commentary || 'Sem comentário fornecido.',
+          references: q.references || undefined,
+          tags: Array.isArray(q.tags) && q.tags.length > 0 ? q.tags : [specialtyStr, mainTopic],
+          specialty: specialtyStr,
+          topic: mainTopic,
+          subtopic: config.subtopic,
+          difficulty: (q.difficulty || config.difficulty) as any,
+          questionType: (q.questionType || config.questionType) as any,
+          originSource: originSourceLabel,
+          isAnswered: false,
+          createdAt: now,
+        };
+      })
+    );
+
 
     const balancedQuestions = balanceAndShuffleQuestionOptions(questions);
 
@@ -988,6 +1094,7 @@ export class QuestionGenerationService {
           canonicalKeys: topicCanonicalKeys,
           maxOverlapLength: initialOverlap.maxLen,
           matchingSequence: initialOverlap.seq,
+          distractorHints: distractorHints || [],
           error: null,
         };
       } catch (err: any) {
@@ -1000,6 +1107,7 @@ export class QuestionGenerationService {
           canonicalKeys: [],
           maxOverlapLength: 0,
           matchingSequence: '',
+          distractorHints: [],
           error: err.message || String(err),
         };
       }
@@ -1033,13 +1141,14 @@ export class QuestionGenerationService {
         const qId = `q-${Date.now()}-${globalIndex}-${Math.random().toString(36).substring(2, 6)}`;
         const statementStr = q.statement || `Questão #${globalIndex}`;
 
-        const options: QuestionOption[] = (q.options || []).map((opt: any, oIdx: number) => ({
-          id: `opt-${qId}-${opt.letter || String.fromCharCode(65 + oIdx)}`,
-          letter: opt.letter || String.fromCharCode(65 + oIdx),
-          text: opt.text || '',
-          isCorrect: opt.isCorrect ?? (opt.letter === q.correctOptionLetter),
-          explanation: opt.explanation || '',
-        }));
+        const options: QuestionOption[] = await assemblePrescriptiveQuestionOptions(
+          q,
+          qId,
+          topicRes.originSpecialty,
+          [topicRes.singleTopic],
+          topicRes.distractorHints || []
+        );
+
 
         const correctOpt = options.find((o) => o.isCorrect) || options[0];
 
@@ -1063,6 +1172,7 @@ export class QuestionGenerationService {
           createdAt: now,
         });
       }
+
     }
 
     const summarySpecList = Object.entries(specialtyQuestionCounts)

@@ -404,18 +404,47 @@ Retorne a resposta EXCLUSIVAMENTE em formato JSON VÁLIDO (sem texto extra, sem 
         customContextSection = `\n=== CONTEXTO ADICIONAL / TEXTO-FONTE FORNECIDO PELO USUÁRIO ===\n${customContext.trim()}\n=== FIM DO CONTEXTO ADICIONAL ===\nPriorize a inclusão e cobrança direta dos conceitos, condutas e definições presentes neste contexto adicional para formular os enunciados e alternativas das questões.\n`;
       }
 
-      let contextMaterial = "";
-      if (Array.isArray(retrievedChunks) && retrievedChunks.length > 0) {
-        contextMaterial = retrievedChunks
+      function buildContextMaterial(chunks: any[]): string {
+        if (!Array.isArray(chunks) || chunks.length === 0) {
+          return "Base de conhecimento geral médica em conformidade com as diretrizes da Sociedade Brasileira e Ministério da Saúde.";
+        }
+
+        return chunks
           .map((c: any, i: number) => {
-            const content = typeof c === "string" ? c : c.content || "";
+            const content = typeof c === "string" ? c : c.content || c.text || "";
             const source = c.assetName || c.banca || c.professor || "Material RAG";
+            const entities = Array.isArray(c.entities) ? c.entities : [];
+
+            // Calcula proporção de cobertura de entidades extraídas
+            const entityChars = entities.reduce(
+              (sum: number, ent: any) =>
+                sum + (ent.name?.length || ent.displayText?.length || ent.normalizedText?.length || ent.text?.length || 0),
+              0
+            );
+            const coverage = content.length > 0 ? entityChars / content.length : 0;
+
+            // Se cobertura >= 0.15 e houver entidades estruturadas, formata como resumo de triplas/grafo
+            if (coverage >= 0.15 && entities.length >= 2) {
+              const relations = Array.isArray(c.relations) ? c.relations : [];
+              if (relations.length > 0) {
+                const relationLines = relations
+                  .map((r: any) => `${r.sourceEntity || r.subjectNormalized} -- ${String(r.relationType || r.predicate).toUpperCase()} --> ${r.targetEntity || r.objectNormalized}`)
+                  .join("\n");
+                return `--- TRECHO ${i + 1} (resumo estruturado do grafo, fonte: ${source}) ---\n${relationLines}`;
+              }
+
+              const entityList = entities
+                .map((e: any) => `- [${e.type || 'Entidade'}] ${e.displayText || e.name || e.text || ''}`)
+                .join("\n");
+              return `--- TRECHO ${i + 1} (resumo estruturado do grafo, fonte: ${source}) ---\n${entityList}`;
+            }
+
             return `--- TRECHO ${i + 1} (${source}) ---\n${content}`;
           })
           .join("\n\n");
-      } else {
-        contextMaterial = "Base de conhecimento geral médica em conformidade com as diretrizes da Sociedade Brasileira e Ministério da Saúde.";
       }
+
+      const contextMaterial = buildContextMaterial(retrievedChunks);
 
       let distractorSection = "";
       if (Array.isArray(distractorHints) && distractorHints.length > 0) {
@@ -424,8 +453,9 @@ Retorne a resposta EXCLUSIVAMENTE em formato JSON VÁLIDO (sem texto extra, sem 
           .map((h: any) => `- ${h.label || h.text || h}`)
           .join("\n");
 
-        distractorSection = `\n=== BANCO DE DISTRATORES PLAUSÍVEIS (SUGESTÕES DE ALTERNATIVAS INCORRETAS) ===\nUtilize prioritariamente estes termos e conceitos da mesma categoria clínica/terapêutica para elaborar os distratores (opções incorretas) das questões, garantindo plausibilidade técnica e evitando alternativas aleatórias:\n${hintLines}\n=== FIM DO BANCO DE DISTRATORES ===\n`;
+        distractorSection = `\n=== CONCEITOS E TERMOS CORRELATOS RELEVANTES ===\n${hintLines}\n=== FIM DOS TERMOS CORRELATOS ===\n`;
       }
+
 
       let existingQuestionsSection = "";
       if (existingQuestionsSummary && existingQuestionsSummary.trim()) {
@@ -551,21 +581,10 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
   {
     "statement": "Enunciado completo e progressivo da questão...",
     "clinicalContext": "Resumo clínico opcional",
-    "options": [
-      { "id": "opt-a", "letter": "A", "text": "Texto da opção A (extensão equilibrada)", "isCorrect": false, "explanation": "Explicação do erro de raciocínio da opção A" },
-      { "id": "opt-b", "letter": "B", "text": "Texto da opção B (extensão equilibrada)", "isCorrect": true, "explanation": "Justificativa completa da opção correta B" },
-      { "id": "opt-c", "letter": "C", "text": "Texto da opção C (extensão equilibrada)", "isCorrect": false, "explanation": "Explicação do erro de raciocínio da opção C" },
-      { "id": "opt-d", "letter": "D", "text": "Texto da opção D (extensão equilibrada)", "isCorrect": false, "explanation": "Explicação do erro de raciocínio da opção D" }
-    ],
-    "correctOptionLetter": "B",
+    "correctAnswerText": "Texto da resposta/conduta/diagnóstico correto, de forma objetiva",
+    "correctAnswerExplanation": "Por que esta é a resposta correta",
     "commentary": {
-      "correta": "Justificativa da alternativa correta B embasada nas diretrizes médicas...",
-      "porOpcao": {
-        "A": "Explicação específica de por que a alternativa A está incorreta...",
-        "B": "Explicação de por que a alternativa B é a correta...",
-        "C": "Explicação específica de por que a alternativa C está incorreta...",
-        "D": "Explicação específica de por que a alternativa D está incorreta..."
-      },
+      "correta": "Justificativa da alternativa correta embasada nas diretrizes médicas...",
       "correlacaoClinica": "Síntese da correlação clínica e conceito fundamental."
     },
     "references": ["Diretriz de referência médica oficial"],
@@ -576,6 +595,7 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
     "questionType": "${questionType}"
   }
 ]`;
+
 
       const result = await parallelAIService.generateQuestionsParallel(prompt, undefined, 0.35);
 

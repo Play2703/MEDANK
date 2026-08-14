@@ -1,11 +1,14 @@
 import { db } from '../../db/database';
 import { MedicalEntityType, RelationType } from '../../../domain/entities/ChunkEntity';
 import { CONFUSION_SETS, ConfusionSet } from './confusionSets';
+import { cosineSimilarity } from '../cosineSimilarity';
+import { localEmbeddingClient } from '../embeddings/LocalEmbeddingClient';
+import { entityEmbeddingIndexer } from './EntityEmbeddingIndexer';
 
 export interface DistractorCandidate {
   text: string;
   entityType?: MedicalEntityType;
-  source: 'grafo' | 'banco_estatico';
+  source: 'grafo' | 'banco_estatico' | 'semantico';
   rationale?: string;
 }
 
@@ -186,12 +189,79 @@ export class DistractorEngine {
   }
 
   /**
-   * Combina as duas fontes (Grafo relacional de conhecimento e Confusion Sets estáticos),
-   * deduplica (case-insensitive por `text`), prioriza 'grafo' sobre 'banco_estatico' em caso
-   * de duplicata e limita ao número solicitado (default 8).
+   * Fonte 3 (semântica): busca entidades do MESMO tipo (`entityType`) cujo embedding tem
+   * similaridade de cosseno alta com o embedding da resposta correta, mas que não são
+   * sinônimos/variações exatas dela (para evitar sugerir a própria resposta como distrator).
+   */
+  async getSemanticCandidates(
+    correctAnswerText: string,
+    correctEntityType?: MedicalEntityType,
+    limit: number = 10
+  ): Promise<DistractorCandidate[]> {
+    if (!correctAnswerText) return [];
+
+    try {
+      const [correctEmbedding] = await localEmbeddingClient.generateEmbeddings([correctAnswerText]);
+      if (!correctEmbedding) return [];
+
+      // Busca candidatas do mesmo tipo de entidade no índice canônico, priorizando as mais frequentes
+      let candidateRecords = correctEntityType
+        ? await db.canonicalEntityIndex.where('type').equals(correctEntityType).toArray()
+        : await db.canonicalEntityIndex.toArray();
+
+      // Limita a até 200 candidatas para performance sustentável
+      if (candidateRecords.length > 200) {
+        candidateRecords = candidateRecords
+          .sort((a, b) => (b.occurrenceCount || 0) - (a.occurrenceCount || 0))
+          .slice(0, 200);
+      }
+
+      if (candidateRecords.length === 0) return [];
+
+      // Garante embeddings pras entidades candidatas (gera só as que faltam em lote)
+      await entityEmbeddingIndexer.ensureEmbeddingsForEntities(
+        candidateRecords.map((e) => ({ canonicalKey: e.canonicalKey, displayText: e.displayText }))
+      );
+
+      const normCorrect = normalizeStr(correctAnswerText);
+      const scored: { entity: (typeof candidateRecords)[number]; score: number }[] = [];
+
+      for (const entity of candidateRecords) {
+        if (normalizeStr(entity.displayText) === normCorrect) continue; // exclui a própria resposta
+
+        const record = await db.entityEmbeddings.get(entity.canonicalKey);
+        if (!record || !record.embedding) continue;
+
+        const score = cosineSimilarity(correctEmbedding, record.embedding);
+        // Faixa de similaridade "relacionado mas diferente": nem idêntico (>0.95, provável sinônimo
+        // da própria resposta), nem irrelevante (<0.5).
+        if (score >= 0.5 && score <= 0.95) {
+          scored.push({ entity, score });
+        }
+      }
+
+      scored.sort((a, b) => b.score - a.score);
+
+      return scored.slice(0, limit).map(({ entity, score }) => ({
+        text: entity.displayText,
+        entityType: entity.type,
+        source: 'semantico' as const,
+        rationale: `Similaridade semântica de ${(score * 100).toFixed(0)}% com a resposta correta`,
+      }));
+    } catch (err) {
+      console.warn('[DistractorEngine] Error fetching semantic candidates:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Combina as três fontes (Grafo relacional de conhecimento, Confusion Sets estáticos e Busca Semântica),
+   * deduplica (case-insensitive por `text`), prioriza na ordem:
+   * grafo > banco_estatico > semantico
+   * e limita ao número solicitado (default 8).
    *
    * Suporta consultas baseadas em topicCanonicalKeys (múltiplas chaves canônicas de contexto)
-   * e/ou correctEntityCanonicalKey (chave única de gabarito pré-existente).
+   * e/ou correctAnswerText (resposta correta da questão).
    */
   async getCandidates(params: DistractorCandidateOptions): Promise<DistractorCandidate[]> {
     const {
@@ -248,6 +318,26 @@ export class DistractorEngine {
       if (normCorrect && normText === normCorrect) continue;
       if (!resultMap.has(normText)) {
         resultMap.set(normText, item);
+      }
+    }
+
+    // 3. Complementa com busca semântica por embedding local se ainda houver espaço
+    if (resultMap.size < limit && correctAnswerText) {
+      try {
+        const semanticCandidates = await this.getSemanticCandidates(
+          correctAnswerText,
+          entityType,
+          limit
+        );
+        for (const item of semanticCandidates) {
+          const normText = normalizeStr(item.text);
+          if (normCorrect && normText === normCorrect) continue;
+          if (!resultMap.has(normText)) {
+            resultMap.set(normText, item);
+          }
+        }
+      } catch (err) {
+        console.warn('[DistractorEngine] Semantic candidate lookup failed:', err);
       }
     }
 

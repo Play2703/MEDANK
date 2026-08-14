@@ -163,6 +163,101 @@ function calculateMovingAverageDNA(
   };
 }
 
+/**
+ * Classifica determinísticamente o ciclo acadêmico (básico, clínico ou misto)
+ * utilizando extração de entidades médicas por categorias DeCS/MeSH/CID-10 sem depender da IA.
+ */
+export async function classifyAcademicCycleDeterministically(blockText: string): Promise<{
+  ciclo: AcademicCycle;
+  counts: Record<string, number>;
+  ratios: { clinicoRatio: number; basicoRatio: number };
+}> {
+  const counts: Record<string, number> = {
+    DOENCA: 0,
+    MEDICAMENTO: 0,
+    PROCEDIMENTO: 0,
+    SINTOMA: 0,
+    ESTRUTURA_ANATOMICA: 0,
+    EXAME: 0,
+    OUTROS: 0,
+  };
+
+  if (!blockText || blockText.trim().length < 15) {
+    return { ciclo: 'misto', counts, ratios: { clinicoRatio: 0.5, basicoRatio: 0.5 } };
+  }
+
+  try {
+    let entities: Array<{ category?: string }> = [];
+
+    // Se estiver em ambiente Node (testes, server, seed)
+    if (typeof window === 'undefined' && typeof process !== 'undefined') {
+      try {
+        const { dictionaryNEREngine } = await import('../../ner/DictionaryNEREngine');
+        entities = await dictionaryNEREngine.extractEntities(blockText);
+      } catch {
+        // Fallback
+      }
+    }
+
+    if (entities.length === 0 && typeof fetch !== 'undefined') {
+      try {
+        const { apiUrl } = await import('../../../lib/apiBaseUrl');
+        const res = await fetch(apiUrl('/api/extract-entities'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texts: [blockText] }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          entities = data.entities || (data.results && data.results[0]?.entities) || [];
+        }
+      } catch {}
+    }
+
+    for (const ent of entities) {
+      const cat = (ent.category || '').toUpperCase();
+      if (cat.includes('DOENCA') || cat.includes('DISEASE') || cat.includes('PATOLOGIA')) {
+        counts.DOENCA++;
+      } else if (cat.includes('MEDICAMENTO') || cat.includes('FARMACO') || cat.includes('DRUG')) {
+        counts.MEDICAMENTO++;
+      } else if (cat.includes('PROCEDIMENTO') || cat.includes('CONDUTA') || cat.includes('CIRURGIA')) {
+        counts.PROCEDIMENTO++;
+      } else if (cat.includes('SINTOMA') || cat.includes('SINAL')) {
+        counts.SINTOMA++;
+      } else if (cat.includes('ANATOM') || cat.includes('ESTRUTURA')) {
+        counts.ESTRUTURA_ANATOMICA++;
+      } else if (cat.includes('EXAME') || cat.includes('DIAGNOSTICO_LAB')) {
+        counts.EXAME++;
+      } else {
+        counts.OUTROS++;
+      }
+    }
+
+    const clinicoTotal = counts.DOENCA + counts.MEDICAMENTO + counts.PROCEDIMENTO + counts.SINTOMA;
+    const basicoTotal = counts.ESTRUTURA_ANATOMICA + counts.EXAME;
+    const totalRecognized = clinicoTotal + basicoTotal;
+
+    if (totalRecognized < 5) {
+      return { ciclo: 'misto', counts, ratios: { clinicoRatio: 0.5, basicoRatio: 0.5 } };
+    }
+
+    const clinicoRatio = clinicoTotal / totalRecognized;
+    const basicoRatio = basicoTotal / totalRecognized;
+
+    let ciclo: AcademicCycle = 'misto';
+    if (clinicoRatio >= 0.65) {
+      ciclo = 'clinico';
+    } else if (basicoRatio >= 0.65) {
+      ciclo = 'basico';
+    }
+
+    return { ciclo, counts, ratios: { clinicoRatio, basicoRatio } };
+  } catch (err) {
+    console.warn('[ProfessorEngine] Deterministic cycle extraction error:', err);
+    return { ciclo: 'misto', counts, ratios: { clinicoRatio: 0, basicoRatio: 0 } };
+  }
+}
+
 export class ProfessorEngine {
   private static instance: ProfessorEngine;
 
@@ -188,16 +283,17 @@ export class ProfessorEngine {
     pegadinhas: string[];
     resumo: string;
   } | null> {
+    // 1. Executa classificação determinística do ciclo acadêmico via NER local / categorias DeCS
+    const deterministicCycleResult = await classifyAcademicCycleDeterministically(blockText);
+    const deterministicCiclo = deterministicCycleResult.ciclo;
+
     const prompt = `Você é um psicometrista sênior especializado em bancas examinadoras de provas de residência e revalidação médica.
 Analise com rigor este bloco de acervo do professor/banca "${profName}":
 
 DOCUMENTOS E EXTRATOS DE PROVAS ANTERIORES:
 ${blockText || 'Informações gerais de bancas de provas médicas.'}
 
-Classifique o ciclo acadêmico ("basico", "clinico" ou "misto") e calcule os pesos de DNA (valores numéricos entre 0.0 e 1.0).
-Se o ciclo for "clinico", preencha "clinico" com 9 eixos e deixe "basico" como null.
-Se o ciclo for "basico", preencha "basico" com 7 eixos e deixe "clinico" como null.
-Se for "misto", preencha ambos com seus respectivos eixos.
+Calcule os pesos de DNA psicométrico (valores numéricos entre 0.0 e 1.0) para os eixos clínicos e básicos.
 
 Retorne EXCLUSIVAMENTE um objeto JSON VÁLIDO no seguinte formato exato (sem markdown extra, sem explicações fora do JSON):
 {
@@ -206,7 +302,6 @@ Retorne EXCLUSIVAMENTE um objeto JSON VÁLIDO no seguinte formato exato (sem mar
   "nivelCognitivo": "Análise da profundidade cobrada",
   "pegadinhasRecorrentes": ["Padrão de armadilha 1", "Padrão de armadilha 2"],
   "resumoEstiloGeral": "Síntese clara em 2 a 3 frases sobre o perfil deste examinador.",
-  "cicloAcademico": "clinico",
   "examDNA": {
     "clinico": {
       "contextoClinico": 0.8,
@@ -219,7 +314,15 @@ Retorne EXCLUSIVAMENTE um objeto JSON VÁLIDO no seguinte formato exato (sem mar
       "diretrizesOficiais": 0.7,
       "comorbidadesMultiplas": 0.4
     },
-    "basico": null
+    "basico": {
+      "memorizacaoDireta": 0.4,
+      "correlacaoAnatomoclinica": 0.6,
+      "nomenclaturaTecnica": 0.7,
+      "mecanismoFisiopatologico": 0.8,
+      "reconhecimentoEstrutural": 0.5,
+      "integracaoMultissistemica": 0.5,
+      "basesBioquimicas": 0.4
+    }
   }
 }`;
 
@@ -235,11 +338,20 @@ Retorne EXCLUSIVAMENTE um objeto JSON VÁLIDO no seguinte formato exato (sem mar
         const parsed = JSON.parse(jsonMatch[0]);
 
         const rawCiclo = String(parsed.cicloAcademico || parsed.examDNA?.cicloAcademico || 'clinico').toLowerCase();
-        const validCiclo: AcademicCycle = rawCiclo === 'basico' || rawCiclo === 'misto' ? rawCiclo : 'clinico';
+        const aiCiclo: AcademicCycle = rawCiclo === 'basico' || rawCiclo === 'misto' ? rawCiclo : 'clinico';
+
+        // O ciclo acadêmico salvo é estritamente o determinado de forma determinística
+        const validCiclo: AcademicCycle = deterministicCiclo;
 
         const rawDNAObj = parsed.examDNA || parsed;
         const newClinico = (validCiclo === 'clinico' || validCiclo === 'misto') ? parseClinicalDNA(rawDNAObj.clinico) : undefined;
         const newBasico = (validCiclo === 'basico' || validCiclo === 'misto') ? parseBasicDNA(rawDNAObj.basico) : undefined;
+
+        console.debug(
+          `[ProfessorEngine] Ciclo Acadêmico determinístico: "${validCiclo}" (IA sugeriu: "${aiCiclo}", contagens: ${JSON.stringify(
+            deterministicCycleResult.counts
+          )})`
+        );
 
         return {
           ciclo: validCiclo,

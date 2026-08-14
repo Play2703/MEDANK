@@ -11,10 +11,19 @@ export function isValidGeneratedQuestion(q: any): boolean {
     return false;
   }
 
-  // 2. options must be an array of length 4
+  // 1.1 Se formato novo prescritivo com correctAnswerText (sem options geradas pela IA)
+  if (q.correctAnswerText && typeof q.correctAnswerText === 'string' && q.correctAnswerText.trim()) {
+    if (!q.commentary && !q.correctAnswerExplanation) {
+      return false;
+    }
+    return true;
+  }
+
+  // 2. options must be an array of length 4 (formato legado)
   if (!Array.isArray(q.options) || q.options.length !== 4) {
     return false;
   }
+
 
   // 3. Option items must be valid objects with text
   for (const opt of q.options) {

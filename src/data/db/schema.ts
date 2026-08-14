@@ -79,3 +79,9 @@ export const SCHEMAS_V12 = {
   ...SCHEMAS_V11,
   notes: 'id, specialty, topic, createdAt, updatedAt',
 };
+
+export const SCHEMAS_V13 = {
+  ...SCHEMAS_V12,
+  entityEmbeddings: 'canonicalKey, updatedAt',
+};
+
