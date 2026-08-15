@@ -618,6 +618,69 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
 
     ragRetrieveSpy.mockRestore();
   });
+
+  it('deve deduplicar tópicos repetidos na geração distribuída evitando chamadas duplicadas de IA', async () => {
+    let callCount = 0;
+    const warnSpy = vi.spyOn(console, 'warn');
+
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request) => {
+      if (url.toString().includes('/api/generate-questions')) {
+        callCount++;
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            questions: [
+              {
+                id: `q-dup-${callCount}`,
+                statement: 'Questão sobre Insuficiência Cardíaca...',
+                options: [
+                  { id: 'opt-a', letter: 'A', text: 'Opção A', isCorrect: true },
+                  { id: 'opt-b', letter: 'B', text: 'Opção B', isCorrect: false },
+                  { id: 'opt-c', letter: 'C', text: 'Opção C', isCorrect: false },
+                  { id: 'opt-d', letter: 'D', text: 'Opção D', isCorrect: false },
+                ],
+                correctOptionLetter: 'A',
+                commentary: { correta: 'Comentário' },
+                specialty: 'Cardiologia',
+                topic: 'Insuficiência Cardíaca',
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    const request: QuestionGenerationRequest = {
+      id: 'req-test-dedup-topics',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Cardiologia',
+        // Tópico duplicado de propósito 3 vezes
+        topics: ['Insuficiência Cardíaca', 'Insuficiência Cardíaca', 'Insuficiência Cardíaca'],
+        quantity: 1,
+        distributionMode: 'distribuido',
+        difficulty: 'media',
+        questionType: 'caso_clinico',
+        includeCommentary: true,
+        showReferences: true,
+        autoGenerateFlashcards: false,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await service.generateQuestions(request, true);
+
+    expect(result.questionSet).toBeDefined();
+    // Apenas 1 chamada deve ter sido disparada para o único tópico deduplicado
+    expect(callCount).toBe(1);
+    // Deve emitir aviso informando a remoção de 2 tópicos duplicados
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[QuestionGenerationService] 2 tópico(s) duplicado(s) removido(s)')
+    );
+  });
 });
+
 
 

@@ -12,6 +12,7 @@ import { mapWithConcurrency } from '../../core/utils/asyncUtils';
 import { cosineSimilarity } from './cosineSimilarity';
 import { formatCompactAntiDuplicationList } from '../../core/utils/termExtractor';
 import { apiUrl } from '../../lib/apiBaseUrl';
+import { extractRelevantContextForTopic } from './contextSegmentation';
 import {
   pruneObjectByTokenBudget,
   pruneChunksByTokenBudget,
@@ -40,9 +41,10 @@ export class FlashcardGenerationService {
       completo: 1.2,
     };
 
-    const baseTopK = 5;
-    const levelMultiplier = LEVEL_MULTIPLIERS[options.level || 'intermediario'] || 1.0;
-    const topK = Math.min(30, Math.ceil((baseTopK + Math.ceil(totalQuantity / 3)) * levelMultiplier));
+    const levelMultiplier = LEVEL_MULTIPLIERS[options.level || 'intermediario'] ?? 1.0;
+    const baseTopK = options.examBoard || options.professor ? 8 : 10;
+    const rawTopK = Math.min(30, baseTopK + Math.ceil(totalQuantity / 3));
+    const topK = Math.max(3, Math.round(rawTopK * levelMultiplier));
 
     // 1. Semantic Chunk Retrieval via RAGEngine (Fase 31)
     let retrievedChunks: SemanticChunkResult[] = [];
@@ -64,7 +66,7 @@ export class FlashcardGenerationService {
       console.warn('[FlashcardGenerationService] Deck concepts retrieval skipped:', err);
     }
 
-    // Split total requested quantity into batches of up to MAX_ITEMS_PER_AI_CALL (8)
+    // Split quantity into batches of up to MAX_ITEMS_PER_AI_CALL (8)
     const batchQuantities: number[] = [];
     let rem = totalQuantity;
     while (rem > 0) {
@@ -93,8 +95,19 @@ export class FlashcardGenerationService {
         `modo: ${batchIdx === 0 ? 'completo' : 'truncado 600ch/4500tok'}).`
       );
 
+      let userInstructionsForBatch = options.userInstructions;
+      if (options.userInstructions && options.userInstructions.length > 1500) {
+        userInstructionsForBatch = await extractRelevantContextForTopic(
+          options.userInstructions,
+          options.subject || options.text || '',
+          options.subject || options.text || '',
+          1500
+        );
+      }
+
       const rawPayload = {
         ...options,
+        userInstructions: userInstructionsForBatch,
         cardCount: batchQty,
         retrievedChunks: chunksForThisBatch,
         topK, // Passar topK calculado para o servidor (para logging/validação)
@@ -139,48 +152,42 @@ export class FlashcardGenerationService {
 
     if (shortfall > 0) {
       console.warn(
-        `[FlashcardGenerationService] ${shortfall} card(s) inválido(s) descartado(s). Tentando repor...`
+        `[FlashcardGenerationService] Deficit of ${shortfall} cards detected after validation. Attempting deficit replacement...`
       );
       try {
-        const topUpAntiDupList = formatCompactAntiDuplicationList(
-          validRawCards.map((c) => c.front),
-          30
-        );
-
-        const combinedSummary = existingCardsSummary
-          ? `${existingCardsSummary}\n${topUpAntiDupList}`
-          : topUpAntiDupList;
-
-        const topUpPayload = pruneObjectByTokenBudget(
+        const deficitQty = Math.min(shortfall, MAX_ITEMS_PER_AI_CALL);
+        const replacementPayload = pruneObjectByTokenBudget(
           {
             ...options,
-            cardCount: shortfall,
-            retrievedChunks,
-            topK,
-            existingCardsSummary: combinedSummary,
+            cardCount: deficitQty,
+            retrievedChunks: pruneChunksByTokenBudget(
+              retrievedChunks.map((c) => ({
+                ...c,
+                content: truncateChunkText(c.content, 600),
+              })),
+              SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL
+            ),
+            existingCardsSummary: `${existingCardsSummary}\nCards já gerados nesta sessão:\n${formatCompactAntiDuplicationList(validRawCards.map((c) => c.front), 30)}`,
           },
           MAX_TOTAL_PAYLOAD_TOKENS
         );
 
-        const topUpResponse = await fetch(apiUrl('/api/generate-cards'), {
+        const repResponse = await fetch(apiUrl('/api/generate-cards'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(topUpPayload),
+          body: JSON.stringify(replacementPayload),
         });
 
-        if (topUpResponse.ok) {
-          const topUpData = await topUpResponse.json();
-          const topUpValidCards = (topUpData.cards || []).filter(isValidGeneratedCard);
-          finalCards = [...validRawCards, ...topUpValidCards];
-          console.log(
-            `[FlashcardGenerationService] Reposição: +${topUpValidCards.length} card(s) válido(s) adicionado(s).`
+        if (repResponse.ok) {
+          const repData = await repResponse.json();
+          const validReplacements = (repData.cards || []).filter(isValidGeneratedCard);
+          finalCards = [...validRawCards, ...validReplacements].slice(0, totalQuantity);
+          console.debug(
+            `[FlashcardGenerationService] Replacement call added ${validReplacements.length} valid cards.`
           );
         }
-      } catch (topUpErr) {
-        console.warn(
-          '[FlashcardGenerationService] Falha na tentativa de reposição, seguindo com o total parcial:',
-          topUpErr
-        );
+      } catch (repErr) {
+        console.warn('[FlashcardGenerationService] Deficit replacement call failed:', repErr);
       }
     }
 
@@ -278,8 +285,33 @@ export class FlashcardGenerationService {
       console.warn('[FlashcardGenerationService] Semantic deduplication skipped due to error:', err);
     }
 
-    // Validação pós-geração: log de aviso se há discrepância de tamanho
+    // Validação pós-geração e correção ativa por card individual para todos os níveis
     if (cards.length > 0) {
+      const MAX_BACK_CHARS_BY_LEVEL: Record<string, number> = {
+        resumido: 220,       // faixa esperada 30-150 + margem
+        intermediario: 400,  // faixa esperada 100-300 + margem
+        completo: 800,       // faixa esperada 200-600 + margem
+      };
+
+      const maxChars = MAX_BACK_CHARS_BY_LEVEL[options.level || 'intermediario'] || 400;
+      let truncatedCount = 0;
+
+      cards.forEach((card) => {
+        if (card.back && card.back.length > maxChars) {
+          // Truncar no limite da última frase completa dentro do budget, não cortar no meio
+          const truncated = card.back.slice(0, maxChars);
+          const lastPeriod = truncated.lastIndexOf('.');
+          card.back = lastPeriod > 50 ? truncated.slice(0, lastPeriod + 1) : truncated.trim() + '…';
+          truncatedCount++;
+        }
+      });
+
+      if (truncatedCount > 0) {
+        console.log(
+          `[FlashcardGenerationService] ${truncatedCount} card(s) truncado(s) para respeitar o limite do nível "${options.level}".`
+        );
+      }
+
       const avgBackLength = cards.reduce((sum, c) => sum + (c.back?.length || 0), 0) / cards.length;
       const expectedBackLengthsByLevel: Record<string, { min: number; max: number }> = {
         resumido: { min: 30, max: 150 },

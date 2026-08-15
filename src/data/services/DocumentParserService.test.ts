@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { DocumentParserService } from './DocumentParserService';
 
 describe('DocumentParserService', () => {
@@ -26,4 +26,61 @@ describe('DocumentParserService', () => {
     expect(service.isLikelyValidExtractedText('   ')).toBe(false);
     expect(service.isLikelyValidExtractedText('Texto curto')).toBe(false);
   });
+
+  it('deve extrair texto localmente para PDF com camada de texto real sem chamar OCR', async () => {
+    const parser = new DocumentParserService();
+    const mockPdfText = `
+      Fisiologia Respiratória e Ventilação Pulmonar.
+      A hematose alveolar depende da integridade da membrana alvéolo-capilar e da relação V/Q normal.
+      Espaço morto anatômico corresponde a aproximadamente 150 mL em um adulto típico.
+    `;
+
+    const readerSpy = vi.spyOn((parser as any).readerService, 'readContent').mockResolvedValue({
+      rawText: mockPdfText,
+      pageCount: 1,
+    });
+    const ocrSpy = vi.spyOn((parser as any).ocrService, 'performOCR');
+
+    const fakePdfFile = new File(['pdf-dummy-content'], 'resumo_fisiologia.pdf', { type: 'application/pdf' });
+    const result = await parser.parseDocument(fakePdfFile);
+
+    expect(readerSpy).toHaveBeenCalledWith(fakePdfFile);
+    expect(ocrSpy).not.toHaveBeenCalled();
+    expect(result).toContain('Fisiologia Respiratória e Ventilação Pulmonar');
+  });
+
+  it('deve cair no fallback de OCR quando PDF for escaneado (sem texto extraível localmente)', async () => {
+    const parser = new DocumentParserService();
+    const ocrExtractedText = 'Texto extraído via OCR do PDF escaneado com sucesso pelo Gemini.';
+
+    vi.spyOn((parser as any).readerService, 'readContent').mockResolvedValue({
+      rawText: '',
+      pageCount: 1,
+    });
+    const ocrSpy = vi.spyOn((parser as any).ocrService, 'performOCR').mockResolvedValue(ocrExtractedText);
+
+    const fakeScannedPdf = new File(['scanned-pdf-bytes'], 'livro_escaneado.pdf', { type: 'application/pdf' });
+    const onProgressMock = vi.fn();
+    const result = await parser.parseDocument(fakeScannedPdf, onProgressMock);
+
+    expect(ocrSpy).toHaveBeenCalledWith(fakeScannedPdf, onProgressMock);
+    expect(result).toContain('Texto extraído via OCR');
+  });
+
+  it('deve enviar imagens diretamente para OCR sem tentar leitor de texto local', async () => {
+    const parser = new DocumentParserService();
+    const ocrImageText = 'Texto de fluxograma médico extraído da imagem.';
+
+    const readerSpy = vi.spyOn((parser as any).readerService, 'readContent');
+    const ocrSpy = vi.spyOn((parser as any).ocrService, 'performOCR').mockResolvedValue(ocrImageText);
+
+    const fakeImg = new File(['fake-img-bytes'], 'eletrocardiograma.png', { type: 'image/png' });
+    const onProgressMock = vi.fn();
+    const result = await parser.parseDocument(fakeImg, onProgressMock);
+
+    expect(readerSpy).not.toHaveBeenCalled();
+    expect(ocrSpy).toHaveBeenCalledWith(fakeImg, onProgressMock);
+    expect(result).toContain('Texto de fluxograma médico');
+  });
 });
+

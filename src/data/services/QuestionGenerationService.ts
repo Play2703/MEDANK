@@ -885,7 +885,14 @@ export class QuestionGenerationService {
     const config = request.configuration;
     const totalQuantity = config.quantity || 5;
     const defaultSpecialty = config.specialty || 'Clínica Médica';
-    const topics = config.topics && config.topics.length > 0 ? config.topics : ['Geral'];
+    const rawTopics = config.topics && config.topics.length > 0 ? config.topics : ['Geral'];
+    const topics = Array.from(new Set(rawTopics));
+
+    if (topics.length < rawTopics.length) {
+      console.warn(
+        `[QuestionGenerationService] ${rawTopics.length - topics.length} tópico(s) duplicado(s) removido(s) da lista antes da geração distribuída.`
+      );
+    }
     const topicSpecialtyMap = config.topicSpecialtyMap || {};
     
     const isGeneralMode = !request.mode || request.mode === 'geral' || (!request.bancaName && !request.professorName);

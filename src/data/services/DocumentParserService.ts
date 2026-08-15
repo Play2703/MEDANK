@@ -1,7 +1,9 @@
 import { OCRService } from './OCRService';
+import { DocumentReaderService } from '../../core/import_engine/services/DocumentReaderService';
 
 export class DocumentParserService {
   private ocrService = new OCRService();
+  private readerService = new DocumentReaderService();
 
   public async parseDocument(file: File, onProgress?: (percent: number) => void): Promise<string> {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -20,19 +22,21 @@ export class DocumentParserService {
       return this.cleanExtractedText(rawText);
     }
 
-    // For PDF, DOCX, PPTX files, try text reading or Gemini OCR endpoint
+    // For PDF, DOCX, PPTX files, try local text extraction via DocumentReaderService first
     if (['pdf', 'docx', 'pptx'].includes(ext)) {
       if (onProgress) onProgress(30);
       try {
-        const text = await this.readAsText(file);
-        if (this.isLikelyValidExtractedText(text)) {
+        const content = await this.readerService.readContent(file);
+        if (content.rawText && this.isLikelyValidExtractedText(content.rawText)) {
           if (onProgress) onProgress(100);
-          return this.cleanExtractedText(text);
+          return this.cleanExtractedText(content.rawText);
         }
-      } catch {
-        // Fallback to OCR service if plain text reading fails or returns binary
+      } catch (err) {
+        console.warn('[DocumentParserService] Extração local falhou, caindo para OCR via Gemini:', err);
       }
 
+      // Fallback: só usa OCR via Gemini se a extração local falhar ou vier vazia
+      // (ex: PDF realmente escaneado, sem camada de texto)
       if (onProgress) onProgress(30);
       const ocrResult = await this.ocrService.performOCR(file, onProgress);
       if (onProgress) onProgress(100);

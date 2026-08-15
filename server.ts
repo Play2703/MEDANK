@@ -313,7 +313,10 @@ REGRAS DE APRENDIZAGEM ATIVA E BOAS PRÁTICAS DO ANKI (OBRIGATÓRIO):
 2. PERGUNTAS CLARAS E OBJETIVAS: Evite enunciados longos ou ambíguos.
 ${
   level === 'resumido'
-    ? `3. VERSO COMPACTO (Nível RESUMIDO): O verso deve ter NO MÁXIMO 2-3 frases contendo APENAS a definição ou fato central. Omita completamente mecanismos fisiopatológicos extensos, diferenciais, e contextos de conduta. Foque exclusivamente na resposta direta à pergunta.`
+    ? `3. VERSO COMPACTO (Nível RESUMIDO): O verso deve ter NO MÁXIMO 2-3 frases contendo APENAS a definição ou fato central. Omita completamente mecanismos fisiopatológicos extensos, diferenciais, e contextos de conduta. Foque exclusivamente na resposta direta à pergunta.
+
+EXEMPLO DE VERSO NO NÍVEL RESUMIDO (siga este padrão de tamanho e objetividade):
+"back": "Betabloqueador. Reduz mortalidade pós-IAM ao diminuir consumo de O2 miocárdico."`
     : level === 'completo'
     ? `3. VERSO DETALHADO (Nível COMPLETO): O verso pode ter múltiplos parágrafos cobrindo: (a) definição/conceito, (b) fisiopatologia relevante, (c) 2-3 diagnósticos diferenciais quando aplicável, (d) critérios diagnósticos principais, (e) valores de referência e pontos de corte quando pertinente, (f) citação de diretriz/guideline se disponível no material. Mantenha clareza e estrutura — evite texto prolixo ou repetitivo, mas favoreça profundidade.`
     : `3. VERSO EQUILIBRADO (Nível INTERMEDIÁRIO): O verso pode ter um parágrafo curto incluindo: (a) a resposta direta, (b) 1-2 informações de contexto clínico (ex: conduta associada, valor de corte, fato de diferencial principal). Evite excesso de mecanismo ou detalhe, mas vá além de uma definição seca.`

@@ -266,16 +266,19 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
   };
 
   const toggleTopic = (topicName: string) => {
-    if (selectedTopics.includes(topicName)) {
-      if (selectedTopics.length > 1) {
-        setSelectedTopics(selectedTopics.filter((t) => t !== topicName));
-        const spec = topicSpecialtyMap[topicName] || selectedSpecialties[0];
-        const subsForThisTopic = new Set(getSubtopicsForTopic(spec, topicName));
-        setSelectedSubtopics((prev) => prev.filter((s) => !subsForThisTopic.has(s)));
+    setSelectedTopics((prev) => {
+      if (prev.includes(topicName)) {
+        if (prev.length > 1) {
+          const spec = topicSpecialtyMap[topicName] || selectedSpecialties[0];
+          const subsForThisTopic = new Set(getSubtopicsForTopic(spec, topicName));
+          setSelectedSubtopics((subPrev) => subPrev.filter((s) => !subsForThisTopic.has(s)));
+          return prev.filter((t) => t !== topicName);
+        }
+        return prev;
+      } else {
+        return [...prev, topicName];
       }
-    } else {
-      setSelectedTopics([...selectedTopics, topicName]);
-    }
+    });
   };
 
   const toggleSubtopic = (sub: string) => {
