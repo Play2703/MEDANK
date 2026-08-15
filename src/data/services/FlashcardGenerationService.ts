@@ -133,7 +133,21 @@ export class FlashcardGenerationService {
       }
 
       const data = await response.json();
-      return data.cards || [];
+      const batchCards = data.cards || [];
+      const batchValidationItems = data.localValidation?.items || [];
+
+      // Marcar cada card do lote com needsReview baseado no match intra-lote
+      const cardsWithReviewFlag = batchCards.map((rc: any) => {
+        const matchedValidation = batchValidationItems.find(
+          (v: any) => v.itemType === 'card' && batchCards.indexOf(rc) === v.index
+        );
+        return {
+          ...rc,
+          __needsReview: matchedValidation?.status === 'low_anchoring',
+        };
+      });
+
+      return cardsWithReviewFlag;
     });
 
     for (const bCards of batchResults) {
@@ -180,7 +194,18 @@ export class FlashcardGenerationService {
 
         if (repResponse.ok) {
           const repData = await repResponse.json();
-          const validReplacements = (repData.cards || []).filter(isValidGeneratedCard);
+          const repCards = repData.cards || [];
+          const repValidationItems = repData.localValidation?.items || [];
+          const repWithReviewFlag = repCards.map((rc: any) => {
+            const matchedValidation = repValidationItems.find(
+              (v: any) => v.itemType === 'card' && repCards.indexOf(rc) === v.index
+            );
+            return {
+              ...rc,
+              __needsReview: matchedValidation?.status === 'low_anchoring',
+            };
+          });
+          const validReplacements = repWithReviewFlag.filter(isValidGeneratedCard);
           finalCards = [...validRawCards, ...validReplacements].slice(0, totalQuantity);
           console.debug(
             `[FlashcardGenerationService] Replacement call added ${validReplacements.length} valid cards.`
@@ -210,6 +235,7 @@ export class FlashcardGenerationService {
       tags: rc.tags && rc.tags.length ? rc.tags : [options.subject || 'Medicina'],
       difficulty: rc.difficulty || 'Médio',
       highYield: Boolean(rc.highYield),
+      needsReview: Boolean(rc.__needsReview),
       mnemonic: rc.mnemonic || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

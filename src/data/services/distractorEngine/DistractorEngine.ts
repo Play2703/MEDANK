@@ -4,11 +4,12 @@ import { CONFUSION_SETS, ConfusionSet } from './confusionSets';
 import { cosineSimilarity } from '../cosineSimilarity';
 import { localEmbeddingClient } from '../embeddings/LocalEmbeddingClient';
 import { entityEmbeddingIndexer } from './EntityEmbeddingIndexer';
+import { apiUrl } from '../../../lib/apiBaseUrl';
 
 export interface DistractorCandidate {
   text: string;
   entityType?: MedicalEntityType;
-  source: 'grafo' | 'banco_estatico' | 'semantico';
+  source: 'grafo' | 'banco_estatico' | 'semantico' | 'decs';
   rationale?: string;
 }
 
@@ -255,9 +256,40 @@ export class DistractorEngine {
   }
 
   /**
-   * Combina as três fontes (Grafo relacional de conhecimento, Confusion Sets estáticos e Busca Semântica),
+   * Fonte 4 (DeCS / CID-10): busca termos irmãos da mesma categoria DeCS/CID-10 no servidor SQLite
+   */
+  async getDecsCandidates(
+    correctAnswerText: string,
+    entityType?: MedicalEntityType,
+    limit: number = 8
+  ): Promise<DistractorCandidate[]> {
+    if (!correctAnswerText) return [];
+    try {
+      const res = await fetch(
+        apiUrl(`/api/decs-siblings?term=${encodeURIComponent(correctAnswerText)}&limit=${limit}`)
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      const siblings: string[] = data.siblings || [];
+      const normCorrect = normalizeStr(correctAnswerText);
+      return siblings
+        .filter((s) => normalizeStr(s) !== normCorrect)
+        .map((s) => ({
+          text: s,
+          entityType,
+          source: 'decs' as const,
+          rationale: 'Mesma categoria DeCS (classe farmacológica/diagnóstica)',
+        }));
+    } catch (err) {
+      console.warn('[DistractorEngine] DeCS candidate lookup failed:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Combina as quatro fontes (Grafo relacional de conhecimento, Confusion Sets estáticos, DeCS/CID-10 e Busca Semântica),
    * deduplica (case-insensitive por `text`), prioriza na ordem:
-   * grafo > banco_estatico > semantico
+   * grafo > banco_estatico > decs > semantico
    * e limita ao número solicitado (default 8).
    *
    * Suporta consultas baseadas em topicCanonicalKeys (múltiplas chaves canônicas de contexto)
@@ -318,6 +350,22 @@ export class DistractorEngine {
       if (normCorrect && normText === normCorrect) continue;
       if (!resultMap.has(normText)) {
         resultMap.set(normText, item);
+      }
+    }
+
+    // 2.5. Complementa com DeCS (categoria oficial) se ainda houver espaço
+    if (resultMap.size < limit && correctAnswerText) {
+      try {
+        const decsCandidates = await this.getDecsCandidates(correctAnswerText, entityType, limit);
+        for (const item of decsCandidates) {
+          const normText = normalizeStr(item.text);
+          if (normCorrect && normText === normCorrect) continue;
+          if (!resultMap.has(normText)) {
+            resultMap.set(normText, item);
+          }
+        }
+      } catch (err) {
+        console.warn('[DistractorEngine] DeCS lookup failed:', err);
       }
     }
 

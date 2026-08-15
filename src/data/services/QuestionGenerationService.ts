@@ -275,7 +275,17 @@ async function replaceInvalidQuestionsDeficit(
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.questions)) {
-          let replacementValid = data.questions.filter(isValidGeneratedQuestion);
+          const repValidationItems = data.localValidation?.items || [];
+          const repWithReview = data.questions.map((q: any) => {
+            const matchedValidation = repValidationItems.find(
+              (v: any) => v.itemType === 'question' && data.questions.indexOf(q) === v.index
+            );
+            return {
+              ...q,
+              __needsReview: matchedValidation?.status === 'low_anchoring',
+            };
+          });
+          let replacementValid = repWithReview.filter(isValidGeneratedQuestion);
           if (replacementValid.length > 0) {
             replacementValid = await processRawQuestionsWithSimilarityCheck(
               replacementValid,
@@ -652,7 +662,16 @@ export class QuestionGenerationService {
         throw new Error(data.error || 'A IA não retornou questões válidas.');
       }
 
-      let batchRawQuestions: any[] = data.questions;
+      const batchValidationItems = data.localValidation?.items || [];
+      let batchRawQuestions: any[] = data.questions.map((q: any) => {
+        const matchedValidation = batchValidationItems.find(
+          (v: any) => v.itemType === 'question' && data.questions.indexOf(q) === v.index
+        );
+        return {
+          ...q,
+          __needsReview: matchedValidation?.status === 'low_anchoring',
+        };
+      });
 
       const calcOverlap = (rawList: any[]) => {
         let maxLen = 0;
@@ -691,7 +710,16 @@ export class QuestionGenerationService {
                 console.warn(
                   `[QuestionGenerationService] Auto-retry successful: overlap reduced from ${initialOverlap.maxLen} to ${retryOverlap.maxLen} words.`
                 );
-                batchRawQuestions = retryData.questions;
+                const retryValidationItems = retryData.localValidation?.items || [];
+                batchRawQuestions = retryData.questions.map((q: any) => {
+                  const matchedValidation = retryValidationItems.find(
+                    (v: any) => v.itemType === 'question' && retryData.questions.indexOf(q) === v.index
+                  );
+                  return {
+                    ...q,
+                    __needsReview: matchedValidation?.status === 'low_anchoring',
+                  };
+                });
               }
             }
           }
@@ -815,6 +843,7 @@ export class QuestionGenerationService {
           difficulty: (q.difficulty || config.difficulty) as any,
           questionType: (q.questionType || config.questionType) as any,
           originSource: originSourceLabel,
+          needsReview: Boolean(q.__needsReview),
           isAnswered: false,
           createdAt: now,
         };
@@ -1046,7 +1075,16 @@ export class QuestionGenerationService {
           throw new Error(`A IA não retornou questões para o tópico "${singleTopic}".`);
         }
 
-        let rawQuestions: any[] = data.questions;
+        const batchValidationItems = data.localValidation?.items || [];
+        let rawQuestions: any[] = data.questions.map((q: any) => {
+          const matchedValidation = batchValidationItems.find(
+            (v: any) => v.itemType === 'question' && data.questions.indexOf(q) === v.index
+          );
+          return {
+            ...q,
+            __needsReview: matchedValidation?.status === 'low_anchoring',
+          };
+        });
 
         const calcTopicOverlap = (rawList: any[]) => {
           let maxLen = 0;
@@ -1085,7 +1123,16 @@ export class QuestionGenerationService {
                   console.warn(
                     `[QuestionGenerationService] Auto-retry successful for topic "${singleTopic}": overlap reduced from ${initialOverlap.maxLen} to ${retryOverlap.maxLen} words.`
                   );
-                  rawQuestions = retryData.questions;
+                  const retryValidationItems = retryData.localValidation?.items || [];
+                  rawQuestions = retryData.questions.map((q: any) => {
+                    const matchedValidation = retryValidationItems.find(
+                      (v: any) => v.itemType === 'question' && retryData.questions.indexOf(q) === v.index
+                    );
+                    return {
+                      ...q,
+                      __needsReview: matchedValidation?.status === 'low_anchoring',
+                    };
+                  });
                   initialOverlap = retryOverlap;
                 }
               }
@@ -1201,6 +1248,7 @@ export class QuestionGenerationService {
           difficulty: (q.difficulty || config.difficulty) as any,
           questionType: (q.questionType || config.questionType) as any,
           originSource: originSourceLabel,
+          needsReview: Boolean(q.__needsReview),
           isAnswered: false,
           createdAt: now,
         });

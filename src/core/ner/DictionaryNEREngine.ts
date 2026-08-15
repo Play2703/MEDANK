@@ -619,6 +619,52 @@ export class DictionaryNEREngine {
   public getGraphNode(canonicalCode: string): any | null {
     return getGraphNodeByCode(canonicalCode);
   }
+
+  public getSiblingsByCategory(term: string, limit: number = 8): string[] {
+    return getSiblingsByCategoryFromDb(term, limit);
+  }
+}
+
+export function getSiblingsByCategoryFromDb(term: string, limit: number = 8): string[] {
+  if (!term || typeof term !== 'string') return [];
+  const norm = normalizeText(term);
+  if (!norm) return [];
+
+  try {
+    const db = getTerminologyDb();
+    if (!db) return [];
+
+    // 1. Achar a categoria e canonical_term do termo buscado
+    const row = db
+      .prepare<[string], { category: string | null; canonical_term: string | null }>(
+        'SELECT category, canonical_term FROM terms WHERE normalized_term = ? LIMIT 1'
+      )
+      .get(norm);
+
+    if (!row || !row.category) return [];
+
+    const targetCategory = row.category;
+    const targetCanonical = row.canonical_term || norm;
+
+    // 2. Buscar outros termos da MESMA categoria, excluindo o próprio termo
+    const rows = db
+      .prepare<[string, string, string, number], { sibling: string }>(
+        `SELECT DISTINCT COALESCE(canonical_term, term) AS sibling 
+         FROM terms 
+         WHERE category = ? 
+           AND normalized_term != ? 
+           AND COALESCE(canonical_term, '') != ?
+         LIMIT ?`
+      )
+      .all(targetCategory, norm, targetCanonical, limit);
+
+    return rows
+      .map((r) => r.sibling)
+      .filter((s) => Boolean(s) && normalizeText(s) !== norm && normalizeText(s) !== normalizeText(targetCanonical));
+  } catch (err) {
+    console.warn('[DictionaryNEREngine] Erro em getSiblingsByCategory:', err);
+    return [];
+  }
 }
 
 export const dictionaryNEREngine = new DictionaryNEREngine();

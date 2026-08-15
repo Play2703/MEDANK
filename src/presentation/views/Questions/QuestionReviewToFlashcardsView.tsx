@@ -354,24 +354,35 @@ export const QuestionReviewToFlashcardsView: React.FC<QuestionReviewToFlashcards
                         Questão {index + 1}
                       </span>
 
-                      {/* Badge Acerto / Erro */}
-                      {isAnswered ? (
-                        isCorrect ? (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                            <span>Acertou</span>
+                      {/* Badge Acerto / Erro e NeedsReview */}
+                      <div className="flex items-center gap-1.5">
+                        {question.needsReview && (
+                          <span
+                            className="badge-review text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1"
+                            title="O dicionário médico local não reconheceu termos suficientes nesta questão — vale conferir a precisão antes de estudar por ela."
+                          >
+                            ⚠️ Conferir
                           </span>
+                        )}
+
+                        {isAnswered ? (
+                          isCorrect ? (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              <span>Acertou</span>
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold flex items-center gap-1">
+                              <XCircle className="w-3 h-3 text-rose-400" />
+                              <span>Errou</span>
+                            </span>
+                          )
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold flex items-center gap-1">
-                            <XCircle className="w-3 h-3 text-rose-400" />
-                            <span>Errou</span>
+                          <span className="px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400 text-[10px] font-medium">
+                            Não respondida
                           </span>
-                        )
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400 text-[10px] font-medium">
-                          Não respondida
-                        </span>
-                      )}
+                        )}
+                      </div>
                     </div>
 
                     <p className="text-xs text-slate-200 leading-relaxed opacity-90 line-clamp-2">

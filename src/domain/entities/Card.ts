@@ -28,6 +28,7 @@ export interface FlashCard {
   topic?: string;         // Tópico
   difficulty?: CardDifficulty; // Grau de dificuldade ('Fácil' | 'Médio' | 'Difícil')
   highYield?: boolean;    // High-yield tag para provas de residência
+  needsReview?: boolean;  // true quando o dicionário local não reconheceu termos médicos suficientes (baixa ancoragem)
   hint?: string;
   mnemonic?: string;
   generateReversed?: boolean; // Se verdadeiro no modo básico, cria também o card invertido

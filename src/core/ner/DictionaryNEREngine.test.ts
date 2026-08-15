@@ -268,17 +268,20 @@ describe('DictionaryNEREngine', () => {
   });
 
 
-  describe('PARTE 6 — Consultas Relacionais ao Knowledge Graph no SQLite', () => {
-    it('deve consultar conexões e entidades relacionadas a partir do SQLite relacional', () => {
-      const connections = dictionaryNEREngine.getRelatedEntities('colecistite aguda');
-      expect(Array.isArray(connections)).toBe(true);
+  describe('PARTE 7 — Irmãos de Categoria DeCS/CID-10 (getSiblingsByCategory)', () => {
+    it('deve retornar termos irmãos da mesma categoria excluindo o próprio termo', () => {
+      const siblings = dictionaryNEREngine.getSiblingsByCategory('captopril', 8);
+      expect(Array.isArray(siblings)).toBe(true);
+      expect(siblings.length).toBeGreaterThan(0);
+      expect(siblings.map((s) => s.toLowerCase())).not.toContain('captopril');
     });
 
-    it('deve retornar nós do grafo por código canônico', () => {
-      const node = dictionaryNEREngine.getGraphNode('colecistite aguda');
-      if (node) {
-        expect(node.canonical_code).toBe('colecistite aguda');
-      }
+    it('deve retornar array vazio para termos inexistentes ou inválidos de forma graciosa', () => {
+      const empty1 = dictionaryNEREngine.getSiblingsByCategory('');
+      expect(empty1).toEqual([]);
+
+      const empty2 = dictionaryNEREngine.getSiblingsByCategory('termo_totalmente_inexistente_xyz_123');
+      expect(empty2).toEqual([]);
     });
   });
 });

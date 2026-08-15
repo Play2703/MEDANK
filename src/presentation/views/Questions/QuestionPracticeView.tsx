@@ -150,9 +150,19 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
       <M3Card variant="outlined" className="p-6 space-y-6 border-indigo-500/20">
         {/* Question Origin Tag */}
         <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-3">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-            {currentQuestion.originSource}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              {currentQuestion.originSource}
+            </span>
+            {currentQuestion.needsReview && (
+              <span
+                className="badge-review text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1"
+                title="O dicionário médico local não reconheceu termos suficientes nesta questão — vale conferir a precisão antes de estudar por ela."
+              >
+                ⚠️ Conferir
+              </span>
+            )}
+          </div>
           <span className="text-xs font-medium opacity-60">
             Nível: {currentQuestion.difficulty.toUpperCase()}
           </span>

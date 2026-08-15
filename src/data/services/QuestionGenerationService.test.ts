@@ -680,6 +680,80 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
       expect.stringContaining('[QuestionGenerationService] 2 tópico(s) duplicado(s) removido(s)')
     );
   });
+
+  it('deve repassar needsReview: true para questões com status "low_anchoring" no localValidation', async () => {
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request) => {
+      if (url.toString().includes('/api/generate-questions')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            questions: [
+              {
+                id: 'q-anchored',
+                statement: 'Paciente com dispneia e estase jugular...',
+                options: [
+                  { id: 'opt-a', letter: 'A', text: 'Insuficiência Cardíaca', isCorrect: true },
+                  { id: 'opt-b', letter: 'B', text: 'Pneumonia', isCorrect: false },
+                  { id: 'opt-c', letter: 'C', text: 'Asma', isCorrect: false },
+                  { id: 'opt-d', letter: 'D', text: 'DPOC', isCorrect: false },
+                ],
+                correctOptionLetter: 'A',
+                commentary: { correta: 'Comentário clínico' },
+                specialty: 'Cardiologia',
+                topic: 'Insuficiência Cardíaca',
+              },
+              {
+                id: 'q-low-anchoring',
+                statement: 'Questão genérica sem termos médicos identificados...',
+                options: [
+                  { id: 'opt-a', letter: 'A', text: 'Alternativa 1', isCorrect: true },
+                  { id: 'opt-b', letter: 'B', text: 'Alternativa 2', isCorrect: false },
+                  { id: 'opt-c', letter: 'C', text: 'Alternativa 3', isCorrect: false },
+                  { id: 'opt-d', letter: 'D', text: 'Alternativa 4', isCorrect: false },
+                ],
+                correctOptionLetter: 'A',
+                commentary: { correta: 'Comentário genérico' },
+                specialty: 'Cardiologia',
+                topic: 'Insuficiência Cardíaca',
+              },
+            ],
+            localValidation: {
+              items: [
+                { index: 0, itemType: 'question', status: 'well_anchored', anchoringConfidence: 0.9 },
+                { index: 1, itemType: 'question', status: 'low_anchoring', anchoringConfidence: 0.2 },
+              ],
+            },
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    const request: QuestionGenerationRequest = {
+      id: 'req-test-needs-review',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Cardiologia',
+        topics: ['Insuficiência Cardíaca'],
+        quantity: 2,
+        distributionMode: 'interdisciplinar',
+        difficulty: 'media',
+        questionType: 'caso_clinico',
+        includeCommentary: true,
+        showReferences: true,
+        autoGenerateFlashcards: false,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await service.generateQuestions(request, true);
+
+    expect(result.questionSet).toBeDefined();
+    expect(result.questionSet?.questions).toHaveLength(2);
+    expect(result.questionSet?.questions[0].needsReview).toBe(false);
+    expect(result.questionSet?.questions[1].needsReview).toBe(true);
+  });
 });
 
 

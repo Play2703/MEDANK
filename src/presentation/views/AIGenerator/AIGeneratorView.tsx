@@ -631,6 +631,15 @@ export const AIGeneratorView: React.FC<AIGeneratorViewProps> = ({ onSuccessNavig
                         </span>
                       )}
 
+                      {card.needsReview && (
+                        <span
+                          className="badge-review text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1"
+                          title="O dicionário médico local não reconheceu termos suficientes neste card — vale conferir a precisão antes de estudar por ele."
+                        >
+                          ⚠️ Conferir
+                        </span>
+                      )}
+
                       <span className="text-[10px] opacity-70 border px-1.5 py-0.5 rounded">
                         {card.difficulty}
                       </span>

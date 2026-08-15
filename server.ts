@@ -18,6 +18,7 @@ import { professorEngine } from "./src/core/medcore_kernel/engines/ProfessorEngi
 import { localEmbeddingClient } from "./src/data/services/embeddings/LocalEmbeddingClient";
 import { LOCAL_EMBEDDING_CONFIG } from "./src/data/services/embeddings/localEmbeddingConfig";
 import { hybridNEREngine } from "./src/core/ner/HybridNEREngine";
+import { dictionaryNEREngine } from "./src/core/ner/DictionaryNEREngine";
 
 let aiClient: GoogleGenAI | null = null;
 
@@ -245,6 +246,22 @@ async function startServer() {
         error: "Falha ao executar extração de entidades e relações médicas (NER).",
         details: error.message || String(error),
       });
+    }
+  });
+
+  // DeCS/CID-10 Category Siblings Endpoint (Fonte 4 para DistractorEngine)
+  app.get("/api/decs-siblings", async (req, res) => {
+    try {
+      const term = String(req.query.term || "").trim();
+      const limit = Math.min(Number(req.query.limit) || 8, 20);
+      if (!term) {
+        return res.json({ success: true, siblings: [] });
+      }
+      const siblings = dictionaryNEREngine.getSiblingsByCategory(term, limit);
+      return res.json({ success: true, siblings });
+    } catch (error: any) {
+      console.warn("[decs-siblings] Erro:", error.message);
+      return res.json({ success: true, siblings: [] }); // falha graciosa, nunca 500 aqui
     }
   });
 

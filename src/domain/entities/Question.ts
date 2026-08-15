@@ -166,6 +166,7 @@ export interface Question {
   difficulty: QuestionDifficulty;
   questionType: QuestionType;
   originSource?: string;             // Ex: 'Banca ENARE' ou 'Prof. Dr. Silva'
+  needsReview?: boolean;             // true quando o dicionário local não reconheceu termos médicos suficientes (baixa ancoragem)
   userAnswerId?: string;
   isAnswered: boolean;
   isCorrect?: boolean;

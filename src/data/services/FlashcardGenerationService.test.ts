@@ -283,4 +283,55 @@ describe('FlashcardGenerationService - Segmentação e Validação de Nível', (
     expect(cards[1].back.length).toBeLessThanOrEqual(800);
     expect(cards[1].back.endsWith('.') || cards[1].back.endsWith('…')).toBe(true);
   });
+
+  it('deve marcar needsReview: true apenas para cards com status "low_anchoring" no localValidation', async () => {
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request) => {
+      if (url.toString().includes('/api/generate-cards')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            cards: [
+              {
+                type: 'basic',
+                front: 'Card Bem Ancorado',
+                back: 'Betabloqueadores reduzem o consumo de oxigênio miocárdico.',
+                tags: ['Cardiologia'],
+                difficulty: 'Fácil',
+              },
+              {
+                type: 'basic',
+                front: 'Card Mal Ancorado',
+                back: 'Texto genérico sem termos médicos reconhecidos pelo NER.',
+                tags: ['Geral'],
+                difficulty: 'Fácil',
+              },
+            ],
+            localValidation: {
+              items: [
+                { index: 0, itemType: 'card', status: 'well_anchored', anchoringConfidence: 0.9 },
+                { index: 1, itemType: 'card', status: 'low_anchoring', anchoringConfidence: 0.2 },
+              ],
+            },
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    const options: FlashcardGenerationOptions = {
+      deckId: 'deck-test-1',
+      text: 'Conteúdo de Teste',
+      subject: 'Cardiologia',
+      cardCount: 2,
+      cardType: 'basic',
+      level: 'intermediario',
+    };
+
+    const cards = await service.generateFlashcards(options);
+
+    expect(cards).toHaveLength(2);
+    expect(cards[0].needsReview).toBe(false);
+    expect(cards[1].needsReview).toBe(true);
+  });
 });
