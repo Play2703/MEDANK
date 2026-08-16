@@ -276,36 +276,6 @@ export class QuestionNotifier extends StateNotifier<QuestionState> {
   }
 
   /**
-   * Generates a basic cycle question derived from a clinical question
-   */
-  async generateBasicCycleQuestion(clinicalQuestion: Question): Promise<Question | null> {
-    try {
-      const newQuestion = await this.generationService.generateBasicCycleQuestionFromClinical(clinicalQuestion);
-      if (!newQuestion) return null;
-
-      if (this.state.activeQuestionSet) {
-        const updatedQuestions = [...this.state.activeQuestionSet.questions, newQuestion];
-        const updatedSet: QuestionSet = {
-          ...this.state.activeQuestionSet,
-          questions: updatedQuestions,
-          totalQuestions: updatedQuestions.length,
-          updatedAt: new Date().toISOString(),
-        };
-        await this.repository.saveQuestionSet(updatedSet);
-        this.updateState((prev) => ({
-          ...prev,
-          activeQuestionSet: updatedSet,
-        }));
-      }
-
-      return newQuestion;
-    } catch (err: any) {
-      console.error('[QuestionNotifier] Error generating basic cycle question:', err);
-      throw err;
-    }
-  }
-
-  /**
    * Answer a question in an active set
    */
   async answerQuestion(setId: string, questionId: string, optionId: string): Promise<void> {

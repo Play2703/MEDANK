@@ -58,8 +58,6 @@ export function useQuestionViewModel() {
     // Questions Generation & Interaction Actions
     generateQuestions: (req: QuestionGenerationRequest, forceProceed?: boolean) =>
       notifier.generateQuestions(req, forceProceed),
-    generateBasicCycleQuestion: (clinicalQuestion: Question) =>
-      notifier.generateBasicCycleQuestion(clinicalQuestion),
     answerQuestion: (setId: string, questionId: string, optionId: string) =>
       notifier.answerQuestion(setId, questionId, optionId),
     deleteQuestionSet: (setId: string) => notifier.deleteQuestionSet(setId),

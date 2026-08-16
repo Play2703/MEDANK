@@ -17,7 +17,6 @@ import { isBasicCycleSpecialty } from '../../core/curriculum/basicCycleDisciplin
 import { KnowledgeCategoryMapper } from '../../core/medcore_kernel/ontology/KnowledgeCategoryMapper';
 import { SemanticChunkResult } from './RealSemanticSearchService';
 import { apiUrl } from '../../lib/apiBaseUrl';
-import { basicCycleBridgeService } from './BasicCycleBridgeService';
 import { questionSimilarityEngine, SIMILARITY_THRESHOLD, MAX_REGENERATION_ATTEMPTS } from './QuestionSimilarityEngine';
 import {
   pruneObjectByTokenBudget,
@@ -1567,78 +1566,5 @@ export class QuestionGenerationService {
       shortfall,
     };
   }
-
-  /**
-   * Deriva uma questão inédita de Ciclo Básico (Anatomia, Fisiologia, Bioquímica, Farmacologia)
-   * a partir de uma questão clínica de referência, extraindo conceitos via Grafo e RAG de ciências básicas.
-   */
-  async generateBasicCycleQuestionFromClinical(clinicalQuestion: Question): Promise<Question | null> {
-    if (!clinicalQuestion) return null;
-
-    try {
-      const basicContext = await basicCycleBridgeService.buildBasicCycleContext(clinicalQuestion);
-
-      const res = await fetch(apiUrl('/api/generate-basic-cycle-from-clinical'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clinicalQuestion,
-          contextMaterial: basicContext.contextMaterial,
-          difficulty: clinicalQuestion.difficulty || 'media',
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Erro na API: ${res.status} ${res.statusText}`);
-      }
-
-      const data = await res.json();
-      if (!data.success || !data.question) {
-        throw new Error(data.error || 'Falha ao obter questão de ciclo básico.');
-      }
-
-      const rawQ = data.question;
-      const optionsWithLetters = (rawQ.options || []).map((opt: any, idx: number) => ({
-        id: opt.id || `opt-${idx + 1}-${Math.random().toString(36).substring(2, 6)}`,
-        letter: ['A', 'B', 'C', 'D', 'E'][idx] || String.fromCharCode(65 + idx),
-        text: opt.text || opt.label || '',
-        isCorrect: opt.isCorrect ?? (opt.text === rawQ.correctAnswerText || opt.letter === rawQ.correctOptionId),
-        explanation: opt.explanation,
-      }));
-
-      const correctOpt = optionsWithLetters.find((o: any) => o.isCorrect) || optionsWithLetters[0];
-
-      const newQuestion: Question = {
-        id: `q-basic-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-        setId: clinicalQuestion.setId || `set-basic-${Date.now()}`,
-        statement: rawQ.statement,
-        clinicalContext: rawQ.clinicalContext,
-        options: optionsWithLetters,
-        correctOptionId: correctOpt?.id || '',
-        commentary: rawQ.commentary || rawQ.correctAnswerExplanation || '',
-        references: rawQ.references || ['Ciências Básicas da Saúde'],
-        tags: Array.from(new Set([...(rawQ.tags || []), 'Ciclo Básico', clinicalQuestion.topic].filter(Boolean))),
-        specialty: rawQ.specialty || 'Ciências Básicas',
-        topic: rawQ.topic || clinicalQuestion.topic || 'Conceito Fundamental',
-        subtopic: rawQ.subtopic || 'Mecanismo & Estrutura',
-        difficulty: rawQ.difficulty || 'media',
-        questionType: 'conceitual',
-        originSource: `Ciclo Básico (Derivada de ${clinicalQuestion.originSource || 'Questão Clínica'})`,
-        needsReview: data.localValidation?.status === 'low_anchoring',
-        isAnswered: false,
-        createdAt: new Date().toISOString(),
-      };
-
-      if (basicContext.canonicalKeys.length > 0) {
-        knowledgeGraphService.linkContentToEntities('question', newQuestion.id, basicContext.canonicalKeys).catch((err) => {
-          console.warn('[QuestionGenerationService] Failed linking basic question to graph entities:', err);
-        });
-      }
-
-      return newQuestion;
-    } catch (err) {
-      console.error('[QuestionGenerationService] Error generating basic cycle question:', err);
-      throw err;
-    }
-  }
 }
+

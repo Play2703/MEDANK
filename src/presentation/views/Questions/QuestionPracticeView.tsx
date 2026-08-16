@@ -25,7 +25,6 @@ import {
   Stethoscope,
   AlertTriangle,
   X,
-  Microscope,
 } from 'lucide-react';
 
 interface QuestionPracticeViewProps {
@@ -39,13 +38,11 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
     answerQuestion,
     generationShortfall,
     clearGenerationShortfall,
-    generateBasicCycleQuestion,
   } = useQuestionViewModel();
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [showCommentary, setShowCommentary] = useState<boolean>(true);
   const [showReviewModal, setShowReviewModal] = useState<boolean>(false);
-  const [isGeneratingBasic, setIsGeneratingBasic] = useState<boolean>(false);
 
   if (!activeQuestionSet || activeQuestionSet.questions.length === 0) {
     return (
@@ -66,23 +63,6 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
   const handleSelectOption = async (optionId: string) => {
     if (currentQuestion.isAnswered) return;
     await answerQuestion(activeQuestionSet.id, currentQuestion.id, optionId);
-  };
-
-  const handleGenerateBasicCycle = async () => {
-    if (isGeneratingBasic || !currentQuestion) return;
-    setIsGeneratingBasic(true);
-    try {
-      const newQuestion = await generateBasicCycleQuestion(currentQuestion);
-      if (newQuestion) {
-        // Navega automaticamente para a nova questão de ciclo básico adicionada
-        const newTotal = activeQuestionSet.questions.length + 1;
-        setCurrentIndex(newTotal - 1);
-      }
-    } catch (err: any) {
-      alert(err.message || 'Falha ao gerar questão de ciclo básico.');
-    } finally {
-      setIsGeneratingBasic(false);
-    }
   };
 
   return (
@@ -340,22 +320,6 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
                 </ul>
               </div>
             )}
-
-            {/* Ação de Ciclo Básico (Fase 34 - Basic Cycle Bridge) */}
-            <div className="pt-3 border-t border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white/5 p-3 rounded-xl">
-              <div className="flex items-center gap-2 text-xs text-indigo-200">
-                <Microscope className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span>Aprofunde no mecanismo, anatomia ou fisiologia subjacente a este caso:</span>
-              </div>
-              <M3Button
-                variant="tonal"
-                disabled={isGeneratingBasic}
-                onClick={handleGenerateBasicCycle}
-                icon={isGeneratingBasic ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Microscope className="w-4 h-4" />}
-              >
-                {isGeneratingBasic ? 'Gerando Ciclo Básico...' : 'Gerar Questão de Ciclo Básico'}
-              </M3Button>
-            </div>
           </motion.div>
         )}
       </M3Card>
