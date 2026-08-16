@@ -101,13 +101,19 @@ DIRETRIZ DE TRANSFORMAÇÃO:
 `.trim();
 }
 
+export interface SimilarityRegenStatsTracker {
+  count: number;
+  estimatedTokens: number;
+}
+
 async function processRawQuestionsWithSimilarityCheck(
   rawQuestions: any[],
   specialtyStr: string,
   topicStr: string,
   postPayload: any,
   saturatedTopics: Set<string> = new Set(),
-  contentLimitedTopics: Set<string> = new Set()
+  contentLimitedTopics: Set<string> = new Set(),
+  regenStatsTracker?: SimilarityRegenStatsTracker
 ): Promise<any[]> {
   const BATCH_SIMILARITY_CONCURRENCY = 3;
 
@@ -154,10 +160,22 @@ async function processRawQuestionsWithSimilarityCheck(
               .map((s, i) => `EVITE especificamente a seguinte abordagem/enunciado rejeitado #${i + 1}: "${s}"`)
               .join('\n');
 
+            // TAREFA 1: Podar o contexto usando SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL (4500)
+            const prunedRegenChunks = pruneChunksByTokenBudget(
+              (postPayload.retrievedChunks || []).map((c: any) => ({
+                ...c,
+                content: truncateChunkText(c.content, 600),
+              })),
+              SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL
+            );
+
+            // TAREFA 2: Usar useLightModel: true para chamar LIGHT_AI_MODEL
             const singlePayload = {
               ...postPayload,
               quantity: 1,
               topics: [top],
+              retrievedChunks: prunedRegenChunks,
+              useLightModel: true,
               existingQuestionsSummary: formatCompactAntiDuplicationList(
                 [
                   ...(postPayload.existingQuestionsSummary ? [postPayload.existingQuestionsSummary] : []),
@@ -166,6 +184,12 @@ async function processRawQuestionsWithSimilarityCheck(
                 30
               ),
             };
+
+            // TAREFA 4: Contabilizar regeneração e tokens extras
+            if (regenStatsTracker) {
+              regenStatsTracker.count++;
+              regenStatsTracker.estimatedTokens += estimateTokenCount(singlePayload) + 350;
+            }
 
             const res = await fetch(apiUrl('/api/generate-questions'), {
               method: 'POST',
@@ -220,12 +244,31 @@ async function processRawQuestionsWithSimilarityCheck(
               console.warn(
                 `[QuestionGenerationService] Found ${newChunks.length} additional RAG chunks for saturated topic "${top}". Attempting 1 final expanded-context regeneration...`
               );
+              // TAREFA 1: Podar após concatenação mantendo orçamento de 4500 tokens
+              const combinedChunks = [...existingChunks, ...newChunks];
+              const prunedExpandedChunks = pruneChunksByTokenBudget(
+                combinedChunks.map((c: any) => ({
+                  ...c,
+                  content: truncateChunkText(c.content, 600),
+                })),
+                SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL
+              );
+
+              // TAREFA 2: Usar useLightModel: true
               const expandedPayload = {
                 ...postPayload,
                 quantity: 1,
                 topics: [top],
-                retrievedChunks: [...existingChunks, ...newChunks],
+                retrievedChunks: prunedExpandedChunks,
+                useLightModel: true,
               };
+
+              // TAREFA 4: Contabilizar regeneração e tokens extras
+              if (regenStatsTracker) {
+                regenStatsTracker.count++;
+                regenStatsTracker.estimatedTokens += estimateTokenCount(expandedPayload) + 350;
+              }
+
               const res = await fetch(apiUrl('/api/generate-questions'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -296,7 +339,8 @@ async function replaceInvalidQuestionsDeficit(
   postPayload: any,
   maxReplacementAttempts = 3,
   saturatedTopics: Set<string> = new Set(),
-  contentLimitedTopics: Set<string> = new Set()
+  contentLimitedTopics: Set<string> = new Set(),
+  regenStatsTracker?: SimilarityRegenStatsTracker
 ): Promise<any[]> {
   let currentValid = [...validQuestions];
   let attempt = 0;
@@ -363,7 +407,8 @@ async function replaceInvalidQuestionsDeficit(
               (replacementTopics && replacementTopics[0]) || 'Geral',
               replacementPayload,
               saturatedTopics,
-              contentLimitedTopics
+              contentLimitedTopics,
+              regenStatsTracker
             );
             replacementValid = replacementValid.filter(isValidGeneratedQuestion);
           }
@@ -399,6 +444,10 @@ export interface QuestionGenerationResult {
     requested: number;
     actual: number;
     reason: string;
+  };
+  similarityRegenStats?: {
+    count: number;
+    estimatedTokens: number;
   };
 }
 
@@ -737,6 +786,7 @@ export class QuestionGenerationService {
     const allRawQuestions: any[] = [];
     const saturatedTopics = new Set<string>();
     const contentLimitedTopics = new Set<string>();
+    const regenStatsTracker: SimilarityRegenStatsTracker = { count: 0, estimatedTokens: 0 };
 
     // Retrieve saved professor style analysis if available
     let professorStyleAnalysis: any = undefined;
@@ -897,7 +947,8 @@ export class QuestionGenerationService {
         mainTopic,
         postPayload,
         saturatedTopics,
-        contentLimitedTopics
+        contentLimitedTopics,
+        regenStatsTracker
       );
 
       return batchRawQuestions;
@@ -962,7 +1013,8 @@ export class QuestionGenerationService {
         postPayloadForInterdisciplinary,
         3,
         saturatedTopics,
-        contentLimitedTopics
+        contentLimitedTopics,
+        regenStatsTracker
       );
     }
 
@@ -1069,6 +1121,7 @@ export class QuestionGenerationService {
         matchingSequence: overallMatchingSeq,
       },
       shortfall,
+      similarityRegenStats: regenStatsTracker.count > 0 ? regenStatsTracker : undefined,
     };
   }
 
@@ -1137,6 +1190,7 @@ export class QuestionGenerationService {
     const QUESTION_GEN_CONCURRENCY = 3;
     const saturatedTopics = new Set<string>();
     const contentLimitedTopics = new Set<string>();
+    const regenStatsTracker: SimilarityRegenStatsTracker = { count: 0, estimatedTokens: 0 };
 
     const topicResults = await mapWithConcurrency(topics, QUESTION_GEN_CONCURRENCY, async (singleTopic, topicIndex) => {
       const countForThisTopic = topicAllocation[singleTopic] || 0;
@@ -1409,7 +1463,8 @@ export class QuestionGenerationService {
           singleTopic,
           postPayload,
           saturatedTopics,
-          contentLimitedTopics
+          contentLimitedTopics,
+          regenStatsTracker
         );
 
         let validRawQuestions = rawQuestions.filter(isValidGeneratedQuestion);
@@ -1423,7 +1478,8 @@ export class QuestionGenerationService {
             postPayload,
             3,
             saturatedTopics,
-            contentLimitedTopics
+            contentLimitedTopics,
+            regenStatsTracker
           );
         }
 
@@ -1564,6 +1620,7 @@ export class QuestionGenerationService {
         matchingSequence: overallMatchingSeq,
       },
       shortfall,
+      similarityRegenStats: regenStatsTracker.count > 0 ? regenStatsTracker : undefined,
     };
   }
 }

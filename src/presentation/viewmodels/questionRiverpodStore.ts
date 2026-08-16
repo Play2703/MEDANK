@@ -51,6 +51,11 @@ export interface QuestionState {
     actual: number;
     reason: string;
   } | null;
+  similarityRegenStats: {
+    setId: string;
+    count: number;
+    estimatedTokens: number;
+  } | null;
   error: string | null;
 }
 
@@ -69,6 +74,7 @@ const initialQuestionState: QuestionState = {
   activeProfileForEdit: null,
   lowChunkWarning: null,
   generationShortfall: null,
+  similarityRegenStats: null,
   error: null,
 };
 
@@ -139,6 +145,7 @@ export class QuestionNotifier extends StateNotifier<QuestionState> {
       ...prev,
       activeQuestionSet: set,
       generationShortfall: set && prev.generationShortfall?.setId === set.id ? prev.generationShortfall : null,
+      similarityRegenStats: set && prev.similarityRegenStats?.setId === set.id ? prev.similarityRegenStats : null,
     }));
   }
 
@@ -156,6 +163,10 @@ export class QuestionNotifier extends StateNotifier<QuestionState> {
 
   clearGenerationShortfall(): void {
     this.updateState((prev) => ({ ...prev, generationShortfall: null }));
+  }
+
+  clearSimilarityRegenStats(): void {
+    this.updateState((prev) => ({ ...prev, similarityRegenStats: null }));
   }
 
   /**
@@ -245,6 +256,14 @@ export class QuestionNotifier extends StateNotifier<QuestionState> {
           }
         : null;
 
+      const similarityRegenStats = result.similarityRegenStats
+        ? {
+            setId: savedSet.id,
+            count: result.similarityRegenStats.count,
+            estimatedTokens: result.similarityRegenStats.estimatedTokens,
+          }
+        : null;
+
       await this.loadAllData();
       this.updateState((prev) => ({
         ...prev,
@@ -253,6 +272,7 @@ export class QuestionNotifier extends StateNotifier<QuestionState> {
         isGenerating: false,
         lowChunkWarning: null,
         generationShortfall,
+        similarityRegenStats,
       }));
 
       return savedSet;

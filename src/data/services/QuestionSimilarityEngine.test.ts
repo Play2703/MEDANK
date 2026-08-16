@@ -18,9 +18,9 @@ describe('QuestionSimilarityEngine', () => {
     vi.clearAllMocks();
   });
 
-  it('deve exportar SIMILARITY_THRESHOLD (0.88) e MAX_REGENERATION_ATTEMPTS (2)', () => {
-    expect(SIMILARITY_THRESHOLD).toBe(0.88);
-    expect(MAX_REGENERATION_ATTEMPTS).toBe(2);
+  it('deve exportar SIMILARITY_THRESHOLD (0.92) e MAX_REGENERATION_ATTEMPTS (1)', () => {
+    expect(SIMILARITY_THRESHOLD).toBe(0.92);
+    expect(MAX_REGENERATION_ATTEMPTS).toBe(1);
   });
 
   it('deve obter o embedding através da API /api/embeddings', async () => {

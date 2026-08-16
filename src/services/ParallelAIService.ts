@@ -49,6 +49,7 @@ export interface ParallelResult {
 }
 
 export interface ParallelExecutionOptions {
+  model?: string;
   temperature?: number;
   context?: string;
   maxRetries?: number;
@@ -92,12 +93,20 @@ export class ParallelAIService {
     const maxRetries = opts.maxRetries ?? 3;
     const initialDelayMs = opts.initialDelayMs ?? 2000;
     const fallbackTimeoutMs = opts.fallbackTimeoutMs ?? 35000;
+    const modelOverride = opts.model;
 
     try {
       console.log(`[ParallelAI:${context}] 🚀 Executando Gemini como principal...`);
 
       // ══ 1. GEMINI COMO PRINCIPAL DIRETO ══
-      const geminiResult = await this.callGemini(mainPrompt, temperature, context, maxRetries, initialDelayMs);
+      const geminiResult = await this.callGemini(
+        mainPrompt,
+        temperature,
+        context,
+        maxRetries,
+        initialDelayMs,
+        modelOverride
+      );
 
       if (geminiResult.success && geminiResult.text) {
         let mainData;
@@ -290,11 +299,12 @@ export class ParallelAIService {
     temp: number,
     context = "generic",
     maxRetries = 3,
-    initialDelayMs = 2000
+    initialDelayMs = 2000,
+    modelOverride?: string
   ) {
     try {
       const client = this.getGeminiClient();
-      const model = process.env.PRIMARY_AI_MODEL || "gemini-3.6-flash";
+      const model = modelOverride || process.env.PRIMARY_AI_MODEL || "gemini-3.6-flash";
 
       const r = await retryWithBackoff(
         async () => {

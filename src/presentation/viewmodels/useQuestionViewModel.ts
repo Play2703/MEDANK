@@ -35,6 +35,7 @@ export function useQuestionViewModel() {
     lowChunkWarning: state.lowChunkWarning,
     prefilledConfiguration: state.prefilledConfiguration,
     generationShortfall: state.generationShortfall,
+    similarityRegenStats: state.similarityRegenStats,
     error: state.error,
 
     // Reactive Actions
@@ -47,6 +48,7 @@ export function useQuestionViewModel() {
     setPrefilledConfiguration: (config: any) => notifier.setPrefilledConfiguration(config),
     clearLowChunkWarning: () => notifier.clearLowChunkWarning(),
     clearGenerationShortfall: () => notifier.clearGenerationShortfall(),
+    clearSimilarityRegenStats: () => notifier.clearSimilarityRegenStats(),
     confirmProceedWithLowChunks: () => notifier.confirmProceedWithLowChunks(),
 
     // Professor Profile CRUD Actions

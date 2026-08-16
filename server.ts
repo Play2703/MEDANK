@@ -414,6 +414,8 @@ Gere no máximo ${cardCount} flashcards de altíssimo rendimento (High-Yield) ba
     }
   });
 
+const USE_LIGHT_MODEL_FOR_SIMILARITY_REGENERATION = true;
+
   // AI Medical Exam Question Generation Endpoint (Fase 33 & 33.5 RAG-Anchored High Quality Exam Questions)
   app.post("/api/generate-questions", async (req, res) => {
     try {
@@ -434,6 +436,7 @@ Gere no máximo ${cardCount} flashcards de altíssimo rendimento (High-Yield) ba
         existingQuestionsSummary,
         customContext,
         avoidTopics = [],
+        useLightModel = false,
       } = req.body;
 
       let customContextSection = "";
@@ -639,7 +642,19 @@ COMANDO DE GERAÇÃO:
 Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas na ${originLabel}, seguindo fielmente todas as regras e o material acima.`;
 
 
-      const result = await parallelAIService.generateQuestionsParallel(prompt, undefined, 0.35);
+      const selectedModel = (useLightModel && USE_LIGHT_MODEL_FOR_SIMILARITY_REGENERATION)
+        ? LIGHT_AI_MODEL
+        : (process.env.PRIMARY_AI_MODEL || "gemini-3.6-flash");
+
+      const result = await parallelAIService.generateQuestionsParallel(
+        prompt,
+        undefined,
+        {
+          temperature: 0.35,
+          model: selectedModel,
+          context: useLightModel ? "generate-questions:similarity-regen" : "generate-questions",
+        }
+      );
 
       if (!result.success || !result.mainData) {
         throw new Error(result.error || "Falha na geração paralela de questões.");

@@ -2,8 +2,17 @@ import { db } from '../db/database';
 import { cosineSimilarity } from './cosineSimilarity';
 import { apiUrl } from '../../lib/apiBaseUrl';
 
-const SIMILARITY_THRESHOLD = 0.88;
-const MAX_REGENERATION_ATTEMPTS = 2;
+/**
+ * Configuração de Limiares de Similaridade Semântica e Regeneração de Questões
+ * 
+ * Atualizado em 16/08/2026:
+ * - SIMILARITY_THRESHOLD elevado de 0.88 para 0.92: reduz disparo excessivo de regenerações
+ *   aceitando pequenas variações semânticas legítimas entre questões clínicas correlatas.
+ * - MAX_REGENERATION_ATTEMPTS reduzido de 2 para 1: evita cascata de chamadas de IA,
+ *   otimizando latência e consumo de tokens por sessão de estudo.
+ */
+const SIMILARITY_THRESHOLD = 0.92;
+const MAX_REGENERATION_ATTEMPTS = 1;
 
 async function fetchWithRetry(
   url: string,

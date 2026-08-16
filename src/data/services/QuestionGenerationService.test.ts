@@ -325,7 +325,7 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
 
     // Mock embedding response com alta similaridade
     vi.spyOn(questionSimilarityEngine, 'findMaxSimilarity').mockResolvedValue({
-      maxSimilarity: 0.95, // Excede SIMILARITY_THRESHOLD (0.88)
+      maxSimilarity: 0.95, // Excede SIMILARITY_THRESHOLD (0.92)
       embedding: [0.9, 0.9, 0.9],
     });
 
@@ -753,6 +753,96 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
     expect(result.questionSet?.questions).toHaveLength(2);
     expect(result.questionSet?.questions[0].needsReview).toBe(false);
     expect(result.questionSet?.questions[1].needsReview).toBe(true);
+  });
+
+  it('deve podar chunks para 4500 tokens, enviar useLightModel: true e contabilizar similarityRegenStats na regeneração por similaridade', async () => {
+    const capturedPayloads: any[] = [];
+
+    // Mock embedding response: primeira questão tem alta similaridade (0.96 > 0.92)
+    vi.spyOn(questionSimilarityEngine, 'findMaxSimilarity')
+      .mockResolvedValueOnce({ maxSimilarity: 0.96, embedding: [0.9, 0.9, 0.9] }) // inicial
+      .mockResolvedValueOnce({ maxSimilarity: 0.85, embedding: [0.5, 0.5, 0.5] }); // candidato regenerado (sucesso)
+
+    // Mock RAG retornando chunks longos
+    vi.spyOn(ragEngine, 'retrieveContext').mockResolvedValue([
+      { assetId: 'a1', chunkIndex: 0, content: 'Texto longo '.repeat(100), score: 0.9 },
+      { assetId: 'a2', chunkIndex: 1, content: 'Outro texto longo '.repeat(100), score: 0.8 },
+    ] as any);
+
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('/api/generate-questions')) {
+        const payload = JSON.parse(init?.body as string);
+        capturedPayloads.push(payload);
+
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            questions: [
+              {
+                id: `q-gen-${capturedPayloads.length}`,
+                statement: `Enunciado ${capturedPayloads.length}`,
+                options: [
+                  { id: 'opt-a', letter: 'A', text: 'Opção A', isCorrect: true },
+                  { id: 'opt-b', letter: 'B', text: 'Opção B', isCorrect: false },
+                  { id: 'opt-c', letter: 'C', text: 'Opção C', isCorrect: false },
+                  { id: 'opt-d', letter: 'D', text: 'Opção D', isCorrect: false },
+                ],
+                correctOptionLetter: 'A',
+                commentary: { correta: 'Comentário explicativo' },
+                specialty: 'Infectologia',
+                topic: 'Dengue',
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    const request: QuestionGenerationRequest = {
+      id: 'req-test-similarity-regen-light-model',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Infectologia',
+        topics: ['Dengue'],
+        quantity: 1,
+        distributionMode: 'interdisciplinar',
+        difficulty: 'media',
+        questionType: 'caso_clinico',
+        includeCommentary: true,
+        showReferences: true,
+        autoGenerateFlashcards: false,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await service.generateQuestions(request, true);
+
+    expect(result.questionSet).toBeDefined();
+    expect(result.questionSet?.questions).toHaveLength(1);
+
+    // Deve ter havido pelo menos 2 chamadas à API: 1 original + 1 regeneração por similaridade
+    expect(capturedPayloads.length).toBe(2);
+
+    // 1ª Chamada: Geração original (useLightModel não enviado ou falso)
+    expect(capturedPayloads[0].useLightModel).toBeFalsy();
+
+    // 2ª Chamada: Regeneração por similaridade
+    expect(capturedPayloads[1].useLightModel).toBe(true);
+    expect(capturedPayloads[1].quantity).toBe(1);
+    expect(capturedPayloads[1].topics).toEqual(['Dengue']);
+
+    // Chunks da regeneração devem estar truncados (max 600 chars por chunk)
+    for (const chunk of capturedPayloads[1].retrievedChunks) {
+      expect(chunk.content.length).toBeLessThanOrEqual(601);
+    }
+
+    // Deve ter registrado estatísticas de regeneração
+    expect(result.similarityRegenStats).toBeDefined();
+    expect(result.similarityRegenStats?.count).toBe(1);
+    expect(result.similarityRegenStats?.estimatedTokens).toBeGreaterThan(0);
   });
 });
 

@@ -38,6 +38,8 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
     answerQuestion,
     generationShortfall,
     clearGenerationShortfall,
+    similarityRegenStats,
+    clearSimilarityRegenStats,
   } = useQuestionViewModel();
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -124,6 +126,26 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
           <button
             onClick={clearGenerationShortfall}
             className="p-1 rounded-lg hover:bg-amber-500/20 text-amber-300 transition-colors shrink-0"
+            title="Fechar aviso"
+            aria-label="Fechar aviso"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Similarity Regeneration Banner */}
+      {similarityRegenStats && activeQuestionSet && similarityRegenStats.setId === activeQuestionSet.id && similarityRegenStats.count > 0 && (
+        <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-200 text-xs flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span>
+              ⚠️ {similarityRegenStats.count} regeneração{similarityRegenStats.count > 1 ? 'ões' : ''} por similaridade (modelo leve) consumiu ~{similarityRegenStats.estimatedTokens} tokens extras.
+            </span>
+          </div>
+          <button
+            onClick={clearSimilarityRegenStats}
+            className="p-1 rounded-lg hover:bg-indigo-500/20 text-indigo-300 transition-colors shrink-0"
             title="Fechar aviso"
             aria-label="Fechar aviso"
           >
