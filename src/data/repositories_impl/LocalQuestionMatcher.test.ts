@@ -127,4 +127,55 @@ describe('Local Question Matcher & Copyright Rules', () => {
     expect(promptBlock).toContain('Mantenha o CONCEITO CLÍNICO central');
     expect(promptBlock).toContain('Estenose aórtica');
   });
+
+  it('5. Ajuste 3: Questão reusada diretamente NUNCA deve ser selecionada como base de adaptação no mesmo lote', () => {
+    const question1: Question = { ...mockQuestionPropria, id: 'q-1', statement: 'Enunciado da Questão 1' };
+    const question2: Question = { ...mockQuestionPropria, id: 'q-2', statement: 'Enunciado da Questão 2' };
+    const question3: Question = { ...mockQuestionTerceiroBanca, id: 'q-3', statement: 'Enunciado da Questão 3 Terceiro' };
+
+    const existingLocalQuestions = [question1, question2, question3];
+    const eligibleForDirectReuse = existingLocalQuestions.filter((q) => !isThirdPartyQuestion(q));
+
+    // Simula reuso direto de 1 questão (pegando question1)
+    const reuseCount = 1;
+    const directlyReusedIds = new Set(eligibleForDirectReuse.slice(0, reuseCount).map((q) => q.id));
+
+    expect(directlyReusedIds.has('q-1')).toBe(true);
+
+    // Candidatas para adaptação devem excluir q-1
+    const adaptationCandidates = existingLocalQuestions.filter((q) => !directlyReusedIds.has(q.id));
+
+    expect(adaptationCandidates.some((q) => q.id === 'q-1')).toBe(false);
+    expect(adaptationCandidates.map((q) => q.id)).toEqual(['q-2', 'q-3']);
+
+    // O adaptationPromptBlock do lote usará uma questão que NÃO foi reusada diretamente
+    const adaptationBlock = formatAdaptationPromptBlock(adaptationCandidates[0]);
+    expect(adaptationBlock).toContain('Enunciado da Questão 2');
+    expect(adaptationBlock).not.toContain('Enunciado da Questão 1');
+  });
+
+  it('6. Ajuste 2: Bases de adaptação devem rotacionar entre lotes diferentes quando há múltiplas candidatas', () => {
+    const qA: Question = { ...mockQuestionPropria, id: 'q-A', statement: 'Enunciado Caso Clínico Alfa' };
+    const qB: Question = { ...mockQuestionPropria, id: 'q-B', statement: 'Enunciado Caso Clínico Beta' };
+    const qC: Question = { ...mockQuestionPropria, id: 'q-C', statement: 'Enunciado Caso Clínico Gama' };
+
+    const candidates = [qA, qB, qC];
+
+    // Simula 3 lotes gerados com rotação (batchIdx % candidates.length)
+    const batch0Base = candidates[0 % candidates.length];
+    const batch1Base = candidates[1 % candidates.length];
+    const batch2Base = candidates[2 % candidates.length];
+
+    expect(batch0Base.id).toBe('q-A');
+    expect(batch1Base.id).toBe('q-B');
+    expect(batch2Base.id).toBe('q-C');
+
+    const promptBatch0 = formatAdaptationPromptBlock(batch0Base);
+    const promptBatch1 = formatAdaptationPromptBlock(batch1Base);
+    const promptBatch2 = formatAdaptationPromptBlock(batch2Base);
+
+    expect(promptBatch0).toContain('Enunciado Caso Clínico Alfa');
+    expect(promptBatch1).toContain('Enunciado Caso Clínico Beta');
+    expect(promptBatch2).toContain('Enunciado Caso Clínico Gama');
+  });
 });

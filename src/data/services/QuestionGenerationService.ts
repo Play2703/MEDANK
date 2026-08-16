@@ -575,7 +575,7 @@ export class QuestionGenerationService {
     }
 
     const directlyReusedQuestions: Question[] = [];
-    let adaptationPromptBlock = '';
+    const directlyReusedIds = new Set<string>();
 
     if (config.prioritizeLocalQuestions && existingLocalQuestions.length > 0) {
       // Regra de Direitos Autorais: questões de terceiros NUNCA são reusadas verbatim
@@ -584,6 +584,7 @@ export class QuestionGenerationService {
 
       for (let i = 0; i < reuseCount; i++) {
         const eq = eligibleForDirectReuse[i];
+        directlyReusedIds.add(eq.id);
         directlyReusedQuestions.push({
           ...eq,
           id: `q-local-reused-${Date.now()}-${i + 1}-${Math.random().toString(36).substring(2, 6)}`,
@@ -597,10 +598,8 @@ export class QuestionGenerationService {
       }
     }
 
-    // Se houver questões existentes na base (inclusive de terceiros), prepara o bloco de adaptação
-    if (existingLocalQuestions.length > 0) {
-      adaptationPromptBlock = formatAdaptationPromptBlock(existingLocalQuestions[0]);
-    }
+    // AJUSTE 3: Exclui da lista de candidatas para adaptação qualquer questão que já foi reusada diretamente
+    const adaptationCandidates = existingLocalQuestions.filter((q) => !directlyReusedIds.has(q.id));
 
     const aiQuantityToGenerate = quantity - directlyReusedQuestions.length;
 
@@ -733,6 +732,12 @@ export class QuestionGenerationService {
         `modo: ${batchIdx === 0 ? 'completo' : 'truncado 600ch/4500tok'}).`
       );
 
+      let adaptationPromptBlockForThisBatch = '';
+      if (adaptationCandidates.length > 0) {
+        const candidateIdx = batchIdx % adaptationCandidates.length;
+        adaptationPromptBlockForThisBatch = formatAdaptationPromptBlock(adaptationCandidates[candidateIdx]);
+      }
+
       const rawPayload = {
         retrievedChunks: chunksForThisBatch,
         specialty: specialtyStr,
@@ -746,7 +751,7 @@ export class QuestionGenerationService {
         examDNA,
         mode: request.mode || 'geral',
         distractorHints,
-        customContext: [config.customContext, adaptationPromptBlock].filter(Boolean).join('\n\n'),
+        customContext: [config.customContext, adaptationPromptBlockForThisBatch].filter(Boolean).join('\n\n'),
         existingQuestionsSummary:
           batchIdx > 0 && allRawQuestions.length > 0
             ? formatCompactAntiDuplicationList(allRawQuestions.map((q) => q.statement), 30)
@@ -1086,7 +1091,7 @@ export class QuestionGenerationService {
     const saturatedTopics = new Set<string>();
     const contentLimitedTopics = new Set<string>();
 
-    const topicResults = await mapWithConcurrency(topics, QUESTION_GEN_CONCURRENCY, async (singleTopic) => {
+    const topicResults = await mapWithConcurrency(topics, QUESTION_GEN_CONCURRENCY, async (singleTopic, topicIndex) => {
       const countForThisTopic = topicAllocation[singleTopic] || 0;
       if (countForThisTopic <= 0) {
         return {
@@ -1124,7 +1129,7 @@ export class QuestionGenerationService {
         }
 
         const directlyReusedForTopic: any[] = [];
-        let topicAdaptationBlock = '';
+        const directlyReusedTopicIds = new Set<string>();
 
         if (config.prioritizeLocalQuestions && existingTopicQuestions.length > 0) {
           const eligible = existingTopicQuestions.filter((q) => !isThirdPartyQuestion(q));
@@ -1132,6 +1137,7 @@ export class QuestionGenerationService {
 
           for (let i = 0; i < reuseCount; i++) {
             const eq = eligible[i];
+            directlyReusedTopicIds.add(eq.id);
             directlyReusedForTopic.push({
               statement: eq.statement,
               clinicalContext: eq.clinicalContext,
@@ -1151,8 +1157,14 @@ export class QuestionGenerationService {
           }
         }
 
-        if (existingTopicQuestions.length > 0) {
-          topicAdaptationBlock = formatAdaptationPromptBlock(existingTopicQuestions[0]);
+        // AJUSTE 3: Exclui qualquer questão cujo id já esteja em directlyReusedForTopic
+        const adaptationCandidatesForTopic = existingTopicQuestions.filter((q) => !directlyReusedTopicIds.has(q.id));
+
+        // AJUSTE 2: Distribuir questão-base diferente rotacionando pelo topicIndex
+        let topicAdaptationBlock = '';
+        if (adaptationCandidatesForTopic.length > 0) {
+          const candidateIdx = topicIndex % adaptationCandidatesForTopic.length;
+          topicAdaptationBlock = formatAdaptationPromptBlock(adaptationCandidatesForTopic[candidateIdx]);
         }
 
         const aiCountForThisTopic = countForThisTopic - directlyReusedForTopic.length;

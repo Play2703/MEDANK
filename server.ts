@@ -311,13 +311,10 @@ async function startServer() {
 
       const prompt = `Você é um professor titular de Medicina especialista em Anki, Repetição Espaçada (SM-2/FSRS) e Active Recall para provas de Residência Médica (REVALIDA, ENARE, USP, UNIFESP, etc).
 
-Gere no máximo ${cardCount} flashcards de altíssimo rendimento (High-Yield) baseados no seguinte material médico ancorado por busca semântica:
-
 === MATERIAL MÉDICO / CHUNKS DE ALTA RELEVÂNCIA E ENTIDADES CLÍNICAS ===
 ${contextMaterial}
 === FIM DO MATERIAL ===
-${existingSection}
-${userDirectionSection}
+
 Configurações solicitadas:
 - Assunto Principal: ${subject}
 ${examBoard ? `- Origem / Banca da Prova: ${examBoard}` : ""}
@@ -378,7 +375,10 @@ Retorne a resposta EXCLUSIVAMENTE em formato JSON VÁLIDO (sem texto extra, sem 
     "highYield": true | false,
     "mnemonic": "Mnemônico ou 'pulo do gato' (opcional)"
   }
-]`;
+]
+${userDirectionSection}${existingSection}
+COMANDO DE GERAÇÃO:
+Gere no máximo ${cardCount} flashcards de altíssimo rendimento (High-Yield) baseados em todo o material médico e diretrizes acima.`;
 
       const result = await parallelAIService.generateFlashcardsParallel(prompt, undefined, 0.2);
 
@@ -578,20 +578,17 @@ DIRETRIZ E MATRIZ DE CONTEÚDO OBRIGATÓRIA — TIPO: MISTURAR
 
       const prompt = `Você é um professor titular de Medicina especialista em elaboração de questões de alta qualidade para exames de Residência Médica (REVALIDA, ENARE, USP, UNIFESP, ENAMED).
 
-Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas na ${originLabel}, fundamentadas nos seguintes trechos reais recuperados via RAG:
-
 === MATERIAL MÉDICO E CONHECIMENTO DE REFERÊNCIA (RAG) ===
 ${contextMaterial}
 === FIM DO MATERIAL ===
-${customContextSection}
 ${distractorSection}
-${existingQuestionsSection}
 ${professorStyleSection}
 ${dnaSection}
 Configurações Solicitadas:
 - Especialidade: ${specialty}
 - Assuntos: ${topicStr}
-${avoidTopicsSection}- Nível de Dificuldade: ${difficulty} ("facil", "media", "dificil")
+- Origem / Perfil de Referência: ${originLabel}
+- Nível de Dificuldade: ${difficulty} ("facil", "media", "dificil")
 - TIPO DE QUESTÃO OBRIGATÓRIO: ${questionType.toUpperCase()} ("caso_clinico", "conceitual", "multipla_escolha", "misturar")
 
 ${questionTypeSection}
@@ -621,7 +618,10 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
     "difficulty": "${difficulty}",
     "questionType": "${questionType}"
   }
-]`;
+]
+${avoidTopicsSection}${customContextSection}${existingQuestionsSection}
+COMANDO DE GERAÇÃO:
+Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas na ${originLabel}, seguindo fielmente todas as regras e o material acima.`;
 
 
       const result = await parallelAIService.generateQuestionsParallel(prompt, undefined, 0.35);
