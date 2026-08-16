@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MedAnki</string>
+    <string name="title_activity_main">MedAnki</string>
+    <string name="package_name">com.play2703.medanki</string>
+    <string name="custom_url_scheme">com.play2703.medanki</string>
+</resources>

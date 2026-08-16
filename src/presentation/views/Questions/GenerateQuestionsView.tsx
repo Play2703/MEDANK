@@ -153,6 +153,7 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
   const [includeCommentary, setIncludeCommentary] = useState<boolean>(true);
   const [showReferences, setShowReferences] = useState<boolean>(true);
   const [autoGenerateFlashcards, setAutoGenerateFlashcards] = useState<boolean>(false);
+  const [prioritizeLocalQuestions, setPrioritizeLocalQuestions] = useState<boolean>(false);
 
   // Accordion state for cycles
   const [isBasicCycleOpen, setIsBasicCycleOpen] = useState<boolean>(true);
@@ -345,6 +346,7 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
         includeCommentary,
         showReferences,
         autoGenerateFlashcards,
+        prioritizeLocalQuestions,
         customContext: customContext.trim() || undefined,
       };
 
@@ -1193,6 +1195,16 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
               className="w-4 h-4 rounded accent-indigo-500 mt-0.5 shrink-0"
             />
             <span className="text-xs font-semibold leading-snug">Gerar Flashcards Automaticamente</span>
+          </label>
+
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={prioritizeLocalQuestions}
+              onChange={(e) => setPrioritizeLocalQuestions(e.target.checked)}
+              className="w-4 h-4 rounded accent-indigo-500 mt-0.5 shrink-0"
+            />
+            <span className="text-xs font-semibold leading-snug">Priorizar questões do meu banco (economia máxima)</span>
           </label>
         </div>
       </M3Card>

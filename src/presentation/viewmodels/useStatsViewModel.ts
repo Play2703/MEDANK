@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { DeckStats } from '../../domain/entities/StudySession';
-import { StudyHistoryRepositoryImpl } from '../../data/repositories_impl/StudyHistoryRepositoryImpl';
+import { RepositoryFactory } from '../../data/repositories_impl/RepositoryFactory';
 import { db } from '../../data/db/database';
 
-const historyRepo = new StudyHistoryRepositoryImpl();
+const historyRepo = RepositoryFactory.getStudyHistoryRepository();
 
 export function useStatsViewModel() {
   const [stats, setStats] = useState<DeckStats | null>(null);

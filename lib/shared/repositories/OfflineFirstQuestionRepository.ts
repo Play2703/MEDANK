@@ -1,5 +1,5 @@
 import { IQuestionRepository, ImportedOriginSummary } from '../../../src/domain/repositories/IQuestionRepository';
-import { ExamProfile, ProfessorProfile, QuestionSet } from '../../../src/domain/entities/Question';
+import { ExamProfile, ProfessorProfile, QuestionSet, Question } from '../../../src/domain/entities/Question';
 import { db } from '../../../src/data/db/database';
 
 import {
@@ -184,6 +184,92 @@ export class OfflineFirstQuestionRepository implements IQuestionRepository {
         correctCount,
         updatedAt: new Date().toISOString(),
       });
+    }
+  }
+
+  async findExistingQuestionsByTopic(
+    specialty: string,
+    topic: string,
+    subtopic?: string,
+    limit = 5
+  ): Promise<Question[]> {
+    try {
+      const normSpec = (specialty || '').toLowerCase().trim();
+      const normTopic = (topic || '').toLowerCase().trim();
+      const normSubtopic = (subtopic || '').toLowerCase().trim();
+
+      const matched: Question[] = [];
+      const seenIds = new Set<string>();
+
+      // 1. Consultar SQLite Cache
+      const cachedRows = await this.sqlite.getAllCachedQuestions();
+      if (cachedRows.length > 0) {
+        for (const row of cachedRows) {
+          try {
+            const q: Question = JSON.parse(row.data_json);
+            if (!q || !q.id || seenIds.has(q.id)) continue;
+
+            const qSpec = (q.specialty || row.category || '').toLowerCase().trim();
+            const qTopic = (q.topic || '').toLowerCase().trim();
+            const qSubtopic = (q.subtopic || '').toLowerCase().trim();
+            const qTags = (q.tags || []).map((t) => t.toLowerCase().trim());
+
+            const matchSpec = !normSpec || qSpec.includes(normSpec) || normSpec.includes(qSpec);
+            const matchTopic = !normTopic || qTopic.includes(normTopic) || normTopic.includes(qTopic) || qTags.some((t) => t.includes(normTopic));
+            const matchSub = !normSubtopic || qSubtopic.includes(normSubtopic) || normSubtopic.includes(qSubtopic) || qTags.some((t) => t.includes(normSubtopic));
+
+            if (matchSpec && (matchTopic || matchSub)) {
+              seenIds.add(q.id);
+              matched.push(q);
+              if (matched.length >= limit) {
+                return matched;
+              }
+            }
+          } catch {}
+        }
+        if (matched.length > 0) return matched;
+      }
+
+      // 2. Fallback Dexie e hidratação do SQLite
+      const sets = await db.questionSets.toArray();
+      for (const set of sets) {
+        if (!set.questions || !Array.isArray(set.questions)) continue;
+        for (const q of set.questions) {
+          if (seenIds.has(q.id)) continue;
+
+          const qSpec = (q.specialty || set.request?.configuration?.specialty || '').toLowerCase().trim();
+          const qTopic = (q.topic || '').toLowerCase().trim();
+          const qSubtopic = (q.subtopic || '').toLowerCase().trim();
+          const qTags = (q.tags || []).map((t) => t.toLowerCase().trim());
+
+          const matchSpec = !normSpec || qSpec.includes(normSpec) || normSpec.includes(qSpec);
+          const matchTopic = !normTopic || qTopic.includes(normTopic) || normTopic.includes(qTopic) || qTags.some((t) => t.includes(normTopic));
+          const matchSub = !normSubtopic || qSubtopic.includes(normSubtopic) || normSubtopic.includes(qSubtopic) || qTags.some((t) => t.includes(normSubtopic));
+
+          if (matchSpec && (matchTopic || matchSub)) {
+            seenIds.add(q.id);
+            matched.push(q);
+
+            this.sqlite.upsertCachedQuestion({
+              id: q.id,
+              set_id: set.id,
+              category: q.specialty || '',
+              difficulty: q.difficulty || '',
+              data_json: JSON.stringify(q),
+              updated_at: new Date().toISOString(),
+            }).catch(() => {});
+
+            if (matched.length >= limit) {
+              return matched;
+            }
+          }
+        }
+      }
+
+      return matched;
+    } catch (err) {
+      console.warn('[OfflineFirstQuestionRepository] Error in findExistingQuestionsByTopic:', err);
+      return [];
     }
   }
 }

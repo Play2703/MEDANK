@@ -14,7 +14,7 @@ import {
   AlertCircle,
   Database,
 } from 'lucide-react';
-import { QuestionRepositoryImpl } from '../../data/repositories_impl/QuestionRepositoryImpl';
+import { RepositoryFactory } from '../../data/repositories_impl/RepositoryFactory';
 import { medKnowledgeRepository } from '../../data/repositories_impl/MedKnowledgeRepository';
 import { ImportedOriginSummary } from '../../domain/repositories/IQuestionRepository';
 import { KnowledgeAsset } from '../../domain/entities/KnowledgeAsset';
@@ -31,7 +31,7 @@ interface LinkedOriginItem {
   linkedAssets: KnowledgeAsset[];
 }
 
-const questionRepo = new QuestionRepositoryImpl();
+const questionRepo = RepositoryFactory.getQuestionRepository();
 
 export const BancasProfessoresView: React.FC<BancasProfessoresViewProps> = ({ type, onBack }) => {
   const [items, setItems] = useState<LinkedOriginItem[]>([]);

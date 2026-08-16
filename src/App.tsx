@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Capacitor } from '@capacitor/core';
 import { DeviceProvider } from './core/responsive/DeviceContext';
 import { DeviceFrame } from './presentation/components/DeviceFrame/DeviceFrame';
 import { M3TopAppBar } from './presentation/components/Material3/M3TopAppBar';
@@ -9,8 +10,9 @@ import { DeckListView } from './presentation/views/DeckList/DeckListView';
 import { DeveloperAuthDialog } from './developer_console';
 import { useDeckViewModel } from './presentation/viewmodels/useDeckViewModel';
 import { GoRouterProvider, useGoRouter } from './core/router';
-
 import { SeedLoaderDialog } from './presentation/components/SeedLoaderDialog';
+import { nativeSQLiteService } from '../lib/core/services/NativeSQLiteService';
+import { syncService } from '../lib/core/services/SyncService';
 
 // Lazy loading for heavy and secondary views (code-splitting)
 const StudySessionView = lazy(() =>
@@ -158,6 +160,20 @@ function MainAppContent() {
 }
 
 export default function App() {
+  React.useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      nativeSQLiteService
+        .initialize()
+        .then(() => {
+          console.log('[App] Native SQLite initialized successfully.');
+          return syncService.processQueue();
+        })
+        .catch((err) => {
+          console.warn('[App] Error during native SQLite bootstrap:', err);
+        });
+    }
+  }, []);
+
   return (
     <DeviceProvider>
       <DeviceFrame>

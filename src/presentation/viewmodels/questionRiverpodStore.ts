@@ -8,13 +8,13 @@ import {
   GenerationMode,
   ImportedDocument,
 } from '../../domain/entities/Question';
-import { QuestionRepositoryImpl } from '../../data/repositories_impl/QuestionRepositoryImpl';
+import { IQuestionRepository, ImportedOriginSummary } from '../../domain/repositories/IQuestionRepository';
+import { RepositoryFactory } from '../../data/repositories_impl/RepositoryFactory';
 import { QuestionGenerationService } from '../../data/services/QuestionGenerationService';
 import { DocumentImportService } from '../../data/services/DocumentImportService';
 import { DeckRepositoryImpl } from '../../data/repositories_impl/DeckRepositoryImpl';
 import { FlashcardRepositoryImpl } from '../../data/repositories_impl/FlashcardRepositoryImpl';
 import { medKnowledgeRepository, MedKnowledgeRepository } from '../../data/repositories_impl/MedKnowledgeRepository';
-import { ImportedOriginSummary } from '../../domain/repositories/IQuestionRepository';
 import { db } from '../../data/db/database';
 import { knowledgeGraphService } from '../../data/services/KnowledgeGraphService';
 
@@ -73,7 +73,7 @@ const initialQuestionState: QuestionState = {
 
 export class QuestionNotifier extends StateNotifier<QuestionState> {
   private repo: MedKnowledgeRepository;
-  private repository: QuestionRepositoryImpl;
+  private repository: IQuestionRepository;
   private deckRepo: DeckRepositoryImpl;
   private flashcardRepo: FlashcardRepositoryImpl;
   private generationService: QuestionGenerationService;
@@ -82,7 +82,7 @@ export class QuestionNotifier extends StateNotifier<QuestionState> {
   constructor() {
     super(initialQuestionState);
     this.repo = medKnowledgeRepository;
-    this.repository = new QuestionRepositoryImpl();
+    this.repository = RepositoryFactory.getQuestionRepository();
     this.deckRepo = new DeckRepositoryImpl();
     this.flashcardRepo = new FlashcardRepositoryImpl();
     this.generationService = new QuestionGenerationService();

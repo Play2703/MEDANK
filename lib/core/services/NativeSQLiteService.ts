@@ -500,6 +500,31 @@ export class NativeSQLiteService {
     }
   }
 
+  public async getAllCachedQuestions(): Promise<CachedQuestionRow[]> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'SELECT * FROM cached_questions';
+      const res = await this.dbConnection.query(sql);
+      return (res.values as CachedQuestionRow[]) || [];
+    } else {
+      return Array.from(this.memQuestions.values()).map((q) => ({ ...q }));
+    }
+  }
+
+  public async getCachedQuestionsByCategory(category: string): Promise<CachedQuestionRow[]> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'SELECT * FROM cached_questions WHERE category LIKE ?';
+      const res = await this.dbConnection.query(sql, [`%${category}%`]);
+      return (res.values as CachedQuestionRow[]) || [];
+    } else {
+      const catNorm = category.toLowerCase();
+      return Array.from(this.memQuestions.values())
+        .filter((q) => (q.category || '').toLowerCase().includes(catNorm))
+        .map((q) => ({ ...q }));
+    }
+  }
+
   // --- CACHED STUDY HISTORY OPERATIONS ---
 
   public async insertCachedHistory(h: CachedHistoryRow): Promise<void> {

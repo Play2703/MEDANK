@@ -410,6 +410,12 @@ export class SyncService {
         }
         break;
       }
+      case 'SYNC_METRICS': {
+        if (payload.metrics || payload.stats) {
+          await db.revisionStats.put(payload.metrics || payload.stats);
+        }
+        break;
+      }
       default:
         break;
     }

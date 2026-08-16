@@ -26,16 +26,38 @@ import {
 import { knowledgeGraphService } from './KnowledgeGraphService';
 import { mapWithConcurrency } from '../../core/utils/asyncUtils';
 import { apiUrl } from '../../lib/apiBaseUrl';
-
+import { Capacitor } from '@capacitor/core';
+import { NERWorkerClient } from '../../../lib/core/engines/NERWorkerClient';
 
 export { buildCanonicalKey };
 
+const CATEGORY_TO_TYPE: Record<string, MedicalEntityType> = {
+  DOENCA: 'disease',
+  MEDICAMENTO: 'medication',
+  SINTOMA: 'symptom',
+  ESTRUTURA_ANATOMICA: 'anatomy',
+  EXAME: 'exam',
+  PROCEDIMENTO: 'procedure',
+};
+
+const RELATION_TYPE_TO_PREDICATE: Record<string, RelationType> = {
+  CAUSA: 'causa',
+  TRATAMENTO: 'trata',
+  FATOR_DE_RISCO: 'causa',
+  CONTRAINDICACAO: 'contraindica',
+  MANIFESTACAO: 'é_sintoma_de',
+  ASSOCIACAO: 'associado_a',
+  DIAGNOSTICO_POR: 'diagnostica',
+};
+
+const localNerWorker = new NERWorkerClient();
 
 export class MedicalEntityExtractionService {
   /**
    * Processa chunks de um documento delegando a extração NER para o endpoint /api/extract-entities.
    * O servidor executa a extração em alta velocidade utilizando o dicionário médico SQLite indexado
    * (sem custo de API e sem risco de OOM), acionando IA apenas se explicitamente habilitado.
+   * Em ambiente nativo/offline ou caso o fetch falhe, usa o NERWorkerClient localmente como fallback transparente.
    * Em seguida, normaliza, atualiza o índice canônico e as arestas do grafo, persistindo no Dexie IndexedDB.
    */
   async extractAndSaveEntities(assetId: string, chunks: string[]): Promise<number> {
@@ -55,76 +77,128 @@ export class MedicalEntityExtractionService {
       batchObjects.push({ startIndex: i, batchIndices });
     }
 
-    // Executa as chamadas em lotes concorrentes para o backend /api/extract-entities
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+
+    // Executa as chamadas em lotes concorrentes para o backend /api/extract-entities (ou local se offline)
     await mapWithConcurrency(batchObjects, 3, async (batchObj) => {
       const { batchIndices } = batchObj;
-      const batchPayload = batchIndices.map((cIdx) => ({
-        assetId,
-        chunkIndex: cIdx,
-        text: chunks[cIdx],
-      }));
 
-      try {
-        const res = await fetch(apiUrl('/api/extract-entities'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chunks: batchPayload }),
-        });
+      if (!isOffline) {
+        const batchPayload = batchIndices.map((cIdx) => ({
+          assetId,
+          chunkIndex: cIdx,
+          text: chunks[cIdx],
+        }));
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && Array.isArray(data.results)) {
-            for (const item of data.results) {
-              const chunkIdx = typeof item.chunkIndex === 'number' ? item.chunkIndex : 0;
-              const rawEntities: any[] = Array.isArray(item.entities) ? item.entities : [];
-              const rawRelations: any[] = Array.isArray(item.relations) ? item.relations : [];
+        try {
+          const res = await fetch(apiUrl('/api/extract-entities'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chunks: batchPayload }),
+          });
 
-              const deduplicatedEntities = deduplicateEntitiesIntraChunk(rawEntities);
-              const deduplicatedRelations = deduplicateRelationsIntraChunk(rawRelations, deduplicatedEntities);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.results)) {
+              for (const item of data.results) {
+                const chunkIdx = typeof item.chunkIndex === 'number' ? item.chunkIndex : 0;
+                const rawEntities: any[] = Array.isArray(item.entities) ? item.entities : [];
+                const rawRelations: any[] = Array.isArray(item.relations) ? item.relations : [];
 
-              entityRecordsMap.set(chunkIdx, {
-                id: `${assetId}-${chunkIdx}`,
-                assetId,
-                chunkIndex: chunkIdx,
-                entities: deduplicatedEntities,
-                createdAt: now,
-              });
+                const deduplicatedEntities = deduplicateEntitiesIntraChunk(rawEntities);
+                const deduplicatedRelations = deduplicateRelationsIntraChunk(rawRelations, deduplicatedEntities);
 
-              relationRecordsMap.set(chunkIdx, {
-                id: `${assetId}-${chunkIdx}`,
-                assetId,
-                chunkIndex: chunkIdx,
-                relations: deduplicatedRelations,
-                createdAt: now,
-              });
+                entityRecordsMap.set(chunkIdx, {
+                  id: `${assetId}-${chunkIdx}`,
+                  assetId,
+                  chunkIndex: chunkIdx,
+                  entities: deduplicatedEntities,
+                  createdAt: now,
+                });
+
+                relationRecordsMap.set(chunkIdx, {
+                  id: `${assetId}-${chunkIdx}`,
+                  assetId,
+                  chunkIndex: chunkIdx,
+                  relations: deduplicatedRelations,
+                  createdAt: now,
+                });
+              }
             }
           }
+        } catch (err) {
+          console.warn(`[MedicalEntityExtractionService] NER API request failed for batch starting at ${batchObj.startIndex}, switching to local NERWorkerClient:`, err);
         }
-      } catch (err) {
-        console.warn(`[MedicalEntityExtractionService] NER API request failed for batch starting at ${batchObj.startIndex}:`, err);
       }
 
-      // Preenche entradas vazias para chunks que falharem na requisição
+      // Fallback local robusto via Web Worker para chunks pendentes/offline
       for (const cIdx of batchIndices) {
         if (!entityRecordsMap.has(cIdx)) {
-          entityRecordsMap.set(cIdx, {
-            id: `${assetId}-${cIdx}`,
-            assetId,
-            chunkIndex: cIdx,
-            entities: [],
-            createdAt: now,
-          });
-          relationRecordsMap.set(cIdx, {
-            id: `${assetId}-${cIdx}`,
-            assetId,
-            chunkIndex: cIdx,
-            relations: [],
-            createdAt: now,
-          });
+          const text = chunks[cIdx];
+          try {
+            const analysis = await localNerWorker.analyzeText(text);
+            const rawEntities = (analysis.entities || []).map((ent) => ({
+              text: ent.text,
+              type: CATEGORY_TO_TYPE[ent.category] || (ent.category.toLowerCase() as MedicalEntityType),
+              code_system: (ent.codeSystem as CodeSystem) ?? null,
+              code: ent.code ?? null,
+              confidence: 1.0,
+            }));
+
+            const rawRelations = (analysis.relations || []).map((rel) => {
+              const sourceEnt = analysis.entities.find((e) => e.normalizedTerm === rel.sourceEntity);
+              const targetEnt = analysis.entities.find((e) => e.normalizedTerm === rel.targetEntity);
+              const sourceCat = sourceEnt?.category || '';
+              const targetCat = targetEnt?.category || '';
+
+              return {
+                sourceEntity: rel.sourceEntity,
+                targetEntity: rel.targetEntity,
+                sourceType: CATEGORY_TO_TYPE[sourceCat] || (sourceCat.toLowerCase() as MedicalEntityType),
+                targetType: CATEGORY_TO_TYPE[targetCat] || (targetCat.toLowerCase() as MedicalEntityType),
+                predicate: RELATION_TYPE_TO_PREDICATE[rel.relationType] || (rel.relationType.toLowerCase() as RelationType),
+                confidence: 1.0,
+              };
+            });
+
+            const deduplicatedEntities = deduplicateEntitiesIntraChunk(rawEntities);
+            const deduplicatedRelations = deduplicateRelationsIntraChunk(rawRelations, deduplicatedEntities);
+
+            entityRecordsMap.set(cIdx, {
+              id: `${assetId}-${cIdx}`,
+              assetId,
+              chunkIndex: cIdx,
+              entities: deduplicatedEntities,
+              createdAt: now,
+            });
+
+            relationRecordsMap.set(cIdx, {
+              id: `${assetId}-${cIdx}`,
+              assetId,
+              chunkIndex: cIdx,
+              relations: deduplicatedRelations,
+              createdAt: now,
+            });
+          } catch (workerErr) {
+            console.warn(`[MedicalEntityExtractionService] Local Worker NER extraction failed for chunk ${cIdx}:`, workerErr);
+            entityRecordsMap.set(cIdx, {
+              id: `${assetId}-${cIdx}`,
+              assetId,
+              chunkIndex: cIdx,
+              entities: [],
+              createdAt: now,
+            });
+            relationRecordsMap.set(cIdx, {
+              id: `${assetId}-${cIdx}`,
+              assetId,
+              chunkIndex: cIdx,
+              relations: [],
+              createdAt: now,
+            });
+          }
         }
       }
     });
-
 
     // Step 3: Agrega entidades canônicas e arestas no grafo de conhecimento
     const entityRecordsToPut = Array.from(entityRecordsMap.values());

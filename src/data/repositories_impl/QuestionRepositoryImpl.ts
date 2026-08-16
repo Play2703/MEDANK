@@ -1,5 +1,5 @@
 import { IQuestionRepository, ImportedOriginSummary } from '../../domain/repositories/IQuestionRepository';
-import { ExamProfile, ProfessorProfile, QuestionSet } from '../../domain/entities/Question';
+import { ExamProfile, ProfessorProfile, QuestionSet, Question } from '../../domain/entities/Question';
 import { db } from '../db/database';
 
 export class QuestionRepositoryImpl implements IQuestionRepository {
@@ -91,5 +91,51 @@ export class QuestionRepositoryImpl implements IQuestionRepository {
   async deleteQuestionSet(id: string): Promise<boolean> {
     await db.questionSets.delete(id);
     return true;
+  }
+
+  async findExistingQuestionsByTopic(
+    specialty: string,
+    topic: string,
+    subtopic?: string,
+    limit = 5
+  ): Promise<Question[]> {
+    try {
+      const sets = await db.questionSets.toArray();
+      const normSpec = (specialty || '').toLowerCase().trim();
+      const normTopic = (topic || '').toLowerCase().trim();
+      const normSubtopic = (subtopic || '').toLowerCase().trim();
+
+      const matched: Question[] = [];
+      const seenIds = new Set<string>();
+
+      for (const set of sets) {
+        if (!set.questions || !Array.isArray(set.questions)) continue;
+        for (const q of set.questions) {
+          if (seenIds.has(q.id)) continue;
+
+          const qSpec = (q.specialty || set.request?.configuration?.specialty || '').toLowerCase().trim();
+          const qTopic = (q.topic || '').toLowerCase().trim();
+          const qSubtopic = (q.subtopic || '').toLowerCase().trim();
+          const qTags = (q.tags || []).map((t) => t.toLowerCase().trim());
+
+          const matchSpec = !normSpec || qSpec.includes(normSpec) || normSpec.includes(qSpec);
+          const matchTopic = !normTopic || qTopic.includes(normTopic) || normTopic.includes(qTopic) || qTags.some((t) => t.includes(normTopic));
+          const matchSub = !normSubtopic || qSubtopic.includes(normSubtopic) || normSubtopic.includes(qSubtopic) || qTags.some((t) => t.includes(normSubtopic));
+
+          if (matchSpec && (matchTopic || matchSub)) {
+            seenIds.add(q.id);
+            matched.push(q);
+            if (matched.length >= limit) {
+              return matched;
+            }
+          }
+        }
+      }
+
+      return matched;
+    } catch (err) {
+      console.warn('[QuestionRepositoryImpl] Error in findExistingQuestionsByTopic:', err);
+      return [];
+    }
   }
 }

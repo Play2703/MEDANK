@@ -23,4 +23,10 @@ export interface IQuestionRepository {
   getQuestionSetById(id: string): Promise<QuestionSet | null>;
   saveQuestionSet(set: QuestionSet): Promise<QuestionSet>;
   deleteQuestionSet(id: string): Promise<boolean>;
+  findExistingQuestionsByTopic(
+    specialty: string,
+    topic: string,
+    subtopic?: string,
+    limit?: number
+  ): Promise<import('../entities/Question').Question[]>;
 }

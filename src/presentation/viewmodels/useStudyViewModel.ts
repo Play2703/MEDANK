@@ -3,13 +3,13 @@ import { FlashCard } from '../../domain/entities/Card';
 import { Deck } from '../../domain/entities/Deck';
 import { ReviewRating } from '../../core/algorithm/sm2';
 import { medKnowledgeRepository } from '../../data/repositories_impl/MedKnowledgeRepository';
-import { StudyHistoryRepositoryImpl } from '../../data/repositories_impl/StudyHistoryRepositoryImpl';
+import { RepositoryFactory } from '../../data/repositories_impl/RepositoryFactory';
 import { GenerateMnemonicUseCase } from '../../domain/usecases/GenerateMnemonicUseCase';
 import { reviewSchedulerService } from '../../data/services/ReviewSchedulerService';
 import { db } from '../../data/db/database';
 
 const repo = medKnowledgeRepository;
-const studyHistoryRepo = new StudyHistoryRepositoryImpl();
+const studyHistoryRepo = RepositoryFactory.getStudyHistoryRepository();
 const generateMnemonicUseCase = new GenerateMnemonicUseCase();
 
 export function useStudyViewModel(deckId: string) {

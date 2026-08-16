@@ -11,7 +11,7 @@ import { isValidGeneratedQuestion } from '../../core/utils/contentValidation';
 import { mapWithConcurrency } from '../../core/utils/asyncUtils';
 import { formatCompactAntiDuplicationList } from '../../core/utils/termExtractor';
 import { balanceAndShuffleQuestionOptions } from '../../core/utils/optionBalancer';
-import { QuestionRepositoryImpl } from '../repositories_impl/QuestionRepositoryImpl';
+import { RepositoryFactory } from '../repositories_impl/RepositoryFactory';
 import { apiUrl } from '../../lib/apiBaseUrl';
 import { questionSimilarityEngine, SIMILARITY_THRESHOLD, MAX_REGENERATION_ATTEMPTS } from './QuestionSimilarityEngine';
 import {
@@ -25,11 +25,56 @@ import {
   SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL,
 } from './tokenBudget';
 
+const questionRepo = RepositoryFactory.getQuestionRepository();
 
+/**
+ * Regra de Direitos Autorais:
+ * Questões cujo originSource aponte para bancas ou provas de terceiros (ex: ENARE, Revalida, USP)
+ * NUNCA podem ser reusadas verbatim — somente como base de adaptação para a IA gerar uma questão inédita.
+ * Apenas questões sem originSource de terceiro (geradas pela própria IA do app anteriormente ou manuais)
+ * podem ser reusadas diretamente quando autorizado pelo usuário.
+ */
+export function isThirdPartyQuestion(q: Question): boolean {
+  if (!q.originSource) return false;
+  const src = q.originSource.toLowerCase().trim();
+  if (!src) return false;
+  if (
+    src.includes('medanki') ||
+    src.includes('manual') ||
+    src.includes('próprio') ||
+    src.includes('proprio') ||
+    src.includes('ia local') ||
+    src.includes('banco local')
+  ) {
+    return false;
+  }
+  return true;
+}
 
+/**
+ * Formata o bloco de adaptação posicionado após os blocos estáticos do prompt
+ */
+export function formatAdaptationPromptBlock(question: Question): string {
+  const statement = question.statement || '';
+  const correctOpt = question.options?.find((o) => o.isCorrect)?.text || question.options?.[0]?.text || 'Opção correta';
+  const otherOpts = (question.options || []).filter((o) => !o.isCorrect).map((o) => o.text);
 
-
-const questionRepo = new QuestionRepositoryImpl();
+  return `
+[MODO: ADAPTAÇÃO DE QUESTÃO EXISTENTE DETECTADA]
+Aviso ao examinador: foi encontrada uma questão de referência na base local para este tópico.
+QUESTÃO-BASE LOCAL:
+"""
+Enunciado: ${statement}
+Alternativa Correta: ${correctOpt}
+Distratores: ${otherOpts.join(', ')}
+"""
+DIRETRIZ DE TRANSFORMAÇÃO:
+- NÃO copie o enunciado textualmente.
+- Mantenha o CONCEITO CLÍNICO central (o mesmo mecanismo/diagnóstico).
+- Altere os dados secundários do caso clínico (sexo/idade, histórico pregresso, sinais vitais, valores laboratoriais).
+- Reformule as alternativas e distratores para criar uma questão 100% inédita baseada no mesmo padrão de cobrança.
+`.trim();
+}
 
 async function processRawQuestionsWithSimilarityCheck(
   rawQuestions: any[],
@@ -512,18 +557,84 @@ export class QuestionGenerationService {
 
     const specialtyStr = config.specialties && config.specialties.length > 0 ? config.specialties.join(' & ') : config.specialty || 'Clínica Médica';
     const mainTopic = config.topics && config.topics.length > 0 ? config.topics.join(' & ') : 'Geral';
+    const subtopicStr = (config.selectedSubtopics && config.selectedSubtopics.length > 0)
+      ? config.selectedSubtopics.join(' ')
+      : (config.subtopic || '');
+
+    // 0. Local Question Matcher: busca questões locais antes do RAG via RepositoryFactory
+    let existingLocalQuestions: Question[] = [];
+    try {
+      existingLocalQuestions = await questionRepo.findExistingQuestionsByTopic(
+        specialtyStr,
+        mainTopic,
+        subtopicStr,
+        10
+      );
+    } catch (err) {
+      console.warn('[QuestionGenerationService] Error finding local existing questions:', err);
+    }
+
+    const directlyReusedQuestions: Question[] = [];
+    let adaptationPromptBlock = '';
+
+    if (config.prioritizeLocalQuestions && existingLocalQuestions.length > 0) {
+      // Regra de Direitos Autorais: questões de terceiros NUNCA são reusadas verbatim
+      const eligibleForDirectReuse = existingLocalQuestions.filter((q) => !isThirdPartyQuestion(q));
+      const reuseCount = Math.min(eligibleForDirectReuse.length, quantity);
+
+      for (let i = 0; i < reuseCount; i++) {
+        const eq = eligibleForDirectReuse[i];
+        directlyReusedQuestions.push({
+          ...eq,
+          id: `q-local-reused-${Date.now()}-${i + 1}-${Math.random().toString(36).substring(2, 6)}`,
+          originSource: eq.originSource || 'Banco Local (Reuso Direto)',
+          isAnswered: false,
+          userAnswerId: undefined,
+          isCorrect: undefined,
+          answeredAt: undefined,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Se houver questões existentes na base (inclusive de terceiros), prepara o bloco de adaptação
+    if (existingLocalQuestions.length > 0) {
+      adaptationPromptBlock = formatAdaptationPromptBlock(existingLocalQuestions[0]);
+    }
+
+    const aiQuantityToGenerate = quantity - directlyReusedQuestions.length;
+
+    // Se 100% das questões foram supridas pelo reuso direto local
+    if (aiQuantityToGenerate <= 0) {
+      const setId = `qset-local-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+      const now = new Date().toISOString();
+      const finalQuestions = directlyReusedQuestions.map((q) => ({ ...q, setId }));
+      const questionSet: QuestionSet = {
+        id: setId,
+        title: `Simulado: ${specialtyStr} - ${mainTopic} (Banco Local)`,
+        request,
+        questions: finalQuestions,
+        totalQuestions: finalQuestions.length,
+        answeredCount: 0,
+        correctCount: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      return {
+        questionSet,
+        metrics: { maxWordOverlap: 0, matchingSequence: '' },
+      };
+    }
     
     const isGeneralMode = !request.mode || request.mode === 'geral' || (!request.bancaName && !request.professorName);
     const selectedOriginName = isGeneralMode ? '' : (request.mode === 'banca' ? request.bancaName || '' : request.professorName || '');
 
     // Dynamic RAG topK calculation: broader reference context for larger question batches up to a cap of 30 chunks
     const baseTopK = isGeneralMode ? 10 : 8;
-    const topK = Math.min(30, baseTopK + Math.ceil(quantity / 3));
+    const topK = Math.min(30, baseTopK + Math.ceil(aiQuantityToGenerate / 3));
 
     // 1. Retrieve RAG chunks matching all topics & specialties
-    const subtopicStr = (config.selectedSubtopics && config.selectedSubtopics.length > 0)
-      ? config.selectedSubtopics.join(' ')
-      : (config.subtopic || '');
     const searchQuery = `${specialtyStr} ${mainTopic} ${subtopicStr}`.trim();
     const retrievedChunks = await ragEngine.retrieveContext(searchQuery, {
       banca: isGeneralMode ? undefined : (request.mode === 'banca' ? request.bancaName : undefined),
@@ -571,7 +682,7 @@ export class QuestionGenerationService {
 
     // Split quantity into batches of up to MAX_ITEMS_PER_AI_CALL (8)
     const batchQuantities: number[] = [];
-    let rem = quantity;
+    let rem = aiQuantityToGenerate;
     while (rem > 0) {
       const current = Math.min(rem, MAX_ITEMS_PER_AI_CALL);
       batchQuantities.push(current);
@@ -635,7 +746,7 @@ export class QuestionGenerationService {
         examDNA,
         mode: request.mode || 'geral',
         distractorHints,
-        customContext: config.customContext,
+        customContext: [config.customContext, adaptationPromptBlock].filter(Boolean).join('\n\n'),
         existingQuestionsSummary:
           batchIdx > 0 && allRawQuestions.length > 0
             ? formatCompactAntiDuplicationList(allRawQuestions.map((q) => q.statement), 30)
@@ -853,24 +964,29 @@ export class QuestionGenerationService {
 
     const balancedQuestions = balanceAndShuffleQuestionOptions(questions);
 
-    if (balancedQuestions.length === 0) {
+    const finalAllQuestions = [
+      ...directlyReusedQuestions.map((q) => ({ ...q, setId })),
+      ...balancedQuestions,
+    ];
+
+    if (finalAllQuestions.length === 0) {
       throw new Error('Não foi possível gerar nenhuma questão válida. Tente novamente ou ajuste os tópicos selecionados.');
     }
 
-    const shortfall = balancedQuestions.length < quantity ? {
+    const shortfall = finalAllQuestions.length < quantity ? {
       requested: quantity,
-      actual: balancedQuestions.length,
-      reason: `Gerado com ${balancedQuestions.length} de ${quantity} questões solicitadas — algumas questões não passaram no controle de qualidade.`,
+      actual: finalAllQuestions.length,
+      reason: `Gerado com ${finalAllQuestions.length} de ${quantity} questões solicitadas — algumas questões não passaram no controle de qualidade.`,
     } : undefined;
 
-    const title = `${specialtyStr}: Simulado Interdisciplinar (${balancedQuestions.length} q. - ${originSourceLabel})`;
+    const title = `${specialtyStr}: Simulado Interdisciplinar (${finalAllQuestions.length} q. - ${originSourceLabel})`;
 
     const questionSet: QuestionSet = {
       id: setId,
       title,
       request,
-      questions: balancedQuestions,
-      totalQuestions: balancedQuestions.length,
+      questions: finalAllQuestions,
+      totalQuestions: finalAllQuestions.length,
       answeredCount: 0,
       correctCount: 0,
       createdAt: now,
@@ -981,6 +1097,7 @@ export class QuestionGenerationService {
           canonicalKeys: [],
           maxOverlapLength: 0,
           matchingSequence: '',
+          distractorHints: [],
           error: null,
         };
       }
@@ -988,11 +1105,74 @@ export class QuestionGenerationService {
       const originSpecialty = topicSpecialtyMap[singleTopic] || defaultSpecialty;
 
       try {
-        // Retrieve RAG context specific to THIS single topic & specialty (incluindo refinamento por subtópicos se houver)
+        // 0. Local Question Matcher para o tópico específico
         const topicSpecificSubtopics = config.topicSubtopicsMap?.[singleTopic] || [];
         const subtopicSuffix = topicSpecificSubtopics.length > 0
           ? topicSpecificSubtopics.join(' ')
           : (config.subtopic || '');
+
+        let existingTopicQuestions: Question[] = [];
+        try {
+          existingTopicQuestions = await questionRepo.findExistingQuestionsByTopic(
+            originSpecialty,
+            singleTopic,
+            subtopicSuffix,
+            5
+          );
+        } catch (err) {
+          console.warn(`[QuestionGenerationService] Error finding local existing questions for topic "${singleTopic}":`, err);
+        }
+
+        const directlyReusedForTopic: any[] = [];
+        let topicAdaptationBlock = '';
+
+        if (config.prioritizeLocalQuestions && existingTopicQuestions.length > 0) {
+          const eligible = existingTopicQuestions.filter((q) => !isThirdPartyQuestion(q));
+          const reuseCount = Math.min(eligible.length, countForThisTopic);
+
+          for (let i = 0; i < reuseCount; i++) {
+            const eq = eligible[i];
+            directlyReusedForTopic.push({
+              statement: eq.statement,
+              clinicalContext: eq.clinicalContext,
+              options: eq.options,
+              correctAnswerText: eq.options.find((o) => o.isCorrect)?.text || eq.options[0]?.text,
+              commentary: eq.commentary,
+              references: eq.references,
+              tags: eq.tags,
+              specialty: eq.specialty || originSpecialty,
+              topic: eq.topic || singleTopic,
+              subtopic: eq.subtopic,
+              difficulty: eq.difficulty || config.difficulty,
+              questionType: eq.questionType || config.questionType,
+              originSource: eq.originSource || 'Banco Local (Reuso Direto)',
+              __needsReview: false,
+            });
+          }
+        }
+
+        if (existingTopicQuestions.length > 0) {
+          topicAdaptationBlock = formatAdaptationPromptBlock(existingTopicQuestions[0]);
+        }
+
+        const aiCountForThisTopic = countForThisTopic - directlyReusedForTopic.length;
+
+        // Se o tópico foi 100% suprido pelo banco local
+        if (aiCountForThisTopic <= 0) {
+          return {
+            singleTopic,
+            originSpecialty,
+            count: countForThisTopic,
+            rawQuestions: directlyReusedForTopic,
+            canonicalKeys: [],
+            maxOverlapLength: 0,
+            matchingSequence: '',
+            distractorHints: [],
+            error: null,
+          };
+        }
+
+        // Retrieve RAG context specific to THIS single topic & specialty (incluindo refinamento por subtópicos se houver)
         const searchQuery = `${originSpecialty} ${singleTopic} ${subtopicSuffix}`.trim();
         const retrievedChunks = await ragEngine.retrieveContext(searchQuery, {
           banca: isGeneralMode ? undefined : (request.mode === 'banca' ? request.bancaName : undefined),
@@ -1025,12 +1205,14 @@ export class QuestionGenerationService {
 
 
         // Contexto recortado especificamente para o tópico atual (via similaridade semântica de embeddings locais)
-        const topicContext = await extractRelevantContextForTopic(
+        const baseTopicContext = await extractRelevantContextForTopic(
           config.customContext,
           singleTopic,
           originSpecialty,
           1500
         );
+
+        const topicContext = [baseTopicContext, topicAdaptationBlock].filter(Boolean).join('\n\n');
 
         // Condensação do perfil de professor e examDNA para geração distribuída
         const {
@@ -1043,7 +1225,7 @@ export class QuestionGenerationService {
           specialty: originSpecialty,
           topics: [singleTopic],
           subtopics: topicSpecificSubtopics.length > 0 ? topicSpecificSubtopics : undefined,
-          quantity: countForThisTopic,
+          quantity: aiCountForThisTopic,
           difficulty: config.difficulty,
           questionType: config.questionType,
           bancaName: request.bancaName,
@@ -1056,7 +1238,6 @@ export class QuestionGenerationService {
         };
 
         const postPayload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
-
 
         const res = await fetch(apiUrl('/api/generate-questions'), {
           method: 'POST',
@@ -1170,7 +1351,7 @@ export class QuestionGenerationService {
           singleTopic,
           originSpecialty,
           count: countForThisTopic,
-          rawQuestions: validRawQuestions,
+          rawQuestions: [...directlyReusedForTopic, ...validRawQuestions],
           canonicalKeys: topicCanonicalKeys,
           maxOverlapLength: initialOverlap.maxLen,
           matchingSequence: initialOverlap.seq,
