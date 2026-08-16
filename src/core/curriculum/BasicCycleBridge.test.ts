@@ -231,4 +231,93 @@ describe('Fase 34 - Basic Cycle Bridge & Anatomical Triggers', () => {
       expect(result.sourceStrategy === 'rag' || result.sourceStrategy === 'general_fallback').toBe(true);
     });
   });
+
+  describe('PARTE D: Enriquecimento de Ciclo Básico via Bancos de Prova Clínicos', () => {
+    it('1. getExamBankAssetIds deve retornar apenas assets de provas/bancos de questões', async () => {
+      const { getExamBankAssetIds } = await import('../../data/services/QuestionGenerationService');
+
+      await db.knowledgeAssets.bulkPut([
+        {
+          id: 'asset-book-1',
+          uuid: 'u-1',
+          title: 'Guyton Fisiologia',
+          discipline: 'Fisiologia',
+          specialty: 'Fisiologia',
+          category: KnowledgeCategory.book,
+          subcategory: 'Geral',
+          author: 'Guyton',
+          institution: 'MedAnki',
+          board: '',
+          professor: '',
+          year: 2021,
+          semester: '1',
+          tags: [],
+          metadata: {},
+          file: { name: 'guyton.pdf' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          processingStatus: 'completed',
+        },
+        {
+          id: 'asset-exam-revalida',
+          uuid: 'u-2',
+          title: 'Prova Revalida INEP 2023',
+          discipline: 'Clínica Médica',
+          specialty: 'Cardiologia',
+          category: KnowledgeCategory.residencyExam,
+          subcategory: 'Revalida',
+          author: 'INEP',
+          institution: 'INEP',
+          board: 'REVALIDA',
+          professor: '',
+          year: 2023,
+          semester: '1',
+          tags: ['Revalida', 'Cardiologia'],
+          metadata: {},
+          file: { name: 'revalida_2023.pdf' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          processingStatus: 'completed',
+        },
+        {
+          id: 'asset-exam-prof',
+          uuid: 'u-3',
+          title: 'Prova Prof. Silva',
+          discipline: 'Fisiologia',
+          specialty: 'Fisiologia',
+          category: KnowledgeCategory.professorExam,
+          subcategory: 'Fisiologia',
+          author: 'Prof. Silva',
+          institution: 'USP',
+          board: '',
+          professor: 'Silva',
+          year: 2023,
+          semester: '2',
+          tags: [],
+          metadata: {},
+          file: { name: 'prova_silva.pdf' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          processingStatus: 'completed',
+        },
+      ]);
+
+      const ids = await getExamBankAssetIds(true);
+      expect(ids).toContain('asset-exam-revalida');
+      expect(ids).toContain('asset-exam-prof');
+      expect(ids).not.toContain('asset-book-1');
+    });
+
+    it('2. isBasicCycleSpecialty deve discriminar ciclo básico vs especialidades clínicas', async () => {
+      const { isBasicCycleSpecialty } = await import('./basicCycleDisciplines');
+      expect(isBasicCycleSpecialty('Fisiologia')).toBe(true);
+      expect(isBasicCycleSpecialty('Anatomia Humana')).toBe(true);
+      expect(isBasicCycleSpecialty('Bioquímica')).toBe(true);
+      expect(isBasicCycleSpecialty('Farmacologia Básica')).toBe(true);
+
+      expect(isBasicCycleSpecialty('Cardiologia')).toBe(false);
+      expect(isBasicCycleSpecialty('Cirurgia Geral')).toBe(false);
+      expect(isBasicCycleSpecialty('Pediatria')).toBe(false);
+    });
+  });
 });

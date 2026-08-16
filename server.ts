@@ -419,6 +419,7 @@ Gere no máximo ${cardCount} flashcards de altíssimo rendimento (High-Yield) ba
     try {
       const {
         retrievedChunks = [],
+        examReferenceChunks = [],
         specialty = "Medicina",
         topics = [],
         quantity = 5,
@@ -481,6 +482,11 @@ Gere no máximo ${cardCount} flashcards de altíssimo rendimento (High-Yield) ba
       }
 
       const contextMaterial = buildContextMaterial(retrievedChunks);
+
+      let examReferenceSection = "";
+      if (Array.isArray(examReferenceChunks) && examReferenceChunks.length > 0) {
+        examReferenceSection = `\n=== REFERÊNCIA: COMO ESSE ASSUNTO APARECE EM PROVAS CLÍNICAS (REVALIDA/ENARE/RESIDÊNCIA) ===\nUse os trechos abaixo APENAS como sinal de relevância clínica — para entender qual aspecto do conceito básico costuma ser cobrado na prática. NÃO reproduza, não parafraseie e não copie nenhuma pergunta ou alternativa destes trechos. A questão gerada deve testar EXCLUSIVAMENTE mecanismo, estrutura ou função básica — nunca diagnóstico ou conduta clínica.\n\n${buildContextMaterial(examReferenceChunks)}\n=== FIM DA REFERÊNCIA CLÍNICA ===\n`;
+      }
 
       let distractorSection = "";
       if (Array.isArray(distractorHints) && distractorHints.length > 0) {
@@ -590,7 +596,7 @@ DIRETRIZ E MATRIZ DE CONTEÚDO OBRIGATÓRIA — TIPO: MISTURAR
 === MATERIAL MÉDICO E CONHECIMENTO DE REFERÊNCIA (RAG) ===
 ${contextMaterial}
 === FIM DO MATERIAL ===
-${distractorSection}
+${distractorSection}${examReferenceSection}
 ${professorStyleSection}
 ${dnaSection}
 Configurações Solicitadas:

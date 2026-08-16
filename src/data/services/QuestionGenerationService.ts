@@ -12,6 +12,10 @@ import { mapWithConcurrency } from '../../core/utils/asyncUtils';
 import { formatCompactAntiDuplicationList } from '../../core/utils/termExtractor';
 import { balanceAndShuffleQuestionOptions } from '../../core/utils/optionBalancer';
 import { RepositoryFactory } from '../repositories_impl/RepositoryFactory';
+import { db } from '../db/database';
+import { isBasicCycleSpecialty } from '../../core/curriculum/basicCycleDisciplines';
+import { KnowledgeCategoryMapper } from '../../core/medcore_kernel/ontology/KnowledgeCategoryMapper';
+import { SemanticChunkResult } from './RealSemanticSearchService';
 import { apiUrl } from '../../lib/apiBaseUrl';
 import { basicCycleBridgeService } from './BasicCycleBridgeService';
 import { questionSimilarityEngine, SIMILARITY_THRESHOLD, MAX_REGENERATION_ATTEMPTS } from './QuestionSimilarityEngine';
@@ -27,6 +31,27 @@ import {
 } from './tokenBudget';
 
 const questionRepo = RepositoryFactory.getQuestionRepository();
+
+/**
+ * Recupera os IDs de KnowledgeAssets que são materiais de banco de provas (REVALIDA, ENARE, Provas de Residência/Professor),
+ * com cache em memória para não repetir a consulta durante gerações em lote.
+ */
+let cachedExamBankAssetIds: string[] | null = null;
+export async function getExamBankAssetIds(forceRefresh = false): Promise<string[]> {
+  if (cachedExamBankAssetIds !== null && !forceRefresh) {
+    return cachedExamBankAssetIds;
+  }
+  try {
+    const allAssets = await db.knowledgeAssets.toArray();
+    cachedExamBankAssetIds = allAssets
+      .filter((a) => KnowledgeCategoryMapper.isQuestionSource(a.category))
+      .map((a) => a.id);
+  } catch (err) {
+    console.warn('[QuestionGenerationService] Failed to retrieve exam bank asset IDs:', err);
+    cachedExamBankAssetIds = [];
+  }
+  return cachedExamBankAssetIds;
+}
 
 /**
  * Regra de Direitos Autorais:
@@ -656,6 +681,27 @@ export class QuestionGenerationService {
       };
     }
 
+    // 1.1 Busca de referência clínica adicional em bancos de prova se for disciplina de Ciclo Básico
+    let examReferenceChunks: SemanticChunkResult[] = [];
+    const isBasicCycle =
+      (config.topics || []).some((t) => isBasicCycleSpecialty(t)) ||
+      isBasicCycleSpecialty(specialtyStr || '') ||
+      isBasicCycleSpecialty(config.specialty || '');
+
+    if (isBasicCycle) {
+      const examBankAssetIds = await getExamBankAssetIds();
+      if (examBankAssetIds.length > 0) {
+        try {
+          examReferenceChunks = await ragEngine.retrieveContext(searchQuery, {
+            topK: 3,
+            assetIds: examBankAssetIds,
+          });
+        } catch (err) {
+          console.warn('[QuestionGenerationService] Failed to retrieve examReferenceChunks:', err);
+        }
+      }
+    }
+
     // 2. Distractor Engine Candidates Generation anchored on extracted entity keys
     const topicCanonicalKeys: string[] = [];
     for (const c of retrievedChunks) {
@@ -741,6 +787,7 @@ export class QuestionGenerationService {
 
       const rawPayload = {
         retrievedChunks: chunksForThisBatch,
+        examReferenceChunks: examReferenceChunks.length > 0 ? examReferenceChunks : undefined,
         specialty: specialtyStr,
         topics: config.topics,
         quantity: batchQty,
@@ -1193,6 +1240,26 @@ export class QuestionGenerationService {
           topK,
         });
 
+        // Busca de referência clínica adicional em bancos de prova se for disciplina de Ciclo Básico
+        let examReferenceChunks: SemanticChunkResult[] = [];
+        const isTopicBasicCycle =
+          isBasicCycleSpecialty(singleTopic) ||
+          isBasicCycleSpecialty(originSpecialty);
+
+        if (isTopicBasicCycle) {
+          const examBankAssetIds = await getExamBankAssetIds();
+          if (examBankAssetIds.length > 0) {
+            try {
+              examReferenceChunks = await ragEngine.retrieveContext(searchQuery, {
+                topK: 3,
+                assetIds: examBankAssetIds,
+              });
+            } catch (err) {
+              console.warn(`[QuestionGenerationService] Failed to retrieve examReferenceChunks for topic ${singleTopic}:`, err);
+            }
+          }
+        }
+
         const topicCanonicalKeys: string[] = [];
         for (const c of retrievedChunks) {
           if (c.entities) {
@@ -1235,6 +1302,7 @@ export class QuestionGenerationService {
 
         const rawPayload = {
           retrievedChunks,
+          examReferenceChunks: examReferenceChunks.length > 0 ? examReferenceChunks : undefined,
           specialty: originSpecialty,
           topics: [singleTopic],
           subtopics: topicSpecificSubtopics.length > 0 ? topicSpecificSubtopics : undefined,

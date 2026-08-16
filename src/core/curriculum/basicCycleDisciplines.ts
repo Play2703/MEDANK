@@ -64,3 +64,6 @@ export function isBasicCycleAsset(disciplineOrSpecialty?: string): boolean {
     return normalized.includes(normDisc) || normDisc.includes(normalized);
   });
 }
+
+export const isBasicCycleSpecialty = isBasicCycleAsset;
+
