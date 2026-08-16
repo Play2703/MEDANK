@@ -3,6 +3,7 @@ dotenv.config();
 
 import express from "express";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
@@ -18,7 +19,7 @@ import { professorEngine } from "./src/core/medcore_kernel/engines/ProfessorEngi
 import { localEmbeddingClient } from "./src/data/services/embeddings/LocalEmbeddingClient";
 import { LOCAL_EMBEDDING_CONFIG } from "./src/data/services/embeddings/localEmbeddingConfig";
 import { hybridNEREngine } from "./src/core/ner/HybridNEREngine";
-import { dictionaryNEREngine } from "./src/core/ner/DictionaryNEREngine";
+import { dictionaryNEREngine, getTerminologyDb, getDbPath } from "./src/core/ner/DictionaryNEREngine";
 
 let aiClient: GoogleGenAI | null = null;
 
@@ -59,6 +60,76 @@ async function startServer() {
   app.get("/api/health", (_req, res) => {
     const hasKey = Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
     res.json({ status: "ok", app: "MedAnki", geminiConfigured: hasKey });
+  });
+
+  // Dictionary Health endpoint (for Developer Console)
+  app.get("/api/dictionary-health", (_req, res) => {
+    try {
+      const db = getTerminologyDb();
+      if (!db) {
+        return res.status(503).json({
+          success: false,
+          error: "Dicionário médico SQLite não inicializado ou inacessível no servidor.",
+          totalTerms: 0,
+          termsBySystem: [],
+          graphNodes: 0,
+          graphEdges: 0,
+          topPredicates: [],
+          lastUpdated: null,
+          dbSizeBytes: 0,
+        });
+      }
+
+      const totalTerms = (db.prepare('SELECT COUNT(*) as count FROM terms').get() as any)?.count ?? 0;
+      const termsBySystem = db.prepare(`
+        SELECT COALESCE(system, 'SEM_SISTEMA') as system, COUNT(*) as count
+        FROM terms GROUP BY system ORDER BY count DESC
+      `).all();
+
+      let graphNodes = 0;
+      let graphEdges = 0;
+      let edgesByPredicate: any[] = [];
+
+      try {
+        graphNodes = (db.prepare('SELECT COUNT(*) as count FROM graph_nodes').get() as any)?.count ?? 0;
+      } catch {
+        graphNodes = 0;
+      }
+
+      try {
+        graphEdges = (db.prepare('SELECT COUNT(*) as count FROM graph_edges').get() as any)?.count ?? 0;
+        edgesByPredicate = db.prepare(`
+          SELECT predicate, COUNT(*) as count FROM graph_edges GROUP BY predicate ORDER BY count DESC LIMIT 10
+        `).all();
+      } catch {
+        graphEdges = 0;
+        edgesByPredicate = [];
+      }
+
+      const dbPath = getDbPath();
+      let lastUpdated: string | null = null;
+      let dbSizeBytes = 0;
+
+      if (fs.existsSync(dbPath)) {
+        const stats = fs.statSync(dbPath);
+        lastUpdated = stats.mtime.toISOString();
+        dbSizeBytes = stats.size;
+      }
+
+      res.json({
+        success: true,
+        totalTerms,
+        termsBySystem,
+        graphNodes,
+        graphEdges,
+        topPredicates: edgesByPredicate,
+        lastUpdated,
+        dbSizeBytes,
+      });
+    } catch (err: any) {
+      console.error("[server] Erro em /api/dictionary-health:", err);
+      res.status(500).json({ success: false, error: String(err) });
+    }
   });
 
   // REAL Embedding Endpoint (Gemini gemini-embedding-001 with outputDimensionality: 768, batching and rate limit throttling)
@@ -206,6 +277,10 @@ async function startServer() {
         LOCALIZACAO: 'localizado_em',
         COMPOSICAO: 'compoe',
         REGULACAO: 'regula',
+        CLASSIFICACAO: 'classifica_como',
+        COMPLICACAO: 'complica',
+        EPIDEMIOLOGIA: 'associado_a',
+        PROGNOSTICO: 'associado_a',
       };
 
       // Garante que o motor terminológico esteja pronto antes do processamento

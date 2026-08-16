@@ -300,7 +300,51 @@ const RELATION_TRIGGERS: { pattern: RegExp; type: string }[] = [
   { pattern: /\bregula(m)?\b/, type: 'REGULACAO' },
   { pattern: /\bcontrola(m)?\b/, type: 'REGULACAO' },
   { pattern: /\bmodula(m)?\b/, type: 'REGULACAO' },
+
+  // CLASSIFICACAO (novo — comum em didática de ciclo básico e classificações clínicas)
+  { pattern: /\bclassifica(-se)? em\b|\b[eé] classificad[oa] como\b/, type: 'CLASSIFICACAO' },
+  { pattern: /\bsubdivide(-se)? em\b|\bdivide(-se)? em\b/, type: 'CLASSIFICACAO' },
+  { pattern: /\btipos? de\b(?=.{0,40}\b(classifica[cç][aã]o|classificam)\b)/, type: 'CLASSIFICACAO' },
+
+  // EPIDEMIOLOGIA (novo — conecta doença/condição a população/faixa etária/prevalência)
+  { pattern: /\bmais comum (em|no|na)\b|\bmais frequente (em|no|na)\b/, type: 'EPIDEMIOLOGIA' },
+  { pattern: /\bacomete(m)? principalmente\b|\bacomete(m)? predominantemente\b/, type: 'EPIDEMIOLOGIA' },
+  { pattern: /\bprevalente (em|no|na)\b|\bpreval[eê]ncia (em|no|na)\b/, type: 'EPIDEMIOLOGIA' },
+  { pattern: /\bincide(m)? (em|sobre)\b/, type: 'EPIDEMIOLOGIA' },
+
+  // COMPLICACAO (novo — progressão/evolução da doença, distinto de EFEITO_ADVERSO que é reação a medicamento)
+  { pattern: /\bevolui(em)? para\b|\bpode(m)? evoluir para\b/, type: 'COMPLICACAO' },
+  { pattern: /\bcomplica(-se)? com\b|\bcomplica[cç][aã]o(ões|oes)? (de|do|da)\b/, type: 'COMPLICACAO' },
+  { pattern: /\bpode(m)? progredir para\b/, type: 'COMPLICACAO' },
+
+  // PROGNOSTICO (novo)
+  { pattern: /\bprogn[oó]stico (reservado|favor[aá]vel|desfavor[aá]vel|bom|ruim)\b/, type: 'PROGNOSTICO' },
+  { pattern: /\btaxa(s)? de (mortalidade|sobrevida) (de|em|para)\b/, type: 'PROGNOSTICO' },
 ];
+
+export const NEGATION_MARKERS = [
+  'não', 'nunca', 'jamais', 'nenhum', 'nenhuma', 'sem', 'ausência de',
+  'raramente', 'dificilmente', 'não costuma', 'não deve ser confundido com',
+];
+
+const NORMALIZED_NEGATION_PATTERNS = NEGATION_MARKERS.map((marker) => {
+  const norm = normalizeText(marker);
+  return new RegExp(`\\b${norm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+});
+
+function hasNegationBeforeTrigger(
+  normalizedSentence: string,
+  trigStartIndex: number,
+  sourceRelEnd: number,
+  prevTriggerEnd: number
+): boolean {
+  const startBound = Math.max(0, prevTriggerEnd, Math.min(sourceRelEnd, trigStartIndex));
+  const textBetween = normalizedSentence.slice(startBound, trigStartIndex);
+  const words = textBetween.trim().split(/\s+/).filter(Boolean);
+  const windowText = words.slice(-5).join(' ');
+  if (!windowText) return false;
+  return NORMALIZED_NEGATION_PATTERNS.some((pattern) => pattern.test(windowText));
+}
 
 export interface TermEntry {
   canonicalTerm: string;
@@ -602,13 +646,25 @@ export class WorkerNEREngine {
         if (sourceEntities.length === 0 || targetEntities.length === 0) continue;
 
         for (const source of sourceEntities) {
+          const sourceRelEnd = source.endIndex - sentStart;
+          const isNegated = hasNegationBeforeTrigger(
+            normalizedSentence,
+            trig.startIndex,
+            sourceRelEnd,
+            prevTriggerEnd
+          );
+
+          const relationType = isNegated
+            ? (trig.type.startsWith('NEGACAO_') ? trig.type : `NEGACAO_${trig.type}`)
+            : trig.type;
+
           for (const target of targetEntities) {
             if (source.normalizedTerm === target.normalizedTerm) continue;
 
             relations.push({
               sourceEntity: source.normalizedTerm,
               targetEntity: target.normalizedTerm,
-              relationType: trig.type,
+              relationType,
               triggerPhrase: trig.triggerPhrase,
               sentence: sentence.trim(),
             });

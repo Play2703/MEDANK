@@ -30,7 +30,9 @@ import {
   Sparkles,
   FolderOpen,
   ArrowLeft,
+  Activity,
 } from 'lucide-react';
+import { DictionaryHealthAdminView } from './DictionaryHealthAdminView';
 import { DeveloperLibraryView } from './DeveloperLibraryView';
 import { MedCoreArchitectureView } from './MedCoreArchitectureView';
 import { ExamBankView } from '../../core/exam_bank';
@@ -61,6 +63,7 @@ const ICON_MAP: Record<string, React.FC<{ className?: string }>> = {
   ScrollText,
   HardDrive,
   Settings,
+  Activity,
 };
 
 export const DeveloperConsoleView: React.FC = () => {
@@ -74,7 +77,7 @@ export const DeveloperConsoleView: React.FC = () => {
   } = useDeveloperConsoleViewModel();
 
   const [activeTab, setActiveTab] = useState<
-    'modules' | 'architecture' | 'logs' | 'settings' | 'import-queue' | 'admin-settings' | 'living-cards' | 'audit-report'
+    'modules' | 'architecture' | 'logs' | 'settings' | 'import-queue' | 'admin-settings' | 'living-cards' | 'audit-report' | 'dictionary-health'
   >('modules');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedModule, setSelectedModule] = useState<DeveloperModule | null>(null);
@@ -228,6 +231,15 @@ export const DeveloperConsoleView: React.FC = () => {
             >
               Auditoria (18.10)
             </button>
+            <button
+              onClick={() => setActiveTab('dictionary-health')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all font-semibold flex items-center gap-1.5 ${
+                activeTab === 'dictionary-health' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>Saúde Dicionário</span>
+            </button>
           </nav>
 
           <button
@@ -368,6 +380,14 @@ export const DeveloperConsoleView: React.FC = () => {
             Logs
           </button>
           <button
+            onClick={() => setActiveTab('dictionary-health')}
+            className={`px-3 py-2 rounded-xl whitespace-nowrap ${
+              activeTab === 'dictionary-health' ? 'bg-teal-600 text-white' : 'text-slate-400'
+            }`}
+          >
+            Saúde Dicionário
+          </button>
+          <button
             onClick={() => setActiveTab('settings')}
             className={`px-3 py-2 rounded-xl whitespace-nowrap ${
               activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'text-slate-400'
@@ -411,6 +431,8 @@ export const DeveloperConsoleView: React.FC = () => {
                         setActiveTab('admin-settings');
                       } else if (module.id === 'logs') {
                         setActiveTab('audit-report');
+                      } else if (module.id === 'dictionary-health') {
+                        setActiveTab('dictionary-health');
                       } else {
                         setActiveModuleView(module.id);
                       }
@@ -627,6 +649,9 @@ export const DeveloperConsoleView: React.FC = () => {
 
         {/* TAB 8: AUDIT REPORT (18.10) */}
         {activeTab === 'audit-report' && <AuditReportView />}
+
+        {/* TAB 9: DICTIONARY HEALTH ADMIN */}
+        {activeTab === 'dictionary-health' && <DictionaryHealthAdminView />}
           </>
         )}
       </main>

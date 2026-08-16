@@ -63,6 +63,9 @@ function mapCategoryToEntityType(category: string): MedicalEntityType {
 }
 
 function mapRelationTypeToPredicate(type: string): RelationType {
+  if (type.startsWith('NEGACAO_')) {
+    return type.toLowerCase() as RelationType;
+  }
   switch (type) {
     case 'TRATAMENTO':
       return 'trata';
@@ -77,7 +80,13 @@ function mapRelationTypeToPredicate(type: string): RelationType {
       return 'diagnostica';
     case 'PREVENCAO':
       return 'previne';
+    case 'CLASSIFICACAO':
+      return 'classifica_como';
+    case 'COMPLICACAO':
+      return 'complica';
     case 'FATOR_DE_RISCO':
+    case 'EPIDEMIOLOGIA':
+    case 'PROGNOSTICO':
     case 'ASSOCIACAO':
     case 'MECANISMO_DE_ACAO':
     default:

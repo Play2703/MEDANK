@@ -57,6 +57,10 @@ const RELATION_TYPE_TO_PREDICATE: Record<string, RelationType> = {
   LOCALIZACAO: 'localizado_em',
   COMPOSICAO: 'compoe',
   REGULACAO: 'regula',
+  CLASSIFICACAO: 'classifica_como',
+  COMPLICACAO: 'complica',
+  EPIDEMIOLOGIA: 'associado_a',
+  PROGNOSTICO: 'associado_a',
 };
 
 const localNerWorker = new NERWorkerClient();

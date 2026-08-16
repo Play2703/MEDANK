@@ -33,6 +33,17 @@ describe('Web Worker NER Engine (Background Processing)', () => {
     expect(relations[0].targetEntity.toLowerCase()).toBe('infarto agudo do miocárdio');
   });
 
+  it('deve detectar negação e prefixar relationType com NEGACAO_', () => {
+    const engine = new WorkerNEREngine();
+    const text = 'O captopril não causa tosse.';
+    const entities = engine.extractEntities(text);
+    const relations = engine.extractRelations(text, entities);
+
+    expect(relations.length).toBeGreaterThanOrEqual(1);
+    expect(relations[0].relationType).toBe('NEGACAO_CAUSA');
+    expect(relations[0].relationType).not.toBe('CAUSA');
+  });
+
   it('deve calcular a cobertura de entidades médicas no texto', () => {
     const engine = new WorkerNEREngine();
     const text = 'Paciente com infarto agudo do miocárdio.';

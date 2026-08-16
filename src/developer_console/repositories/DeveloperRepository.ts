@@ -14,6 +14,16 @@ export class DeveloperRepository {
         futureFormats: ['Multi-Upload', 'Filtros Avançados', 'Ações Bibliográficas', 'Status Importado'],
       },
       {
+        id: 'dictionary-health',
+        name: 'Saúde do Dicionário',
+        description: 'Métricas em tempo real, integridade do vocabulário clínico SQLite e grafo terminológico.',
+        iconName: 'Activity',
+        category: 'knowledge',
+        status: 'Ativo',
+        enabled: true,
+        futureFormats: ['DeCS / CID-10 Stats', 'Graph Nodes & Edges', 'Health Check API'],
+      },
+      {
         id: 'knowledge-engine',
         name: 'Knowledge Engine',
         description: 'Motor de estruturação, indexação semântica e curadoria de conteúdo médico.',

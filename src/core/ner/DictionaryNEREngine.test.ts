@@ -64,6 +64,76 @@ describe('DictionaryNEREngine', () => {
       expect(relations[0].triggerPhrase).toBe('indicado para');
       expect(relations[0].relationType).toBe('TRATAMENTO');
     });
+
+    it('should detect simple negation and prefix relationType with NEGACAO_ (não causa -> NEGACAO_CAUSA)', () => {
+      const sentence = 'A metformina não causa hipoglicemia.';
+      const entities = dictionaryNEREngine.extractEntities(sentence);
+      const relations = dictionaryNEREngine.extractRelations(sentence, entities);
+
+      expect(relations).toHaveLength(1);
+      expect(relations[0].sourceEntity).toBe('metformina');
+      expect(relations[0].targetEntity).toBe('hipoglicemia');
+      expect(relations[0].relationType).toBe('NEGACAO_CAUSA');
+      expect(relations[0].relationType).not.toBe('CAUSA');
+      expect(relations[0].triggerPhrase).toBe('causa');
+    });
+
+    it('should not negate relations when negation marker is distant or belongs to a prior clause', () => {
+      const sentence = 'O paciente não apresenta febre, mas a amoxicilina trata a sinusite.';
+      const entities = dictionaryNEREngine.extractEntities(sentence);
+      const relations = dictionaryNEREngine.extractRelations(sentence, entities);
+
+      const amoxRelation = relations.find((r) => r.sourceEntity === 'amoxicilina' && r.targetEntity === 'sinusite');
+      expect(amoxRelation).toBeDefined();
+      expect(amoxRelation?.relationType).toBe('TRATAMENTO');
+      expect(amoxRelation?.relationType).not.toBe('NEGACAO_TRATAMENTO');
+    });
+
+    it('should preserve normal positive relations when no negation marker is present', () => {
+      const sentence = 'O infarto agudo do miocárdio causa insuficiência cardíaca.';
+      const entities = dictionaryNEREngine.extractEntities(sentence);
+      const relations = dictionaryNEREngine.extractRelations(sentence, entities);
+
+      expect(relations).toHaveLength(1);
+      expect(relations[0].sourceEntity).toBe('infarto agudo do miocárdio');
+      expect(relations[0].targetEntity).toBe('insuficiência cardíaca');
+      expect(relations[0].relationType).toBe('CAUSA');
+      expect(relations[0].relationType).not.toContain('NEGACAO_');
+    });
+
+    it('should extract relations for new categories: CLASSIFICACAO, EPIDEMIOLOGIA, COMPLICACAO, and PROGNOSTICO', () => {
+      // 1. CLASSIFICACAO
+      const textClass = 'O diabetes mellitus subdivide-se em diabetes tipo 1 e diabetes tipo 2.';
+      const entitiesClass = dictionaryNEREngine.extractEntities(textClass);
+      const relClass = dictionaryNEREngine.extractRelations(textClass, entitiesClass);
+      expect(relClass.length).toBeGreaterThanOrEqual(1);
+      expect(relClass[0].relationType).toBe('CLASSIFICACAO');
+      expect(relClass[0].triggerPhrase).toBe('subdivide-se em');
+
+      // 2. EPIDEMIOLOGIA
+      const textEpidem = 'A hipertensão arterial é prevalente no diabetes mellitus.';
+      const entitiesEpidem = dictionaryNEREngine.extractEntities(textEpidem);
+      const relEpidem = dictionaryNEREngine.extractRelations(textEpidem, entitiesEpidem);
+      expect(relEpidem.length).toBeGreaterThanOrEqual(1);
+      expect(relEpidem[0].relationType).toBe('EPIDEMIOLOGIA');
+      expect(relEpidem[0].triggerPhrase).toBe('prevalente no');
+
+      // 3. COMPLICACAO
+      const textCompl = 'O diabetes mellitus pode evoluir para insuficiência cardíaca.';
+      const entitiesCompl = dictionaryNEREngine.extractEntities(textCompl);
+      const relCompl = dictionaryNEREngine.extractRelations(textCompl, entitiesCompl);
+      expect(relCompl.length).toBeGreaterThanOrEqual(1);
+      expect(relCompl[0].relationType).toBe('COMPLICACAO');
+      expect(relCompl[0].triggerPhrase).toBe('pode evoluir para');
+
+      // 4. PROGNOSTICO
+      const textProg = 'O choque cardiogênico apresenta prognóstico reservado no infarto agudo do miocárdio.';
+      const entitiesProg = dictionaryNEREngine.extractEntities(textProg);
+      const relProg = dictionaryNEREngine.extractRelations(textProg, entitiesProg);
+      expect(relProg.length).toBeGreaterThanOrEqual(1);
+      expect(relProg[0].relationType).toBe('PROGNOSTICO');
+      expect(relProg[0].triggerPhrase).toBe('prognostico reservado');
+    });
   });
 
   describe('PARTE 2 — Aho-Corasick entity extraction (extractEntities)', () => {

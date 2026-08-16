@@ -8,6 +8,8 @@ import { DocumentPickerService } from '../../../data/services/DocumentPickerServ
 import { ProfessorProfile, ImportedDocument } from '../../../domain/entities/Question';
 import { apiUrl } from '../../../lib/apiBaseUrl';
 import { ExamDNARadarChart } from '../../components/ExamDNARadarChart';
+import { db } from '../../../data/db/database';
+import { mapWithConcurrency } from '../../../core/utils/asyncUtils';
 
 import {
   ArrowLeft,
@@ -22,6 +24,8 @@ import {
   FileUp,
   Sparkles,
   RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface ProfessorProfilesViewProps {
@@ -48,6 +52,107 @@ export const ProfessorProfilesView: React.FC<ProfessorProfilesViewProps> = ({ on
   const [newDescription, setNewDescription] = useState<string>('');
   const [newUploadedFiles, setNewUploadedFiles] = useState<ImportedDocument[]>([]);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+
+  // Batch DNA recalculation state
+  const [showBatchConfirmModal, setShowBatchConfirmModal] = useState<boolean>(false);
+  const [isBatchRecalculating, setIsBatchRecalculating] = useState<boolean>(false);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; currentName: string }>({
+    current: 0,
+    total: 0,
+    currentName: '',
+  });
+  const [batchResultModal, setBatchResultModal] = useState<{
+    total: number;
+    successCount: number;
+    failed: Array<{ name: string; reason: string }>;
+  } | null>(null);
+
+  const handleStartBatchRecalculate = async () => {
+    setShowBatchConfirmModal(false);
+    setIsBatchRecalculating(true);
+
+    try {
+      const allProfiles = await db.professorProfiles.toArray();
+      if (allProfiles.length === 0) {
+        setIsBatchRecalculating(false);
+        return;
+      }
+
+      setBatchProgress({ current: 0, total: allProfiles.length, currentName: '' });
+
+      let successCount = 0;
+      const failed: Array<{ name: string; reason: string }> = [];
+      let completedCount = 0;
+
+      await mapWithConcurrency(allProfiles, 2, async (profile) => {
+        setBatchProgress((prev) => ({
+          ...prev,
+          currentName: profile.name,
+        }));
+
+        try {
+          const docTexts = (profile.documents || [])
+            .map((d) => (d.extractedExcerpt ? `[Documento: ${d.fileName}]\n${d.extractedExcerpt}` : `[Documento: ${d.fileName}]`))
+            .join('\n\n');
+
+          const res = await fetch(apiUrl('/api/clone-exam-style'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              profileName: profile.name,
+              sourceExamName: profile.name,
+              examText: docTexts,
+              documents: profile.documents,
+            }),
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `HTTP ${res.status}: Erro na análise`);
+          }
+
+          const data = await res.json();
+          if (!data.success || !data.profile) {
+            throw new Error(data.error || 'Resposta inválida do servidor');
+          }
+
+          const styleAnalysis = data.profile.styleAnalysis;
+          const examDNA = data.profile.examDNA || styleAnalysis?.examDNA || profile.examDNA;
+
+          const updatedProfile: ProfessorProfile = {
+            ...profile,
+            styleAnalysis,
+            examDNA,
+            updatedAt: new Date().toISOString(),
+          };
+
+          await db.professorProfiles.put(updatedProfile);
+          await updateProfessorProfile(updatedProfile);
+          successCount++;
+        } catch (err: any) {
+          console.error(`[BatchDNA] Erro ao recalcular perfil "${profile.name}":`, err);
+          failed.push({ name: profile.name, reason: err.message || String(err) });
+        } finally {
+          completedCount++;
+          setBatchProgress({
+            current: completedCount,
+            total: allProfiles.length,
+            currentName: profile.name,
+          });
+        }
+      });
+
+      setBatchResultModal({
+        total: allProfiles.length,
+        successCount,
+        failed,
+      });
+    } catch (err: any) {
+      alert('Erro inesperado no recálculo em lote: ' + (err.message || String(err)));
+    } finally {
+      setIsBatchRecalculating(false);
+    }
+  };
 
   const handleAnalyzeStyle = async (profile: ProfessorProfile) => {
     setAnalyzingId(profile.id);
@@ -248,15 +353,52 @@ export const ProfessorProfilesView: React.FC<ProfessorProfilesViewProps> = ({ on
           </div>
         </div>
 
-        <M3Button
-          variant="filled"
-          icon={<Plus className="w-4 h-4" />}
-          onClick={() => setShowCreateModal(true)}
-          className="bg-purple-600 hover:bg-purple-500 text-white"
-        >
-          Novo Perfil
-        </M3Button>
+        <div className="flex items-center gap-2">
+          {professorProfiles.length > 0 && (
+            <M3Button
+              variant="outlined"
+              icon={<RefreshCw className={`w-4 h-4 text-purple-400 ${isBatchRecalculating ? 'animate-spin' : ''}`} />}
+              disabled={isBatchRecalculating}
+              onClick={() => setShowBatchConfirmModal(true)}
+              className="border-purple-500/30 hover:bg-purple-500/10 text-purple-300 text-xs"
+            >
+              {isBatchRecalculating
+                ? `Recalculando (${batchProgress.current}/${batchProgress.total})...`
+                : 'Recalcular DNA de Todas as Bancas'}
+            </M3Button>
+          )}
+
+          <M3Button
+            variant="filled"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={() => setShowCreateModal(true)}
+            className="bg-purple-600 hover:bg-purple-500 text-white"
+          >
+            Novo Perfil
+          </M3Button>
+        </div>
       </div>
+
+      {/* Batch Recalculation Progress Bar */}
+      {isBatchRecalculating && (
+        <M3Card className="p-4 bg-purple-950/40 border border-purple-500/30 space-y-2">
+          <div className="flex items-center justify-between text-xs font-semibold text-purple-200">
+            <span className="flex items-center gap-2">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-400" />
+              <span>Recalculando DNA: <strong>{batchProgress.currentName || 'Processando...'}</strong></span>
+            </span>
+            <span className="font-mono">
+              {batchProgress.current} de {batchProgress.total} bancas ({Math.round((batchProgress.current / (batchProgress.total || 1)) * 100)}%)
+            </span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-300 rounded-full"
+              style={{ width: `${Math.round((batchProgress.current / (batchProgress.total || 1)) * 100)}%` }}
+            />
+          </div>
+        </M3Card>
+      )}
 
       {/* Profiles List */}
       {professorProfiles.length === 0 ? (
@@ -604,6 +746,106 @@ export const ProfessorProfilesView: React.FC<ProfessorProfilesViewProps> = ({ on
                 </M3Button>
                 <M3Button variant="filled" onClick={handleCreateNewProfile}>
                   Salvar Perfil
+                </M3Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Batch Recalculate Confirmation Modal */}
+        {showBatchConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md rounded-3xl p-6 bg-slate-900 border border-purple-500/30 space-y-4 shadow-2xl"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-base text-white flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  <span>Recalcular DNA em Lote</span>
+                </h3>
+                <button onClick={() => setShowBatchConfirmModal(false)} className="text-slate-400 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs text-slate-300 leading-relaxed">
+                <p>
+                  Esta operação vai reprocessar as matrizes de estilo e vetores ExamDNA de{' '}
+                  <strong className="text-purple-300">{professorProfiles.length} perfil(is)</strong> de bancas e professores cadastrados.
+                </p>
+                <p className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-200">
+                  ⚡ O processo utiliza concorrência controlada no servidor. Dependendo do volume de provas e excertos, pode levar alguns minutos.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <M3Button variant="text" onClick={() => setShowBatchConfirmModal(false)}>
+                  Cancelar
+                </M3Button>
+                <M3Button
+                  variant="filled"
+                  icon={<RefreshCw className="w-4 h-4" />}
+                  onClick={handleStartBatchRecalculate}
+                  className="bg-purple-600 hover:bg-purple-500 text-white"
+                >
+                  Iniciar Recálculo
+                </M3Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Batch Recalculate Result Summary Modal */}
+        {batchResultModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md rounded-3xl p-6 bg-slate-900 border border-slate-800 space-y-4 shadow-2xl"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-base text-white flex items-center gap-2">
+                  {batchResultModal.failed.length === 0 ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  ) : (
+                    <AlertTriangle className="w-5 h-5 text-amber-400" />
+                  )}
+                  <span>Resultado do Recálculo em Lote</span>
+                </h3>
+                <button onClick={() => setBatchResultModal(null)} className="text-slate-400 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between text-xs font-semibold">
+                  <span>Perfis processados:</span>
+                  <span className="font-mono text-white">
+                    {batchResultModal.successCount} de {batchResultModal.total} com sucesso
+                  </span>
+                </div>
+
+                {batchResultModal.failed.length > 0 && (
+                  <div className="p-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-xs space-y-2">
+                    <span className="font-bold block">Falhas ({batchResultModal.failed.length}):</span>
+                    <div className="max-h-32 overflow-y-auto space-y-1.5 font-mono text-[11px]">
+                      {batchResultModal.failed.map((f, i) => (
+                        <div key={i} className="p-1.5 rounded bg-black/30">
+                          <strong>{f.name}:</strong> {f.reason}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end pt-3 border-t border-slate-800">
+                <M3Button variant="filled" onClick={() => setBatchResultModal(null)} className="bg-indigo-600 text-white">
+                  Fechar
                 </M3Button>
               </div>
             </motion.div>
