@@ -48,6 +48,16 @@ interface TermRecord {
   code: string | null;
   category: string;
   canonical_term: string;
+  metadata?: string | null;
+}
+
+export function ensureMetadataColumn(db: Database.Database): void {
+  const columns = db.prepare("PRAGMA table_info(terms)").all() as Array<{ name: string }>;
+  const hasMetadata = columns.some((col) => col.name === 'metadata');
+  if (!hasMetadata) {
+    console.log('⚡ Adicionando coluna metadata à tabela terms (migração retrocompatível)...');
+    db.exec('ALTER TABLE terms ADD COLUMN metadata TEXT;');
+  }
 }
 
 interface GraphNodeRecord {
@@ -104,7 +114,8 @@ export function convertJsonToSqlite(
       system TEXT,
       code TEXT,
       category TEXT,
-      canonical_term TEXT
+      canonical_term TEXT,
+      metadata TEXT
     );
     CREATE INDEX idx_term ON terms(term);
     CREATE INDEX idx_terms_normalized_term ON terms(normalized_term);
@@ -133,8 +144,8 @@ export function convertJsonToSqlite(
   `);
 
   const insertTermStmt = db.prepare(`
-    INSERT INTO terms (term, normalized_term, system, code, category, canonical_term)
-    VALUES (@term, @normalized_term, @system, @code, @category, @canonical_term)
+    INSERT INTO terms (term, normalized_term, system, code, category, canonical_term, metadata)
+    VALUES (@term, @normalized_term, @system, @code, @category, @canonical_term, @metadata)
   `);
 
   console.log('⚡ Mapeando e deduplicando termos...');
@@ -219,6 +230,7 @@ export function convertJsonToSqlite(
         code: rec.code,
         category: rec.category,
         canonical_term: rec.canonical_term,
+        metadata: rec.metadata || null,
       });
     }
   });

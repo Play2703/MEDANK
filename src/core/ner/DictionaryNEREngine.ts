@@ -42,6 +42,7 @@ export interface TermRow {
   category?: string | null;
   canonical_term?: string | null;
   normalized_term?: string | null;
+  metadata?: string | null;
 }
 
 export function normalizeText(text: string): string {
@@ -57,8 +58,8 @@ export function getDbPath(): string {
   const possiblePaths = [
     path.resolve(process.cwd(), 'src/core/ner/medicalTerminology.db'),
     path.resolve(process.cwd(), 'medicalTerminology.db'),
-    path.resolve(__dirname, 'medicalTerminology.db'),
-  ];
+    typeof __dirname !== 'undefined' ? path.resolve(__dirname, 'medicalTerminology.db') : '',
+  ].filter(Boolean);
   for (const p of possiblePaths) {
     if (fs.existsSync(p)) return p;
   }

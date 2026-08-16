@@ -253,19 +253,38 @@ export const DictionaryHealthAdminView: React.FC = () => {
             ) : (
               data.termsBySystem.map((item, idx) => {
                 const total = data.totalTerms || 1;
-                const pct = Math.round((item.count / total) * 100);
-                const isDeCS = item.system.toUpperCase().includes('DECS');
-                const isCID = item.system.toUpperCase().includes('CID');
+                const pct = Math.max(Math.round((item.count / total) * 100), item.count > 0 ? 1 : 0);
+                const sysUpper = item.system.toUpperCase();
+                const isDeCS = sysUpper.includes('DECS');
+                const isCID = sysUpper.includes('CID');
+                const isRename = sysUpper.includes('RENAME');
+                const isTuss = sysUpper.includes('TUSS');
+
+                const dotColor = isDeCS
+                  ? 'bg-indigo-400'
+                  : isCID
+                  ? 'bg-emerald-400'
+                  : isRename
+                  ? 'bg-amber-400'
+                  : isTuss
+                  ? 'bg-cyan-400'
+                  : 'bg-slate-400';
+
+                const barColor = isDeCS
+                  ? 'bg-indigo-500'
+                  : isCID
+                  ? 'bg-emerald-500'
+                  : isRename
+                  ? 'bg-amber-500'
+                  : isTuss
+                  ? 'bg-cyan-500'
+                  : 'bg-slate-400';
 
                 return (
                   <div key={idx} className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/50 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span
-                          className={`w-2.5 h-2.5 rounded-full ${
-                            isDeCS ? 'bg-indigo-400' : isCID ? 'bg-emerald-400' : 'bg-slate-400'
-                          }`}
-                        />
+                        <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
                         <span className="font-semibold text-xs text-slate-200">{item.system}</span>
                       </div>
                       <div className="flex items-center gap-2 font-mono text-xs">
@@ -277,10 +296,8 @@ export const DictionaryHealthAdminView: React.FC = () => {
                     {/* Progress Bar */}
                     <div className="w-full h-1.5 rounded-full bg-slate-700/60 overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${
-                          isDeCS ? 'bg-indigo-500' : isCID ? 'bg-emerald-500' : 'bg-slate-400'
-                        }`}
-                        style={{ width: `${pct}%` }}
+                        className={`h-full rounded-full ${barColor}`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
                       />
                     </div>
                   </div>

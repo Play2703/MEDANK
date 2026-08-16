@@ -15,6 +15,8 @@
     "seed:build": "tsx scripts/build-seed-bundle.ts",
     "seed:manifest": "tsx scripts/generate-seed-manifest.ts",
     "dict:import-decs": "tsx scripts/import-decs.ts",
+    "dict:import-rename": "tsx scripts/import-rename.ts",
+    "dict:import-tuss": "tsx scripts/import-tuss.ts",
     "db:build": "tsx scripts/convert-to-sqlite.ts"
   },
   "dependencies": {
