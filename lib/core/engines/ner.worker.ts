@@ -274,6 +274,32 @@ const RELATION_TRIGGERS: { pattern: RegExp; type: string }[] = [
   { pattern: /\bprevine(m)?\b/, type: 'PREVENCAO' },
   { pattern: /\breduz(em)? o risco de\b/, type: 'PREVENCAO' },
   { pattern: /\bprofilaxia (para|de|do|da)\b/, type: 'PREVENCAO' },
+
+  // IRRIGACAO (novo)
+  { pattern: /\birriga(m)?\b/, type: 'IRRIGACAO' },
+  { pattern: /\bsuprido(a)? por\b|\bsupre(m)?\b/, type: 'IRRIGACAO' },
+  { pattern: /\bvasculariza(m|do|da)?\b/, type: 'IRRIGACAO' },
+
+  // INERVACAO (novo)
+  { pattern: /\bineva(m)?\b|\binerva(m)?\b/, type: 'INERVACAO' },
+  { pattern: /\binervado(a)? por\b/, type: 'INERVACAO' },
+
+  // DRENAGEM (novo)
+  { pattern: /\bdrena(m)?\b/, type: 'DRENAGEM' },
+  { pattern: /\bdrenado(a)? por\b/, type: 'DRENAGEM' },
+
+  // LOCALIZACAO (novo)
+  { pattern: /\blocaliza(-se)? (em|no|na)\b|\bsitua(-se)? (em|no|na)\b/, type: 'LOCALIZACAO' },
+  { pattern: /\bencontra(-se)? (em|no|na)\b/, type: 'LOCALIZACAO' },
+
+  // COMPOSICAO (novo)
+  { pattern: /\bcompõe(m)?\b|\bcompo[e|õe] (o|a)\b/, type: 'COMPOSICAO' },
+  { pattern: /\bfaz(em)? parte (de|do|da)\b|\bconstitui(em)?\b/, type: 'COMPOSICAO' },
+
+  // REGULACAO (novo — fecha a lacuna de fisiologia regulatória, ex: eixo hormonal)
+  { pattern: /\bregula(m)?\b/, type: 'REGULACAO' },
+  { pattern: /\bcontrola(m)?\b/, type: 'REGULACAO' },
+  { pattern: /\bmodula(m)?\b/, type: 'REGULACAO' },
 ];
 
 export interface TermEntry {

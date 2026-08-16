@@ -34,6 +34,8 @@ export {
   pruneObjectByTokenBudget,
 };
 
+export type { SemanticChunkResult };
+
 
 export interface RAGRetrievalOptions {
   topK?: number;
@@ -41,12 +43,13 @@ export interface RAGRetrievalOptions {
   deckId?: string;
   banca?: string;
   professor?: string;
+  assetIds?: string[];
 }
 
 export class RAGEngine {
   /**
    * Retrieves top-K semantically relevant chunks for a given query/subject,
-   * optionally filtered by banca or professor, enriched with extracted medical entities,
+   * optionally filtered by banca, professor, or specific assetIds, enriched with extracted medical entities,
    * pruned strictly by the MAX_CONTEXT_TOKENS_PER_CALL budget.
    */
   public async retrieveContext(query: string, options: RAGRetrievalOptions = {}): Promise<SemanticChunkResult[]> {
@@ -55,6 +58,7 @@ export class RAGEngine {
     const searchRes = await realSemanticSearchService.searchTopChunks(searchTerm, topK, {
       banca: options.banca,
       professor: options.professor,
+      assetIds: options.assetIds,
     });
     const chunks = searchRes.results;
 

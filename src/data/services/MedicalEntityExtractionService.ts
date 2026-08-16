@@ -48,6 +48,15 @@ const RELATION_TYPE_TO_PREDICATE: Record<string, RelationType> = {
   MANIFESTACAO: 'é_sintoma_de',
   ASSOCIACAO: 'associado_a',
   DIAGNOSTICO_POR: 'diagnostica',
+  MECANISMO_DE_ACAO: 'mecanismo_de_acao' as RelationType,
+  EFEITO_ADVERSO: 'complica',
+  PREVENCAO: 'previne',
+  IRRIGACAO: 'irriga',
+  INERVACAO: 'inerva',
+  DRENAGEM: 'drena',
+  LOCALIZACAO: 'localizado_em',
+  COMPOSICAO: 'compoe',
+  REGULACAO: 'regula',
 };
 
 const localNerWorker = new NERWorkerClient();
@@ -312,6 +321,56 @@ export class MedicalEntityExtractionService {
       return filtered.slice(0, limit);
     } catch (err) {
       console.warn(`[MedicalEntityExtractionService] Search canonical entities failed for query "${query}":`, err);
+      return [];
+    }
+  }
+
+  /**
+   * Extrai entidades médicas de um texto avulso de forma segura no navegador:
+   * 1. Tenta /api/extract-entities via fetch
+   * 2. Se offline ou em falha, executa localmente via NERWorkerClient (Web Worker)
+   */
+  async extractEntitiesFromText(text: string): Promise<ExtractedMedicalEntity[]> {
+    if (!text || !text.trim()) return [];
+
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+
+    if (!isOffline) {
+      try {
+        const res = await fetch(apiUrl('/api/extract-entities'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chunks: [{ assetId: 'adhoc-text', chunkIndex: 0, text }],
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.results) && data.results[0]) {
+            const rawEntities = Array.isArray(data.results[0].entities) ? data.results[0].entities : [];
+            return deduplicateEntitiesIntraChunk(rawEntities);
+          }
+        }
+      } catch (err) {
+        console.warn('[MedicalEntityExtractionService] extractEntitiesFromText API call failed, falling back to worker:', err);
+      }
+    }
+
+    try {
+      const analysis = await localNerWorker.analyzeText(text);
+      const rawEntities: ExtractedMedicalEntity[] = (analysis.entities || []).map((ent) => ({
+        text: ent.text,
+        normalizedText: normalizeEntityText(ent.text),
+        canonicalKey: buildCanonicalKey((ent.codeSystem as CodeSystem) ?? null, ent.code ?? null, ent.text),
+        type: CATEGORY_TO_TYPE[ent.category] || (ent.category.toLowerCase() as MedicalEntityType),
+        code_system: (ent.codeSystem as CodeSystem) ?? null,
+        code: ent.code ?? null,
+        confidence: 1.0,
+      }));
+      return deduplicateEntitiesIntraChunk(rawEntities);
+    } catch (err) {
+      console.warn('[MedicalEntityExtractionService] Local worker extraction failed:', err);
       return [];
     }
   }

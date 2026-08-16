@@ -38,7 +38,14 @@ export type RelationType =
   | 'previne'
   | 'indica'
   | 'classifica_como'
-  | 'associado_a';
+  | 'associado_a'
+  | 'mecanismo_de_acao'
+  | 'irriga'
+  | 'inerva'
+  | 'drena'
+  | 'localizado_em'
+  | 'compoe'
+  | 'regula';
 
 export interface ExtractedMedicalEntity {
   text: string;              // Original text as appeared in document

@@ -30,6 +30,7 @@ export interface IndexDocumentMetadata {
 export interface SemanticSearchFilter {
   banca?: string;
   professor?: string;
+  assetIds?: string[];
 }
 
 export interface SemanticChunkResult {
@@ -99,7 +100,8 @@ export class RealSemanticSearchService {
   private getCacheKey(query: string, topK: number, filter?: SemanticSearchFilter): string {
     const bancaStr = filter?.banca ? filter.banca.trim().toLowerCase() : '';
     const profStr = filter?.professor ? filter.professor.trim().toLowerCase() : '';
-    return `${query.trim().toLowerCase()}:${topK}:${bancaStr}:${profStr}`;
+    const assetIdsStr = filter?.assetIds ? filter.assetIds.slice().sort().join(',') : '';
+    return `${query.trim().toLowerCase()}:${topK}:${bancaStr}:${profStr}:${assetIdsStr}`;
   }
 
   private setCachedResults(key: string, result: SemanticSearchResult): void {
@@ -258,6 +260,11 @@ export class RealSemanticSearchService {
       candidates = candidates.filter(
         (doc) => doc.professor && doc.professor.toLowerCase().includes(searchProf)
       );
+    }
+
+    if (Array.isArray(filter?.assetIds) && filter.assetIds.length > 0) {
+      const allowedIds = new Set(filter.assetIds);
+      candidates = candidates.filter((doc) => allowedIds.has(doc.assetId));
     }
 
     if (candidates.length === 0) {
