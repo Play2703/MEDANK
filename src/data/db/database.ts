@@ -6,8 +6,8 @@ import { Deck } from '../../domain/entities/Deck';
 import { FlashCard } from '../../domain/entities/Card';
 import { Tag } from '../../domain/entities/Tag';
 import { ReviewLog, DeckStats } from '../../domain/entities/StudySession';
-import { ProfessorProfile, ExamProfile, QuestionSet, Question } from '../../domain/entities/Question';
-import { KnowledgeAsset } from '../../domain/entities/KnowledgeAsset';
+import { ProfessorProfile, ExamProfile, QuestionSet, Question, ExtractedExamQuestionRecord } from '../../domain/entities/Question';
+import { KnowledgeAsset, KnowledgeAssetFileBinary } from '../../domain/entities/KnowledgeAsset';
 import { DocumentEmbedding } from '../../domain/entities/DocumentEmbedding';
 import {
   ChunkEntityRecord,
@@ -43,6 +43,8 @@ export class MedAnkiDexieDB extends Dexie {
   cardPendingSuggestions!: Table<CardPendingSuggestionRecord, string>;
   notes!: Table<Note, string>;
   entityEmbeddings!: Table<{ canonicalKey: string; embedding: number[]; updatedAt: string }, string>;
+  extractedExamQuestions!: Table<ExtractedExamQuestionRecord, string>;
+  knowledgeAssetFiles!: Table<KnowledgeAssetFileBinary, string>;
 
 
   constructor() {

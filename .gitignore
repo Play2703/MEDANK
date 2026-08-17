@@ -17,6 +17,8 @@ scripts/seed-source/decs/*.gz
 # Medical Dictionary Source JSON (migrated to SQLite medicalTerminology.db)
 src/core/ner/medicalTerminologyPt.json
 medicalTerminologyPt.json
-!src/core/ner/medicalTerminology.db
-!medicalTerminology.db
+
+# SQLite temporary WAL and SHM files
+*.db-wal
+*.db-shm
 

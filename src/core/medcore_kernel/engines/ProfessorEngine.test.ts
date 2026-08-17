@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto';
 import { describe, it, expect, vi } from 'vitest';
 import { professorEngine } from './ProfessorEngine';
 import { ProfessorProfile } from '../../../domain/entities/Question';

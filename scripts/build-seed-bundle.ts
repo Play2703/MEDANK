@@ -416,21 +416,51 @@ async function runBuildSeedBundle() {
   for (let idx = 0; idx < manifestEntries.length; idx++) {
     const entry = manifestEntries[idx];
     const filePath = path.join(SOURCE_DIR, entry.file);
+    // Verificação de Checkpoint por arquivo completo
+    const isFileCompleted = checkpoint.completedFiles.includes(entry.file) && checkpoint.files[entry.file]?.status === 'completed';
 
-    if (!fs.existsSync(filePath)) {
-      console.warn(`⚠️ Arquivo de origem não encontrado: ${filePath}. Ignorando.`);
+    if (!fs.existsSync(filePath) && !isFileCompleted) {
+      console.warn(`⚠️ Arquivo de origem não encontrado: ${filePath} e não está presente no checkpoint. Ignorando.`);
       failedFiles.push(entry.file);
       continue;
     }
 
     console.log(`\n📄 Processando [${idx + 1}/${manifestEntries.length}] ${entry.file}...`);
 
-    // Verificação de Checkpoint por arquivo completo
-    const isFileCompleted = checkpoint.completedFiles.includes(entry.file) && checkpoint.files[entry.file]?.status === 'completed';
     if (isFileCompleted && !FORCE_RESET) {
       console.log(`   ⏩ [Checkpoint] Arquivo ${entry.file} já concluído no checkpoint. Restaurando dados...`);
       const cachedFile = checkpoint.files[entry.file];
-      knowledgeAssets.push(cachedFile.asset);
+
+      // Sincroniza metadados atualizados do manifest.json (ex: categoria residencyExam, institution, board)
+      const syncedCategory = KnowledgeCategoryMapper.fromDisplayName(entry.category || 'Apostila');
+      const syncedAsset: KnowledgeAsset = {
+        ...cachedFile.asset,
+        title: entry.title || cachedFile.asset.title,
+        category: syncedCategory,
+        institution: entry.institution || cachedFile.asset.institution,
+        board: entry.board || (syncedCategory === 'residencyExam' ? (entry.board || entry.title) : cachedFile.asset.board),
+        professor: entry.professor || (syncedCategory === 'residencyExam' ? (entry.professor || 'Banca Examinadora') : cachedFile.asset.professor),
+        discipline: entry.discipline || cachedFile.asset.discipline,
+        specialty: entry.specialty || cachedFile.asset.specialty,
+      };
+
+      // Se o arquivo original PDF estiver disponível em disco, copia para public/seed-data/raw-exams/
+      if (fs.existsSync(filePath) && (syncedCategory === 'residencyExam' || syncedCategory === 'professorExam')) {
+        try {
+          const rawExamsDir = path.join(OUTPUT_DIR, 'raw-exams');
+          if (!fs.existsSync(rawExamsDir)) {
+            fs.mkdirSync(rawExamsDir, { recursive: true });
+          }
+          fs.copyFileSync(filePath, path.join(rawExamsDir, entry.file));
+          syncedAsset.file.url = `/seed-data/raw-exams/${entry.file}`;
+          syncedAsset.file.hasRawFileBlob = true;
+        } catch (copyErr) {
+          console.warn(`⚠️ Não foi possível copiar PDF bruto para raw-exams/${entry.file}:`, copyErr);
+        }
+      }
+
+      cachedFile.asset = syncedAsset;
+      knowledgeAssets.push(syncedAsset);
       totalChunksProcessed += cachedFile.totalChunks;
 
       Object.values(cachedFile.embeddings).forEach((emb) => {
@@ -498,18 +528,19 @@ async function runBuildSeedBundle() {
 
       console.log(`   - Texto extraído: ${rawText.length} caracteres | ${chunks.length} chunks gerados.`);
 
+      const assetCategory = KnowledgeCategoryMapper.fromDisplayName(entry.category || 'Apostila');
       const asset: KnowledgeAsset = {
         id: assetId,
         uuid: assetId,
         title: entry.title || entry.file,
-        category: KnowledgeCategoryMapper.fromDisplayName(entry.category || 'Apostila'),
+        category: assetCategory,
         subcategory: entry.subcategory || 'Geral',
         discipline: entry.discipline || 'Medicina',
         specialty: entry.specialty || 'Geral',
         author: entry.author || 'MedAnki',
-        institution: 'MedAnki Seed Library',
-        board: entry.board || 'Geral',
-        professor: entry.professor || 'Geral',
+        institution: entry.institution || (assetCategory === 'residencyExam' ? 'Bancas Diversas' : 'MedAnki Seed Library'),
+        board: entry.board || (assetCategory === 'residencyExam' ? (entry.board || entry.title) : 'Geral'),
+        professor: entry.professor || (assetCategory === 'residencyExam' ? (entry.professor || 'Banca Examinadora') : 'Geral'),
         year: entry.year || new Date().getFullYear(),
         semester: entry.semester || '1',
         tags: entry.tags || [entry.specialty || 'Medicina'],
@@ -523,6 +554,22 @@ async function runBuildSeedBundle() {
         updatedAt: now,
         processingStatus: 'completed',
       };
+
+      // Se o arquivo original PDF estiver disponível em disco, copia para public/seed-data/raw-exams/
+      if (fs.existsSync(filePath) && (assetCategory === 'residencyExam' || assetCategory === 'professorExam')) {
+        try {
+          const rawExamsDir = path.join(OUTPUT_DIR, 'raw-exams');
+          if (!fs.existsSync(rawExamsDir)) {
+            fs.mkdirSync(rawExamsDir, { recursive: true });
+          }
+          fs.copyFileSync(filePath, path.join(rawExamsDir, entry.file));
+          asset.file.url = `/seed-data/raw-exams/${entry.file}`;
+          asset.file.hasRawFileBlob = true;
+        } catch (copyErr) {
+          console.warn(`⚠️ Não foi possível copiar PDF bruto para raw-exams/${entry.file}:`, copyErr);
+        }
+      }
+
       knowledgeAssets.push(asset);
 
       // Inicializa estrutura de checkpoint para o arquivo

@@ -147,6 +147,11 @@ export function lookupTerm(term: string, enableTypoTolerance = true): TermRow | 
   const norm = normalizeText(term);
   if (!norm) return undefined;
 
+  // Single-word stop words should never be matched as standalone entities
+  if (!norm.includes(' ') && COMMON_STOP_WORDS.has(norm)) {
+    return undefined;
+  }
+
   // Step A: Exact match on normalized_term
   const stmt = getSelectTermStatement();
   if (stmt) {

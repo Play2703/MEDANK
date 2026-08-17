@@ -4,7 +4,7 @@
  */
 
 export const DB_NAME = 'MedAnki_SQLite_LocalDB';
-export const CURRENT_DB_VERSION = 12;
+export const CURRENT_DB_VERSION = 16;
 
 export const SCHEMAS_V1 = {
   folders: 'id, title, parentId, createdAt',
@@ -83,5 +83,19 @@ export const SCHEMAS_V12 = {
 export const SCHEMAS_V13 = {
   ...SCHEMAS_V12,
   entityEmbeddings: 'canonicalKey, updatedAt',
+};
+
+export const SCHEMAS_V14 = {
+  ...SCHEMAS_V13,
+};
+
+export const SCHEMAS_V15 = {
+  ...SCHEMAS_V14,
+  extractedExamQuestions: 'id, sourceAssetId, questionNumber, correctLetter, specialty, confidence, createdAt',
+};
+
+export const SCHEMAS_V16 = {
+  ...SCHEMAS_V15,
+  knowledgeAssetFiles: 'id, assetId, mimeType, createdAt',
 };
 

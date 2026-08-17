@@ -259,6 +259,7 @@ export function importTuss(csvPathArg?: string): {
         const canonical = item.descricao.trim();
         const normalized = normalizeText(canonical);
         if (!normalized) continue;
+        if (!normalized.includes(' ') && (normalized.length <= 2 || ['para', 'com', 'sem', 'de', 'do', 'da', 'dos', 'das', 'em', 'por'].includes(normalized))) continue;
 
         const category = inferTussCategory(item.dominio, canonical);
 

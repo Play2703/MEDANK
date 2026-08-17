@@ -35,6 +35,8 @@ export interface ExamModel {
   tamanhoArquivo: number;
   tamanhoFormatado: string;
   gabarito: string; // Opcional (texto ou link do gabarito)
+  hasRawPdf?: boolean;
+  rawFileBlob?: Blob;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,6 +56,7 @@ export interface ExamCreateDTO {
   arquivoOriginal: string;
   tamanhoArquivo: number;
   gabarito?: string;
+  rawFile?: Blob | File;
 }
 
 export interface ExamUpdateDTO {
@@ -69,6 +72,7 @@ export interface ExamUpdateDTO {
   conteudoTexto?: string;
   tags?: string[];
   gabarito?: string;
+  rawFile?: Blob | File;
 }
 
 export const EXAM_CATEGORIES: ExamCategory[] = [

@@ -4,6 +4,22 @@ import { BinaryDocument } from '../models/BinaryDocument';
 import { DocumentContent, DocumentFormat } from '../models/DocumentContent';
 import { DocumentReadException } from '../exceptions/ImportEngineException';
 
+export interface PDFLayoutItem {
+  str: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  pageNumber: number;
+  width?: number;
+  height?: number;
+}
+
+export interface PDFLayoutResult {
+  items: PDFLayoutItem[];
+  totalPages: number;
+  rawText: string;
+}
+
 /**
  * DocumentReaderService
  *
@@ -220,10 +236,15 @@ export class DocumentReaderService implements IDocumentReader {
     }
 
     try {
-      const pdfjsLib = await import('pdfjs-dist');
-      // @ts-ignore
-      const pdfjsWorkerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-      pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+      let pdfjsLib: any;
+      if (typeof window === 'undefined') {
+        pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      } else {
+        pdfjsLib = await import('pdfjs-dist');
+        // @ts-ignore
+        const pdfjsWorkerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+      }
 
       const pdf = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
       const maxPages = Math.min(pdf.numPages, 150);
@@ -259,6 +280,84 @@ export class DocumentReaderService implements IDocumentReader {
         format: 'pdf',
         charCount: rawText ? rawText.length : 0,
         byteLength: buffer.byteLength,
+      };
+    }
+  }
+
+  /**
+   * Extrai o conteúdo do PDF preservando as coordenadas (x, y), fontSize e número da página de cada item de texto.
+   * Utilizado pelo ExamPDFQuestionSplitter para segmentação estruturada por layout sem uso de IA.
+   */
+  public async extractPDFWithLayout(
+    input: File | Blob | ArrayBuffer | Uint8Array,
+    onProgress?: (progressPercent: number) => void
+  ): Promise<PDFLayoutResult> {
+    let buffer: ArrayBuffer;
+    if (input instanceof ArrayBuffer) {
+      buffer = input;
+    } else if (input instanceof Uint8Array) {
+      buffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) as ArrayBuffer;
+    } else {
+      buffer = await this.readAsArrayBuffer(input);
+    }
+
+    try {
+      let pdfjsLib: any;
+      if (typeof window === 'undefined') {
+        pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      } else {
+        pdfjsLib = await import('pdfjs-dist');
+        // @ts-ignore
+        const pdfjsWorkerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+      }
+
+      const pdf = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
+      const maxPages = Math.min(pdf.numPages, 300);
+      const items: PDFLayoutItem[] = [];
+      let fullRawText = '';
+
+      for (let i = 1; i <= maxPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+
+        for (const item of content.items as any[]) {
+          if (!item || typeof item.str !== 'string') continue;
+          const transform = item.transform || [1, 0, 0, 1, 0, 0];
+          const x = transform[4] ?? 0;
+          const y = transform[5] ?? 0;
+          const fontSize = Math.abs(transform[0]) || Math.abs(transform[3]) || 12;
+
+          items.push({
+            str: item.str,
+            x: Math.round(x * 100) / 100,
+            y: Math.round(y * 100) / 100,
+            fontSize: Math.round(fontSize * 100) / 100,
+            pageNumber: i,
+            width: item.width ? Math.round(item.width * 100) / 100 : undefined,
+            height: item.height ? Math.round(item.height * 100) / 100 : undefined,
+          });
+        }
+
+        fullRawText += content.items.map((item: any) => item.str).join(' ') + '\n\n';
+        page.cleanup();
+        if (onProgress && i % 5 === 0) {
+          onProgress(Math.round((i / maxPages) * 100));
+        }
+      }
+
+      return {
+        items,
+        totalPages: pdf.numPages,
+        rawText: fullRawText,
+      };
+    } catch (err) {
+      console.warn('[DocumentReaderService] PDF layout extraction failed, falling back to raw strings:', err);
+      const rawText = this.extractRawStringsFromBuffer(buffer);
+      return {
+        items: [],
+        totalPages: 1,
+        rawText,
       };
     }
   }

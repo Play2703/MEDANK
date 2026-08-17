@@ -6,4 +6,5 @@ export * from './models/ExamModel';
 export * from './repositories/ExamRepository';
 export * from './providers/ExamProvider';
 export * from './viewmodels/ExamViewModel';
+export * from './services/ExamPDFQuestionSplitter';
 export { ExamBankView } from '../../developer_console/views/ExamBankView';

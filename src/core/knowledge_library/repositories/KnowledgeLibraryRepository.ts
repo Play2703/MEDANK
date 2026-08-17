@@ -72,7 +72,7 @@ export class KnowledgeLibraryRepository implements IKnowledgeLibraryRepository {
         if (mapped !== KnowledgeCategory.other && i.type === mapped) return true;
         const str = String(filter.type).toLowerCase();
         if (str.includes('livro') && i.type === KnowledgeCategory.book) return true;
-        if (str.includes('prova') && (i.type === KnowledgeCategory.residencyExam || i.type === KnowledgeCategory.professorExam || i.type === KnowledgeCategory.questionBank)) return true;
+        if (str.includes('prova') && (i.type === KnowledgeCategory.residencyExam || i.type === KnowledgeCategory.professorExam)) return true;
         if (str.includes('diretriz') && (i.type === KnowledgeCategory.guideline || i.type === KnowledgeCategory.protocol)) return true;
         if (str.includes('artigo') && i.type === KnowledgeCategory.article) return true;
         if (str.includes('apostila') && (i.type === KnowledgeCategory.apostila || i.type === KnowledgeCategory.manual)) return true;

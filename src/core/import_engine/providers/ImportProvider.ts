@@ -11,7 +11,6 @@ export function getDestinationModule(category: KnowledgeCategory): string {
     case KnowledgeCategory.book: return 'Biblioteca do MedCore';
     case KnowledgeCategory.residencyExam: return 'Banco de Provas';
     case KnowledgeCategory.professorExam: return 'Banco de Professores';
-    case KnowledgeCategory.questionBank: return 'Banco de Questões';
     case KnowledgeCategory.guideline: return 'Biblioteca de Diretrizes';
     case KnowledgeCategory.article: return 'Biblioteca Científica';
     case KnowledgeCategory.slide: return 'Biblioteca de Slides';
@@ -272,6 +271,7 @@ export class ImportNotifier extends StateNotifier<ImportQueueState> {
                 extension: ext,
                 extractedText: item.extractedText && item.extractedText.trim().length > 0 ? item.extractedText : undefined,
               },
+              rawFile: item.rawFile || null,
             });
           } catch (err) {
             console.error('Error saving imported document to MedKnowledgeRepository:', err);

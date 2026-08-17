@@ -58,9 +58,12 @@
   {
     "file": "PROVAS DIGITADAS COMPLETAS.pdf",
     "title": "Provas Digitadas Completas",
-    "category": "apostila",
-    "discipline": "Anatomia",
-    "specialty": "",
+    "category": "residencyExam",
+    "discipline": "Clínica Médica; Cirurgia Geral; Pediatria; Ginecologia e Obstetrícia; Medicina Preventiva",
+    "specialty": "Multidisciplinar",
+    "institution": "Bancas Diversas",
+    "board": "Concursos de Residência Médica",
+    "professor": "Bancas Examinadoras",
     "year": 2026
   },
   {
@@ -90,17 +93,23 @@
   {
     "file": "UNESP-UNICAMP.pdf",
     "title": "Unesp Unicamp",
-    "category": "apostila",
-    "discipline": "Anatomia;Fisiologia;Histologia;Pediatria;Cardiologia;Pneumologia;Oftalmologia;Hematologia;Neurologia;Cirugia Gera;Oncologia;Anestesiologia;Radiologia;",
-    "specialty": "",
+    "category": "residencyExam",
+    "discipline": "Clínica Médica; Cirurgia Geral; Pediatria; Ginecologia e Obstetrícia; Medicina Preventiva",
+    "specialty": "Multidisciplinar",
+    "institution": "UNESP / UNICAMP",
+    "board": "VUNESP / UNICAMP",
+    "professor": "Comissão FUVEST / VUNESP",
     "year": 2026
   },
   {
     "file": "USP.pdf",
     "title": "Usp",
-    "category": "apostila",
-    "discipline": "Anatomia;Fisiologia;Histologia;Pediatria;Cardiologia;Pneumologia;Oftalmologia;Hematologia;Neurologia;Cirugia Gera;Oncologia;Anestesiologia;Radiologia;",
-    "specialty": "",
+    "category": "residencyExam",
+    "discipline": "Clínica Médica; Cirurgia Geral; Pediatria; Ginecologia e Obstetrícia; Medicina Preventiva",
+    "specialty": "Multidisciplinar",
+    "institution": "USP",
+    "board": "FUVEST",
+    "professor": "Comissão FUVEST",
     "year": 2026
   },
   {

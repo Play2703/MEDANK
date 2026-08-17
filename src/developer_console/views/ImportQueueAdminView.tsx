@@ -4,6 +4,7 @@ import { importProvider } from '../../core/import_engine/providers/ImportProvide
 import { ImportStatus } from '../../core/import_engine/models/ImportStatus';
 import { ImportItem } from '../../core/import_engine/models/ImportModels';
 import { KnowledgeCategory, KnowledgeCategoryMapper } from '../../core/knowledge_library/models/KnowledgeCategory';
+import { ExamQuestionSegmentationModal } from './ExamQuestionSegmentationModal';
 import {
   Layers,
   Clock,
@@ -28,13 +29,13 @@ import {
   User,
   Calendar,
   BookOpen,
+  Scissors,
 } from 'lucide-react';
 
 const CATEGORIES = [
   'Livro',
   'Prova de Residência',
   'Prova de Professor',
-  'Banco de Questões',
   'Diretriz',
   'Artigo Científico',
   'Slide',
@@ -63,6 +64,7 @@ export const ImportQueueAdminView: React.FC = () => {
   // Editing Metadata Modal State
   const [editingItem, setEditingItem] = useState<ImportItem | null>(null);
   const [previewItem, setPreviewItem] = useState<ImportItem | null>(null);
+  const [segmentingItem, setSegmentingItem] = useState<ImportItem | null>(null);
 
   const items = queueState.items;
 
@@ -341,6 +343,15 @@ export const ImportQueueAdminView: React.FC = () => {
                         <span className="px-2.5 py-1 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs font-semibold text-indigo-300">
                           Destino: {item.destino}
                         </span>
+                        {item.rawFile ? (
+                          <span className="px-2.5 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-xs font-semibold text-purple-300" title="Arquivo PDF original disponível para segmentação geométrica">
+                            PDF Original Carregado
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-400" title="Apenas texto extraído disponível">
+                            Texto Extraído
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-4 text-xs text-slate-400 font-mono flex-wrap">
@@ -379,6 +390,17 @@ export const ImportQueueAdminView: React.FC = () => {
                       <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
                       <span>Metadados</span>
                     </button>
+
+                    {(effectiveCategory === KnowledgeCategory.residencyExam || effectiveCategory === KnowledgeCategory.professorExam || ext === 'PDF') && (
+                      <button
+                        onClick={() => setSegmentingItem(item)}
+                        title="Segmentar Questões Automaticamente (Sem IA)"
+                        className="px-3.5 py-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 text-xs font-bold transition-colors inline-flex items-center gap-1.5 border border-purple-500/30"
+                      >
+                        <Scissors className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Segmentar Questões</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => setPreviewItem(item)}
@@ -639,6 +661,21 @@ export const ImportQueueAdminView: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* EXAM QUESTION SEGMENTATION MODAL */}
+      {segmentingItem && (
+        <ExamQuestionSegmentationModal
+          isOpen={!!segmentingItem}
+          onClose={() => setSegmentingItem(null)}
+          documentTitle={segmentingItem.titulo || segmentingItem.fileName}
+          sourceAssetId={segmentingItem.id}
+          specialty={segmentingItem.especialidade}
+          rawContent={segmentingItem.rawFile || segmentingItem.extractedText || null}
+          onSaveQuestions={(extractedQuestions) => {
+            console.log(`[ImportQueueAdminView] ${extractedQuestions.length} questões segmentadas com sucesso para ${segmentingItem.fileName}`);
+          }}
+        />
       )}
     </div>
   );

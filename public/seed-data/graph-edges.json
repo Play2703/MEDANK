@@ -316,13 +316,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "canal anal",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pneumotorax::associado_a::pericardio",
@@ -485,13 +485,13 @@
     "subjectCanonicalKey": "dor toracica",
     "predicate": "associado_a",
     "objectCanonicalKey": "dispneia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dor toracica::associado_a::hipotensao",
@@ -522,7 +522,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "coracao",
-    "occurrenceCount": 4,
+    "occurrenceCount": 10,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
@@ -530,33 +530,33 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::dispneia",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "dispneia",
-    "occurrenceCount": 4,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::hipotensao",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipotensao",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hemotorax::associado_a::pericardio",
@@ -647,13 +647,13 @@
     "subjectCanonicalKey": "taquicardia",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipotensao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipotensao::associado_a::pericardio",
@@ -708,13 +708,13 @@
     "subjectCanonicalKey": "pericardio",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pericardio::causa::dispneia",
@@ -757,14 +757,14 @@
     "subjectCanonicalKey": "coracao",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "coracao::causa::dispneia",
@@ -795,13 +795,13 @@
     "subjectCanonicalKey": "dispneia",
     "predicate": "causa",
     "objectCanonicalKey": "torax",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dispneia::causa::em",
@@ -844,13 +844,13 @@
     "subjectCanonicalKey": "hipotensao",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipotensao::causa::dispneia",
@@ -1061,13 +1061,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "ad",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510823351-2"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pele::associado_a::ad",
@@ -1494,7 +1494,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "vomitos",
-    "occurrenceCount": 7,
+    "occurrenceCount": 20,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
@@ -1503,14 +1503,14 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::abdome",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "abdome",
-    "occurrenceCount": 5,
+    "occurrenceCount": 11,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
@@ -1518,7 +1518,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::doenca de hirschsprung",
@@ -1537,28 +1537,28 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "ganglios",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::colon",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "colon",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::torcicolo",
@@ -1601,20 +1601,20 @@
     "subjectCanonicalKey": "vomitos",
     "predicate": "associado_a",
     "objectCanonicalKey": "abdome",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomitos::associado_a::em",
     "subjectCanonicalKey": "vomitos",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 10,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
@@ -1622,7 +1622,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomitos::associado_a::doenca de hirschsprung",
@@ -1725,13 +1725,13 @@
     "subjectCanonicalKey": "usg",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "usg::associado_a::doenca de hirschsprung",
@@ -2194,27 +2194,27 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "insuficiencia cardiaca",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::aminoglicosideos",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "aminoglicosideos",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510837561-3"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::ureia",
@@ -2245,27 +2245,27 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "iam",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::ecg",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "ecg",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "anuria::causa::insuficiencia cardiaca",
@@ -2356,13 +2356,13 @@
     "subjectCanonicalKey": "tireoide",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tireoide::associado_a::hipertireoidismo",
@@ -2453,7 +2453,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "vomitos",
-    "occurrenceCount": 5,
+    "occurrenceCount": 15,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
@@ -2462,20 +2462,20 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "encefalopatia de wernicke::causa::em",
     "subjectCanonicalKey": "encefalopatia de wernicke",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "encefalopatia de wernicke::causa::vomitos",
@@ -2602,27 +2602,27 @@
     "subjectCanonicalKey": "vomitos",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomitos::causa::acidose",
     "subjectCanonicalKey": "vomitos",
     "predicate": "causa",
     "objectCanonicalKey": "acidose",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomitos::causa::hemodialise",
@@ -2641,13 +2641,13 @@
     "subjectCanonicalKey": "diarreia",
     "predicate": "causa",
     "objectCanonicalKey": "coracao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "diarreia::causa::insulina",
@@ -2666,7 +2666,7 @@
     "subjectCanonicalKey": "diarreia",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 15,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
@@ -2675,20 +2675,20 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "diarreia::causa::acidose",
     "subjectCanonicalKey": "diarreia",
     "predicate": "causa",
     "objectCanonicalKey": "acidose",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "diarreia::causa::hemodialise",
@@ -2803,13 +2803,13 @@
     "subjectCanonicalKey": "alcalose",
     "predicate": "causa",
     "objectCanonicalKey": "acidose",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "alcalose::causa::hemodialise",
@@ -2840,28 +2840,28 @@
     "subjectCanonicalKey": "insulina",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insulina::causa::acidose",
     "subjectCanonicalKey": "insulina",
     "predicate": "causa",
     "objectCanonicalKey": "acidose",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insulina::causa::hemodialise",
@@ -3012,13 +3012,13 @@
     "subjectCanonicalKey": "fraqueza",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "fraqueza::causa::acidose",
@@ -3073,14 +3073,14 @@
     "subjectCanonicalKey": "paralisia",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "paralisia::causa::acidose",
@@ -3135,14 +3135,14 @@
     "subjectCanonicalKey": "constipacao",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "constipacao::causa::acidose",
@@ -3173,13 +3173,13 @@
     "subjectCanonicalKey": "eletrocardiograma",
     "predicate": "causa",
     "objectCanonicalKey": "coracao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510837561-3"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "eletrocardiograma::causa::insulina",
@@ -3258,13 +3258,13 @@
     "subjectCanonicalKey": "depressao",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 7,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "depressao::causa::acidose",
@@ -3319,13 +3319,13 @@
     "subjectCanonicalKey": "bradicardia",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "bradicardia::causa::acidose",
@@ -3440,13 +3440,13 @@
     "subjectCanonicalKey": "vomitos",
     "predicate": "causa",
     "objectCanonicalKey": "hipotensao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomitos::causa::confusao mental",
@@ -3489,13 +3489,13 @@
     "subjectCanonicalKey": "vomitos",
     "predicate": "causa",
     "objectCanonicalKey": "diarreia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insulina::associado_a::nauseas",
@@ -3610,13 +3610,13 @@
     "subjectCanonicalKey": "nauseas",
     "predicate": "associado_a",
     "objectCanonicalKey": "vomitos",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "nauseas::associado_a::pancreatite aguda",
@@ -3635,13 +3635,13 @@
     "subjectCanonicalKey": "vomitos",
     "predicate": "associado_a",
     "objectCanonicalKey": "nauseas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomitos::associado_a::pancreatite aguda",
@@ -3660,13 +3660,13 @@
     "subjectCanonicalKey": "diarreia",
     "predicate": "associado_a",
     "objectCanonicalKey": "nauseas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "diarreia::associado_a::vomitos",
@@ -3913,13 +3913,13 @@
     "subjectCanonicalKey": "nauseas",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "nauseas::associado_a::candidiase",
@@ -3998,7 +3998,7 @@
     "subjectCanonicalKey": "hipertensao",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 8,
+    "occurrenceCount": 19,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
@@ -4007,7 +4007,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertensao::causa::avc",
@@ -4026,13 +4026,13 @@
     "subjectCanonicalKey": "pulmao",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510846339-4"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pulmao::causa::avc",
@@ -4087,13 +4087,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "endometrio",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "puberdade precoce::trata::endometrio",
@@ -4148,13 +4148,13 @@
     "subjectCanonicalKey": "ovario",
     "predicate": "trata",
     "objectCanonicalKey": "endometrio",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipotireoidismo::trata::endometrio",
@@ -4269,14 +4269,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "esofago",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::usg",
@@ -4367,13 +4367,13 @@
     "subjectCanonicalKey": "vomitos",
     "predicate": "causa",
     "objectCanonicalKey": "alcalose",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomitos::causa::sindrome de down",
@@ -4476,14 +4476,14 @@
     "subjectCanonicalKey": "sepse",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cefaleia::causa::apendicite aguda",
@@ -4514,14 +4514,14 @@
     "subjectCanonicalKey": "cefaleia",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "sindrome de guillain-barre::causa::apendicite aguda",
@@ -4588,7 +4588,7 @@
     "subjectCanonicalKey": "febre",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 7,
+    "occurrenceCount": 17,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
@@ -4596,7 +4596,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "bcg::causa::em",
@@ -4627,13 +4627,13 @@
     "subjectCanonicalKey": "mama",
     "predicate": "trata",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "angioplastia::trata::em",
@@ -4892,13 +4892,13 @@
     "subjectCanonicalKey": "toxoplasmose",
     "predicate": "associado_a",
     "objectCanonicalKey": "toxoplasmose congenita",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tetraciclinas::causa::nauseas",
@@ -5001,13 +5001,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "tuberculose",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "uso de alcool::trata::amoxicilina",
@@ -5026,13 +5026,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "cerebro",
-    "occurrenceCount": 7,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "benzodiazepinicos::trata::em",
@@ -5075,13 +5075,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "hiperatividade",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dopamina::associado_a::colinergicos",
@@ -5556,14 +5556,14 @@
     "subjectCanonicalKey": "benzodiazepinicos",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "benzodiazepinicos::causa::convulsao",
@@ -5786,7 +5786,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "edema",
-    "occurrenceCount": 10,
+    "occurrenceCount": 35,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -5795,7 +5795,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insuficiencia cardiaca congestiva::causa::edema",
@@ -5826,7 +5826,7 @@
     "subjectCanonicalKey": "insulina",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 12,
+    "occurrenceCount": 51,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -5836,34 +5836,34 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insulina::associado_a::figado",
     "subjectCanonicalKey": "insulina",
     "predicate": "associado_a",
     "objectCanonicalKey": "figado",
-    "occurrenceCount": 4,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insulina::associado_a::placenta",
     "subjectCanonicalKey": "insulina",
     "predicate": "associado_a",
     "objectCanonicalKey": "placenta",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pancreas::associado_a::em",
@@ -5882,13 +5882,13 @@
     "subjectCanonicalKey": "pancreas",
     "predicate": "associado_a",
     "objectCanonicalKey": "insulina",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pancreas::associado_a::figado",
@@ -5907,13 +5907,13 @@
     "subjectCanonicalKey": "pancreas",
     "predicate": "associado_a",
     "objectCanonicalKey": "placenta",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "anticoagulantes::trata::placenta",
@@ -6016,14 +6016,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "asma",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "asma::associado_a::sistemico",
@@ -6426,13 +6426,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "benzodiazepinicos",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "depressao::associado_a::benzodiazepinicos",
@@ -6487,26 +6487,26 @@
     "subjectCanonicalKey": "dopamina",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dopamina::causa::ganglios",
     "subjectCanonicalKey": "dopamina",
     "predicate": "causa",
     "objectCanonicalKey": "ganglios",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dopamina::causa::distonia",
@@ -6645,13 +6645,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "sindrome de reye",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ulcera peptica::trata::varicela",
@@ -6766,7 +6766,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "edema",
-    "occurrenceCount": 10,
+    "occurrenceCount": 30,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -6776,7 +6776,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "trombocitopenia secundaria::associado_a::edema",
@@ -7467,13 +7467,13 @@
     "subjectCanonicalKey": "edema",
     "predicate": "associado_a",
     "objectCanonicalKey": "sindrome nefrotica",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "edema::associado_a::irc",
@@ -7492,13 +7492,13 @@
     "subjectCanonicalKey": "furosemida",
     "predicate": "associado_a",
     "objectCanonicalKey": "alca de henle",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "furosemida::associado_a::nefron",
@@ -7541,13 +7541,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "furosemida",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "edema::associado_a::furosemida",
@@ -7770,7 +7770,7 @@
     "subjectCanonicalKey": "pele",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 7,
+    "occurrenceCount": 22,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -7779,20 +7779,20 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pele::associado_a::fibrose cistica",
     "subjectCanonicalKey": "pele",
     "predicate": "associado_a",
     "objectCanonicalKey": "fibrose cistica",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::febre tifoide",
@@ -7823,14 +7823,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "fibrose cistica",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "choque hipovolemico::causa::diarreia",
@@ -7897,13 +7897,13 @@
     "subjectCanonicalKey": "dor abdominal",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "diarreia::causa::vomitos",
@@ -8066,7 +8066,7 @@
     "subjectCanonicalKey": "coracao",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 13,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -8074,7 +8074,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "endocardite infecciosa::associado_a::esplenomegalia",
@@ -8093,13 +8093,13 @@
     "subjectCanonicalKey": "endocardite infecciosa",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hemocultura::associado_a::esplenomegalia",
@@ -8202,26 +8202,26 @@
     "subjectCanonicalKey": "febre",
     "predicate": "associado_a",
     "objectCanonicalKey": "diarreia",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "febre::associado_a::cefaleia",
     "subjectCanonicalKey": "febre",
     "predicate": "associado_a",
     "objectCanonicalKey": "cefaleia",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "febre::associado_a::mialgia",
@@ -8240,13 +8240,13 @@
     "subjectCanonicalKey": "febre",
     "predicate": "associado_a",
     "objectCanonicalKey": "astenia",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pcr::causa::tuberculose",
@@ -8265,28 +8265,28 @@
     "subjectCanonicalKey": "tuberculose",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tuberculose::causa::hiv",
     "subjectCanonicalKey": "tuberculose",
     "predicate": "causa",
     "objectCanonicalKey": "hiv",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ruptura prematura de membranas::causa::em",
@@ -8401,13 +8401,13 @@
     "subjectCanonicalKey": "meningite",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "sindrome da rubeola congenita::previne::rubeola",
@@ -8474,7 +8474,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "tuberculose",
-    "occurrenceCount": 4,
+    "occurrenceCount": 10,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -8482,7 +8482,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tuberculose::associado_a::covid-19",
@@ -8537,13 +8537,13 @@
     "subjectCanonicalKey": "amoxicilina",
     "predicate": "associado_a",
     "objectCanonicalKey": "claritromicina",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "amoxicilina::associado_a::levofloxacino",
@@ -8838,14 +8838,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "retina",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "inibidores da anidrase carbonica::associado_a::retina",
@@ -8972,39 +8972,39 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "pericardite",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::ventriculo",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "ventriculo",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::coracao",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "coracao",
-    "occurrenceCount": 6,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::sistemico",
@@ -9047,13 +9047,13 @@
     "subjectCanonicalKey": "qualquer",
     "predicate": "causa",
     "objectCanonicalKey": "coracao",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "qualquer::causa::sistemico",
@@ -9312,13 +9312,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "anticoagulantes",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::eletrocardiograma",
@@ -9457,13 +9457,13 @@
     "subjectCanonicalKey": "embolia pulmonar",
     "predicate": "causa",
     "objectCanonicalKey": "aorta",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pericardite::causa::aorta",
@@ -9494,13 +9494,13 @@
     "subjectCanonicalKey": "aterosclerose",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "torax::trata::asma",
@@ -9699,40 +9699,40 @@
     "subjectCanonicalKey": "pulmoes",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::hipertensao",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "hipertensao",
-    "occurrenceCount": 7,
+    "occurrenceCount": 14,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::sincope",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "sincope",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dor toracica::causa::ar",
@@ -9835,28 +9835,28 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "imunoglobulina",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ige::causa::em",
     "subjectCanonicalKey": "ige",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ar::causa::em",
@@ -9935,7 +9935,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "obesidade",
-    "occurrenceCount": 6,
+    "occurrenceCount": 14,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -9943,7 +9943,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "glicemia::causa::rins",
@@ -10022,13 +10022,13 @@
     "subjectCanonicalKey": "fibrose cistica",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "fibrose cistica::causa::fibula",
@@ -10131,13 +10131,13 @@
     "subjectCanonicalKey": "vomitos",
     "predicate": "causa",
     "objectCanonicalKey": "figado",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "sudorese::causa::colinergicos",
@@ -10348,27 +10348,27 @@
     "subjectCanonicalKey": "hipertensao",
     "predicate": "causa",
     "objectCanonicalKey": "insuficiencia cardiaca",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "rins::causa::em",
     "subjectCanonicalKey": "rins",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "rins::causa::coracao",
@@ -10435,26 +10435,26 @@
     "subjectCanonicalKey": "rins",
     "predicate": "causa",
     "objectCanonicalKey": "insuficiencia cardiaca",
-    "occurrenceCount": 2,
-    "maxConfidence": 1,
-    "assetIds": [
-      "seed-asset-1786510837561-3",
-      "seed-asset-1786510866693-5"
-    ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
-  },
-  {
-    "id": "epinefrina::causa::em",
-    "subjectCanonicalKey": "epinefrina",
-    "predicate": "causa",
-    "objectCanonicalKey": "em",
     "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
+  },
+  {
+    "id": "epinefrina::causa::em",
+    "subjectCanonicalKey": "epinefrina",
+    "predicate": "causa",
+    "objectCanonicalKey": "em",
+    "occurrenceCount": 4,
+    "maxConfidence": 1,
+    "assetIds": [
+      "seed-asset-1786510837561-3",
+      "seed-asset-1786510866693-5"
+    ],
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "epinefrina::causa::rins",
@@ -10545,7 +10545,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "rins",
-    "occurrenceCount": 10,
+    "occurrenceCount": 30,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -10554,7 +10554,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::encefalo",
@@ -10573,26 +10573,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "aterosclerose",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::miocardio",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "miocardio",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "febre::trata::sindrome de cushing",
@@ -10755,13 +10755,13 @@
     "subjectCanonicalKey": "depressao",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estomago::associado_a::hipotalamo",
@@ -10840,14 +10840,14 @@
     "subjectCanonicalKey": "rins",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipofise",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "sindrome de cushing::associado_a::suprarrenal",
@@ -10890,13 +10890,13 @@
     "subjectCanonicalKey": "suprarrenal",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipofise",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "suprarrenal::associado_a::prednisona",
@@ -10915,7 +10915,7 @@
     "subjectCanonicalKey": "hipotalamo",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipofise",
-    "occurrenceCount": 10,
+    "occurrenceCount": 21,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -10924,7 +10924,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipotalamo::associado_a::prednisona",
@@ -10943,26 +10943,26 @@
     "subjectCanonicalKey": "hipofise",
     "predicate": "associado_a",
     "objectCanonicalKey": "prednisona",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insulina::causa::cetonas",
     "subjectCanonicalKey": "insulina",
     "predicate": "causa",
     "objectCanonicalKey": "cetonas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cetoacidose diabetica::causa::cetonas",
@@ -11005,13 +11005,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "dor abdominal",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomitos::trata::furosemida",
@@ -11042,14 +11042,14 @@
     "subjectCanonicalKey": "tireoide",
     "predicate": "causa",
     "objectCanonicalKey": "hipotireoidismo",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tireoide::causa::tireoidite",
@@ -11080,7 +11080,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "hipotireoidismo",
-    "occurrenceCount": 5,
+    "occurrenceCount": 12,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -11088,7 +11088,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::tireoidite",
@@ -11179,20 +11179,20 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "hipertireoidismo",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::sudorese",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "sudorese",
-    "occurrenceCount": 6,
+    "occurrenceCount": 16,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -11200,46 +11200,46 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::diarreia",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "diarreia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertireoidismo::causa::em",
     "subjectCanonicalKey": "hipertireoidismo",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertireoidismo::causa::sudorese",
     "subjectCanonicalKey": "hipertireoidismo",
     "predicate": "causa",
     "objectCanonicalKey": "sudorese",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertireoidismo::causa::insuficiencia cardiaca",
@@ -11258,13 +11258,13 @@
     "subjectCanonicalKey": "hipertireoidismo",
     "predicate": "causa",
     "objectCanonicalKey": "diarreia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estado::causa::hipertireoidismo",
@@ -11283,7 +11283,7 @@
     "subjectCanonicalKey": "estado",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 10,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
@@ -11291,7 +11291,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estado::causa::sudorese",
@@ -11346,13 +11346,13 @@
     "subjectCanonicalKey": "tireoide",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tireoide::causa::sudorese",
@@ -11515,13 +11515,13 @@
     "subjectCanonicalKey": "pele",
     "predicate": "causa",
     "objectCanonicalKey": "sudorese",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "palidez::associado_a::em",
@@ -11624,26 +11624,26 @@
     "subjectCanonicalKey": "pulmoes",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::bronquios",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "bronquios",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "digestivos::associado_a::reto",
@@ -11662,13 +11662,13 @@
     "subjectCanonicalKey": "reto",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "reto::associado_a::figado",
@@ -11711,13 +11711,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "bexiga",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "figado::causa::bexiga",
@@ -11784,7 +11784,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "pele",
-    "occurrenceCount": 7,
+    "occurrenceCount": 18,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
@@ -11792,7 +11792,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "coluna vertebral::associado_a::escapula",
@@ -11907,27 +11907,27 @@
     "subjectCanonicalKey": "ar",
     "predicate": "causa",
     "objectCanonicalKey": "pulmao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::pulmao",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "pulmao",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510879675-6",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pleura::causa::pulmao",
@@ -12078,13 +12078,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "pulmao",
-    "occurrenceCount": 5,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::atrio direito",
@@ -12115,13 +12115,13 @@
     "subjectCanonicalKey": "coracao",
     "predicate": "associado_a",
     "objectCanonicalKey": "miocardio",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "timo::associado_a::coracao",
@@ -12536,13 +12536,13 @@
     "subjectCanonicalKey": "coronarias",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "coronarias::causa::esofago",
@@ -12705,13 +12705,13 @@
     "subjectCanonicalKey": "estomago",
     "predicate": "associado_a",
     "objectCanonicalKey": "pancreas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ulcera gastrica::causa::estomago",
@@ -12766,14 +12766,14 @@
     "subjectCanonicalKey": "duodeno",
     "predicate": "associado_a",
     "objectCanonicalKey": "vesicula biliar",
-    "occurrenceCount": 4,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "duodeno::associado_a::qualquer",
@@ -12912,7 +12912,7 @@
     "subjectCanonicalKey": "figado",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 8,
+    "occurrenceCount": 22,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
@@ -12921,7 +12921,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vesicula biliar::causa::ictericia",
@@ -12964,14 +12964,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "figado",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cirrose hepatica::causa::figado",
@@ -13098,21 +13098,21 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "baco",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::estomago",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "estomago",
-    "occurrenceCount": 8,
+    "occurrenceCount": 18,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
@@ -13120,33 +13120,33 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::pancreas",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "pancreas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::ureter",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "ureter",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ureter::causa::rim supranumerario",
@@ -13201,14 +13201,14 @@
     "subjectCanonicalKey": "estomago",
     "predicate": "associado_a",
     "objectCanonicalKey": "intestino delgado",
-    "occurrenceCount": 5,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estomago::associado_a::esofago",
@@ -13227,13 +13227,13 @@
     "subjectCanonicalKey": "aorta",
     "predicate": "causa",
     "objectCanonicalKey": "abdome",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "bexiga urinaria::associado_a::vagina",
@@ -13324,14 +13324,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "pele",
-    "occurrenceCount": 7,
+    "occurrenceCount": 13,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::patela",
@@ -13350,13 +13350,13 @@
     "subjectCanonicalKey": "encefalo",
     "predicate": "causa",
     "objectCanonicalKey": "cefaleia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hidrocefalia::causa::ventriculos",
@@ -13423,13 +13423,13 @@
     "subjectCanonicalKey": "caxumba",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "paralisia de bell::causa::paralisia",
@@ -13520,13 +13520,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "olho",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::enoftalmia",
@@ -13581,13 +13581,13 @@
     "subjectCanonicalKey": "ar",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "esofago::associado_a::lingua",
@@ -13642,13 +13642,13 @@
     "subjectCanonicalKey": "pulmoes",
     "predicate": "causa",
     "objectCanonicalKey": "ar",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pulmoes::causa::traqueia",
@@ -14075,13 +14075,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "ar",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::pulmoes",
@@ -14136,13 +14136,13 @@
     "subjectCanonicalKey": "ventriculo direito",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ventriculo::causa::ventriculo direito",
@@ -14197,13 +14197,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "bradicardia",
-    "occurrenceCount": 4,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "intoxicacao::causa::taquicardia ventricular",
@@ -14246,7 +14246,7 @@
     "subjectCanonicalKey": "qualquer",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 7,
+    "occurrenceCount": 22,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
@@ -14254,7 +14254,7 @@
       "seed-asset-1786510929324-11",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "aorta::causa::arteria pulmonar",
@@ -14273,13 +14273,13 @@
     "subjectCanonicalKey": "aorta",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "arteria pulmonar::causa::aorta",
@@ -14346,13 +14346,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "retina",
-    "occurrenceCount": 5,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dioxido de carbono::causa::cerebro",
@@ -14395,26 +14395,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipotalamo",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::hipofise",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipofise",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "placenta::causa::em",
@@ -14481,13 +14481,13 @@
     "subjectCanonicalKey": "insuficiencia cardiaca",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insuficiencia cardiaca::causa::coracao",
@@ -14506,41 +14506,41 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "dispneia",
-    "occurrenceCount": 5,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "edema::causa::pulmoes",
     "subjectCanonicalKey": "edema",
     "predicate": "causa",
     "objectCanonicalKey": "pulmoes",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "edema::causa::dispneia",
     "subjectCanonicalKey": "edema",
     "predicate": "causa",
     "objectCanonicalKey": "dispneia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "edema::causa::ar",
@@ -14595,14 +14595,14 @@
     "subjectCanonicalKey": "rins",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 11,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::hipotalamo",
@@ -14621,40 +14621,40 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "hipofise",
-    "occurrenceCount": 4,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "edema::causa::em",
     "subjectCanonicalKey": "edema",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "edema::causa::insuficiencia cardiaca",
     "subjectCanonicalKey": "edema",
     "predicate": "causa",
     "objectCanonicalKey": "insuficiencia cardiaca",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "coracao::causa::beriberi",
@@ -14781,13 +14781,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "acidose",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "rim::associado_a::nefrons",
@@ -14902,7 +14902,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "rins",
-    "occurrenceCount": 7,
+    "occurrenceCount": 20,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
@@ -14910,14 +14910,14 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::sudorese",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "sudorese",
-    "occurrenceCount": 4,
+    "occurrenceCount": 10,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
@@ -14925,14 +14925,14 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::diarreia",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "diarreia",
-    "occurrenceCount": 9,
+    "occurrenceCount": 28,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
@@ -14941,7 +14941,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::alca de henle",
@@ -14972,13 +14972,13 @@
     "subjectCanonicalKey": "hipofise",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "atrios::associado_a::rins",
@@ -15117,13 +15117,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "dialise",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "rins::trata::dialise",
@@ -15274,13 +15274,13 @@
     "subjectCanonicalKey": "hipertensao",
     "predicate": "causa",
     "objectCanonicalKey": "doenca renal cronica",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "glomerulonefrite::causa::doenca renal cronica",
@@ -15347,14 +15347,14 @@
     "subjectCanonicalKey": "rim",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertensao::causa::rim",
@@ -15373,13 +15373,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "rim",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "rim::causa::hipertensao",
@@ -15470,13 +15470,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "eosinofilia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::triquinose",
@@ -15579,26 +15579,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "insuficiencia renal aguda",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "embolia pulmonar::causa::em",
     "subjectCanonicalKey": "embolia pulmonar",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::tetania",
@@ -15665,14 +15665,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "qualquer",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insuficiencia cardiaca::causa::qualquer",
@@ -15691,26 +15691,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "estado",
-    "occurrenceCount": 4,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::intoxicacao",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "intoxicacao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estado::causa::intoxicacao",
@@ -15741,27 +15741,27 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "ar",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::pulmoes",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "pulmoes",
-    "occurrenceCount": 5,
+    "occurrenceCount": 10,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "coracao::causa::insuficiencia cardiaca",
@@ -15816,13 +15816,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "depressao",
-    "occurrenceCount": 11,
+    "occurrenceCount": 13,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dispneia::associado_a::ar",
@@ -15901,13 +15901,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "encefalo",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::cerebro",
@@ -15950,14 +15950,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "cefaleia",
-    "occurrenceCount": 4,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::seio frontal",
@@ -16012,13 +16012,13 @@
     "subjectCanonicalKey": "medula espinal",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pele::associado_a::colon",
@@ -16145,13 +16145,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "epilepsia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tronco cerebral::associado_a::encefalo",
@@ -16194,13 +16194,13 @@
     "subjectCanonicalKey": "dopamina",
     "predicate": "causa",
     "objectCanonicalKey": "esquizofrenia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dopamina::causa::doenca de alzheimer",
@@ -16267,13 +16267,13 @@
     "subjectCanonicalKey": "coracao",
     "predicate": "causa",
     "objectCanonicalKey": "rins",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "norepinefrina::causa::coracao",
@@ -16292,13 +16292,13 @@
     "subjectCanonicalKey": "epinefrina",
     "predicate": "causa",
     "objectCanonicalKey": "norepinefrina",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "norepinefrina::causa::depressao",
@@ -16521,7 +16521,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "insulina",
-    "occurrenceCount": 7,
+    "occurrenceCount": 18,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
@@ -16529,7 +16529,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "duodeno::associado_a::jejuno",
@@ -16584,13 +16584,13 @@
     "subjectCanonicalKey": "duodeno",
     "predicate": "associado_a",
     "objectCanonicalKey": "pancreas",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "jejuno::associado_a::vesicula biliar",
@@ -16645,13 +16645,13 @@
     "subjectCanonicalKey": "vesicula biliar",
     "predicate": "associado_a",
     "objectCanonicalKey": "duodeno",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vesicula biliar::associado_a::jejuno",
@@ -16826,13 +16826,13 @@
     "subjectCanonicalKey": "duodeno",
     "predicate": "associado_a",
     "objectCanonicalKey": "estomago",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ganglios::associado_a::estomago",
@@ -16851,13 +16851,13 @@
     "subjectCanonicalKey": "estomago",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 6,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "apendice::causa::paralisia",
@@ -17080,13 +17080,13 @@
     "subjectCanonicalKey": "intestino delgado",
     "predicate": "associado_a",
     "objectCanonicalKey": "pancreas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "intestino delgado::causa::pancreas",
@@ -17261,14 +17261,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "acidente vascular cerebral",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "aterosclerose::causa::acidente vascular cerebral",
@@ -17323,27 +17323,27 @@
     "subjectCanonicalKey": "figado",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::obesidade",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "obesidade",
-    "occurrenceCount": 5,
+    "occurrenceCount": 10,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "atrio::causa::figado",
@@ -17458,13 +17458,13 @@
     "subjectCanonicalKey": "deficiencia de vitamina a",
     "predicate": "causa",
     "objectCanonicalKey": "cegueira noturna",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "deficiencia de niacina::causa::em",
@@ -17531,14 +17531,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "fraqueza",
-    "occurrenceCount": 4,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cerebro::causa::sudorese",
@@ -17557,20 +17557,20 @@
     "subjectCanonicalKey": "hipofise",
     "predicate": "associado_a",
     "objectCanonicalKey": "tireoide",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::febre",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "febre",
-    "occurrenceCount": 8,
+    "occurrenceCount": 19,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
@@ -17578,7 +17578,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipotalamo::associado_a::febre",
@@ -17657,13 +17657,13 @@
     "subjectCanonicalKey": "hipofise",
     "predicate": "associado_a",
     "objectCanonicalKey": "adrenal",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dopamina::associado_a::hipofise",
@@ -17682,13 +17682,13 @@
     "subjectCanonicalKey": "testiculos",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipofise",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "testiculos::associado_a::rins",
@@ -17755,13 +17755,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "placenta",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "figado::associado_a::placenta",
@@ -17900,13 +17900,13 @@
     "subjectCanonicalKey": "figado",
     "predicate": "causa",
     "objectCanonicalKey": "insulina",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estado::associado_a::estomago",
@@ -17949,39 +17949,39 @@
     "subjectCanonicalKey": "diarreia",
     "predicate": "causa",
     "objectCanonicalKey": "constipacao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::insulina",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "insulina",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::pancreas",
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "pancreas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::nervo optico",
@@ -18024,26 +18024,26 @@
     "subjectCanonicalKey": "tireoidite",
     "predicate": "causa",
     "objectCanonicalKey": "hipotireoidismo",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::edema",
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "edema",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipofise::trata::em",
@@ -18062,13 +18062,13 @@
     "subjectCanonicalKey": "hipofise",
     "predicate": "trata",
     "objectCanonicalKey": "hipotireoidismo",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "qualquer::causa::hipofise",
@@ -18111,20 +18111,20 @@
     "subjectCanonicalKey": "insulina",
     "predicate": "causa",
     "objectCanonicalKey": "figado",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::figado",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "figado",
-    "occurrenceCount": 5,
+    "occurrenceCount": 12,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
@@ -18132,7 +18132,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insulina::causa::aterosclerose",
@@ -18199,13 +18199,13 @@
     "subjectCanonicalKey": "obesidade",
     "predicate": "trata",
     "objectCanonicalKey": "ovario",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "obesidade::trata::figado",
@@ -18524,14 +18524,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "utero",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::induzida pela gravidez",
@@ -18622,13 +18622,13 @@
     "subjectCanonicalKey": "fadiga",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::testiculos",
@@ -18971,14 +18971,14 @@
     "subjectCanonicalKey": "cerebro",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "aterosclerose::associado_a::hipotireoidismo",
@@ -19081,40 +19081,40 @@
     "subjectCanonicalKey": "asma",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::hipotireoidismo",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipotireoidismo",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::bradicardia",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "bradicardia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "astenia::associado_a::hipotireoidismo",
@@ -19253,13 +19253,13 @@
     "subjectCanonicalKey": "doenca de alzheimer",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "heparina::associado_a::bexiga",
@@ -19278,14 +19278,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "bexiga",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "beriberi::associado_a::bexiga",
@@ -19364,27 +19364,27 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "inibidores da anidrase carbonica",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::intestino delgado",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "intestino delgado",
-    "occurrenceCount": 5,
+    "occurrenceCount": 12,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::intestino grosso",
@@ -20147,13 +20147,13 @@
     "subjectCanonicalKey": "suprarrenal",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dialise::associado_a::diarreia",
@@ -20244,14 +20244,14 @@
     "subjectCanonicalKey": "hipertensao",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 10,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "acidose::trata::insuficiencia cardiaca",
@@ -20330,13 +20330,13 @@
     "subjectCanonicalKey": "insuficiencia cardiaca",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insuficiencia cardiaca::associado_a::pele",
@@ -20511,14 +20511,14 @@
     "subjectCanonicalKey": "liquido cefalorraquidiano",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "liquido cefalorraquidiano::associado_a::insulina",
@@ -20729,20 +20729,20 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "glomerulonefrite",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::hipertensao",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipertensao",
-    "occurrenceCount": 11,
+    "occurrenceCount": 30,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
@@ -20750,21 +20750,21 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::sindrome nefrotica",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "sindrome nefrotica",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::esquizofrenia",
@@ -21515,13 +21515,13 @@
     "subjectCanonicalKey": "doenca de alzheimer",
     "predicate": "trata",
     "objectCanonicalKey": "hipertensao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "doenca de alzheimer::trata::hipertensao portal",
@@ -21612,13 +21612,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "hipertensao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::hipertensao portal",
@@ -22021,26 +22021,26 @@
     "subjectCanonicalKey": "hipertireoidismo",
     "predicate": "trata",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
-    "maxConfidence": 1,
-    "assetIds": [
-      "seed-asset-1786510866693-5",
-      "seed-asset-1786510901633-9"
-    ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
-  },
-  {
-    "id": "em::trata::esquizofrenia",
-    "subjectCanonicalKey": "em",
-    "predicate": "trata",
-    "objectCanonicalKey": "esquizofrenia",
     "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
+  },
+  {
+    "id": "em::trata::esquizofrenia",
+    "subjectCanonicalKey": "em",
+    "predicate": "trata",
+    "objectCanonicalKey": "esquizofrenia",
+    "occurrenceCount": 4,
+    "maxConfidence": 1,
+    "assetIds": [
+      "seed-asset-1786510866693-5",
+      "seed-asset-1786510901633-9"
+    ],
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::hipofise",
@@ -22059,7 +22059,7 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "insulina",
-    "occurrenceCount": 4,
+    "occurrenceCount": 10,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
@@ -22067,7 +22067,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::hipoparatireoidismo",
@@ -22662,26 +22662,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "iga",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::ige",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "ige",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "imunoglobulina::associado_a::igg",
@@ -22760,26 +22760,26 @@
     "subjectCanonicalKey": "ige",
     "predicate": "associado_a",
     "objectCanonicalKey": "igg",
-    "occurrenceCount": 4,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ige::associado_a::igm",
     "subjectCanonicalKey": "ige",
     "predicate": "associado_a",
     "objectCanonicalKey": "igm",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "imunoglobulina::associado_a::tireoide",
@@ -23218,13 +23218,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "nefron",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "obesidade::associado_a::em",
@@ -23303,26 +23303,26 @@
     "subjectCanonicalKey": "nefron",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomito::associado_a::em",
     "subjectCanonicalKey": "vomito",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "vomito::associado_a::hipertensao",
@@ -24241,13 +24241,13 @@
     "subjectCanonicalKey": "sudorese",
     "predicate": "causa",
     "objectCanonicalKey": "taquicardia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pele::causa::colapso pulmonar",
@@ -24710,13 +24710,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "insuficiencia renal cronica",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::rim",
@@ -25143,13 +25143,13 @@
     "subjectCanonicalKey": "colecistite",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "anestesicos locais::associado_a::amnesia anterograda",
@@ -25288,13 +25288,13 @@
     "subjectCanonicalKey": "propofol",
     "predicate": "associado_a",
     "objectCanonicalKey": "bradicardia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "midazolam::associado_a::amnesia anterograda",
@@ -25433,13 +25433,13 @@
     "subjectCanonicalKey": "mama",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "colon::associado_a::em",
@@ -25506,13 +25506,13 @@
     "subjectCanonicalKey": "bexiga",
     "predicate": "associado_a",
     "objectCanonicalKey": "retencao urinaria",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "bexiga::associado_a::hematuria",
@@ -25615,13 +25615,13 @@
     "subjectCanonicalKey": "apendicite",
     "predicate": "causa",
     "objectCanonicalKey": "abdome",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "abdome agudo::causa::pancreas",
@@ -25700,13 +25700,13 @@
     "subjectCanonicalKey": "pancreatite",
     "predicate": "causa",
     "objectCanonicalKey": "pancreas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pancreatite::causa::dor abdominal",
@@ -25821,13 +25821,13 @@
     "subjectCanonicalKey": "dor abdominal",
     "predicate": "associado_a",
     "objectCanonicalKey": "vomitos",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dor abdominal::associado_a::tc",
@@ -25858,26 +25858,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "nauseas",
-    "occurrenceCount": 4,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::tc",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "tc",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "nauseas::associado_a::tc",
@@ -26160,26 +26160,26 @@
     "subjectCanonicalKey": "dor abdominal",
     "predicate": "associado_a",
     "objectCanonicalKey": "diarreia",
-    "occurrenceCount": 2,
-    "maxConfidence": 1,
-    "assetIds": [
-      "seed-asset-1786510879675-6",
-      "seed-asset-1786510936109-12"
-    ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
-  },
-  {
-    "id": "dor abdominal::associado_a::febre",
-    "subjectCanonicalKey": "dor abdominal",
-    "predicate": "associado_a",
-    "objectCanonicalKey": "febre",
     "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
+  },
+  {
+    "id": "dor abdominal::associado_a::febre",
+    "subjectCanonicalKey": "dor abdominal",
+    "predicate": "associado_a",
+    "objectCanonicalKey": "febre",
+    "occurrenceCount": 4,
+    "maxConfidence": 1,
+    "assetIds": [
+      "seed-asset-1786510879675-6",
+      "seed-asset-1786510936109-12"
+    ],
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dor abdominal::associado_a::aorta",
@@ -26318,14 +26318,14 @@
     "subjectCanonicalKey": "ulcera peptica",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "qualquer::associado_a::ulcera duodenal",
@@ -26620,13 +26620,13 @@
     "subjectCanonicalKey": "febre",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "edema::associado_a::cefaleia",
@@ -26645,13 +26645,13 @@
     "subjectCanonicalKey": "edema",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 5,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "convulsao::causa::epilepsia",
@@ -28050,13 +28050,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "amiodarona",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ad::trata::amiodarona",
@@ -28867,13 +28867,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "dopamina",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::prednisona",
@@ -29144,14 +29144,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "tireoide",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::prostata",
@@ -29338,13 +29338,13 @@
     "subjectCanonicalKey": "insulina",
     "predicate": "associado_a",
     "objectCanonicalKey": "obesidade",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "insulina::associado_a::hirsutismo",
@@ -29447,13 +29447,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "depressao",
-    "occurrenceCount": 5,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hirsutismo::associado_a::osteonecrose",
@@ -29880,13 +29880,13 @@
     "subjectCanonicalKey": "hipertensao portal",
     "predicate": "causa",
     "objectCanonicalKey": "ascite",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertensao portal::causa::em",
@@ -30985,13 +30985,13 @@
     "subjectCanonicalKey": "cefaleia",
     "predicate": "é_sintoma_de",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cefaleia::é_sintoma_de::hematuria",
@@ -31502,13 +31502,13 @@
     "subjectCanonicalKey": "dor toracica",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dor toracica::associado_a::ecg",
@@ -31695,13 +31695,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "espironolactona",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::sacubitril",
@@ -31936,13 +31936,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "heparina",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::dispneia",
@@ -31961,13 +31961,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "tosse",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::taquicardia",
@@ -32646,13 +32646,13 @@
     "subjectCanonicalKey": "acidente vascular cerebral",
     "predicate": "associado_a",
     "objectCanonicalKey": "tuberculose",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tuberculose::é_sintoma_de::pulmao",
@@ -32827,13 +32827,13 @@
     "subjectCanonicalKey": "torax",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "febre::é_sintoma_de::edema",
@@ -33272,13 +33272,13 @@
     "subjectCanonicalKey": "pulmao",
     "predicate": "associado_a",
     "objectCanonicalKey": "hiv",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pulmao::associado_a::glomerulo",
@@ -33309,13 +33309,13 @@
     "subjectCanonicalKey": "pulmao",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pulmao::associado_a::sarcoma de kaposi",
@@ -33634,13 +33634,13 @@
     "subjectCanonicalKey": "tuberculose",
     "predicate": "associado_a",
     "objectCanonicalKey": "hiv",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tuberculose::associado_a::glomerulo",
@@ -33671,13 +33671,13 @@
     "subjectCanonicalKey": "tuberculose",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tuberculose::associado_a::sarcoma de kaposi",
@@ -33924,26 +33924,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "rim",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::hiv",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "hiv",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::glomerulo",
@@ -33998,26 +33998,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "simples",
-    "occurrenceCount": 2,
-    "maxConfidence": 1,
-    "assetIds": [
-      "seed-asset-1786510879675-6",
-      "seed-asset-1786510918945-10"
-    ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
-  },
-  {
-    "id": "em::associado_a::qualquer",
-    "subjectCanonicalKey": "em",
-    "predicate": "associado_a",
-    "objectCanonicalKey": "qualquer",
     "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
+  },
+  {
+    "id": "em::associado_a::qualquer",
+    "subjectCanonicalKey": "em",
+    "predicate": "associado_a",
+    "objectCanonicalKey": "qualquer",
+    "occurrenceCount": 5,
+    "maxConfidence": 1,
+    "assetIds": [
+      "seed-asset-1786510879675-6",
+      "seed-asset-1786510918945-10"
+    ],
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "toxoplasmose::associado_a::diarreia",
@@ -34504,13 +34504,13 @@
     "subjectCanonicalKey": "leucoencefalopatia multifocal progressiva",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "leucoencefalopatia multifocal progressiva::associado_a::sarcoma de kaposi",
@@ -34625,13 +34625,13 @@
     "subjectCanonicalKey": "hiv",
     "predicate": "associado_a",
     "objectCanonicalKey": "coracao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hiv::associado_a::rim",
@@ -34674,13 +34674,13 @@
     "subjectCanonicalKey": "hiv",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hiv::associado_a::sarcoma de kaposi",
@@ -35563,13 +35563,13 @@
     "subjectCanonicalKey": "febre",
     "predicate": "associado_a",
     "objectCanonicalKey": "sudorese",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tosse seca::associado_a::hiv",
@@ -35660,13 +35660,13 @@
     "subjectCanonicalKey": "dispneia",
     "predicate": "associado_a",
     "objectCanonicalKey": "tosse seca",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dispneia::associado_a::sudorese",
@@ -35781,27 +35781,27 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "febre",
-    "occurrenceCount": 8,
+    "occurrenceCount": 13,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::tosse seca",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "tosse seca",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ar::associado_a::hiv",
@@ -35916,13 +35916,13 @@
     "subjectCanonicalKey": "tuberculose",
     "predicate": "causa",
     "objectCanonicalKey": "febre",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tuberculose::causa::diarreia",
@@ -36289,27 +36289,27 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "ovario",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::mama",
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "mama",
-    "occurrenceCount": 4,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::colon",
@@ -36412,13 +36412,13 @@
     "subjectCanonicalKey": "obesidade",
     "predicate": "trata",
     "objectCanonicalKey": "hipotireoidismo",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "obesidade::trata::usg",
@@ -36593,7 +36593,7 @@
     "subjectCanonicalKey": "estado",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 6,
+    "occurrenceCount": 14,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
@@ -36601,20 +36601,20 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estado::associado_a::pele",
     "subjectCanonicalKey": "estado",
     "predicate": "associado_a",
     "objectCanonicalKey": "pele",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estado::associado_a::sudorese",
@@ -37173,13 +37173,13 @@
     "subjectCanonicalKey": "tronco encefalico",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510887617-7",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cerebro::causa::olho",
@@ -37438,39 +37438,39 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "miocardio",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::insuficiencia cardiaca",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "insuficiencia cardiaca",
-    "occurrenceCount": 6,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "coracao::associado_a::hipertensao",
     "subjectCanonicalKey": "coracao",
     "predicate": "associado_a",
     "objectCanonicalKey": "hipertensao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "coracao::associado_a::insuficiencia cardiaca",
@@ -37657,13 +37657,13 @@
     "subjectCanonicalKey": "prurido",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "urticaria::associado_a::pele",
@@ -37946,13 +37946,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "asma bronquica",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::estado de mal asmatico",
@@ -37971,26 +37971,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "doenca pulmonar obstrutiva cronica",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::tosse",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "tosse",
-    "occurrenceCount": 7,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "olho::associado_a::glaucoma",
@@ -38453,13 +38453,13 @@
     "subjectCanonicalKey": "tosse",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tosse::associado_a::vomitos",
@@ -39318,13 +39318,13 @@
     "subjectCanonicalKey": "captopril",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "colera::associado_a::em",
@@ -39379,13 +39379,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "estado",
-    "occurrenceCount": 5,
+    "occurrenceCount": 8,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "coracao::associado_a::insulina",
@@ -39476,14 +39476,14 @@
     "subjectCanonicalKey": "olho",
     "predicate": "associado_a",
     "objectCanonicalKey": "retina",
-    "occurrenceCount": 4,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::alzheimer",
@@ -39730,13 +39730,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "hipotensao",
-    "occurrenceCount": 6,
+    "occurrenceCount": 11,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "sindrome nefrotica::causa::furosemida",
@@ -39791,13 +39791,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "paralisia",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "medula espinal::causa::inseminacao artificial",
@@ -40128,13 +40128,13 @@
     "subjectCanonicalKey": "taquicardia",
     "predicate": "causa",
     "objectCanonicalKey": "hipotensao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "taquicardia::causa::acidose",
@@ -40153,13 +40153,13 @@
     "subjectCanonicalKey": "taquicardia",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "taquicardia::causa::bradicardia",
@@ -40178,13 +40178,13 @@
     "subjectCanonicalKey": "hipertensao",
     "predicate": "causa",
     "objectCanonicalKey": "paralisia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertensao::causa::hipotensao",
@@ -40539,13 +40539,13 @@
     "subjectCanonicalKey": "distonia",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "torcicolo espasmodico::associado_a::cerebro",
@@ -40660,26 +40660,26 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "enxaqueca",
-    "occurrenceCount": 2,
-    "maxConfidence": 1,
-    "assetIds": [
-      "seed-asset-1786510901633-9",
-      "seed-asset-1786510918945-10"
-    ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
-  },
-  {
-    "id": "em::associado_a::paralisia",
-    "subjectCanonicalKey": "em",
-    "predicate": "associado_a",
-    "objectCanonicalKey": "paralisia",
     "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
+  },
+  {
+    "id": "em::associado_a::paralisia",
+    "subjectCanonicalKey": "em",
+    "predicate": "associado_a",
+    "objectCanonicalKey": "paralisia",
+    "occurrenceCount": 5,
+    "maxConfidence": 1,
+    "assetIds": [
+      "seed-asset-1786510901633-9",
+      "seed-asset-1786510918945-10"
+    ],
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "utero::trata::insuficiencia cardiaca",
@@ -41502,13 +41502,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "taquicardia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipotensao::associado_a::cerebro",
@@ -41899,13 +41899,13 @@
     "subjectCanonicalKey": "hipertensao",
     "predicate": "causa",
     "objectCanonicalKey": "depressao",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertensao::causa::diarreia",
@@ -43160,26 +43160,26 @@
     "subjectCanonicalKey": "hipertensao",
     "predicate": "associado_a",
     "objectCanonicalKey": "insuficiencia cardiaca",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertensao::associado_a::acidente vascular cerebral",
     "subjectCanonicalKey": "hipertensao",
     "predicate": "associado_a",
     "objectCanonicalKey": "acidente vascular cerebral",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertensao::associado_a::demencia vascular",
@@ -43306,13 +43306,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "é_sintoma_de",
     "objectCanonicalKey": "fadiga",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::é_sintoma_de::dispneia",
@@ -43391,13 +43391,13 @@
     "subjectCanonicalKey": "hipertensao",
     "predicate": "causa",
     "objectCanonicalKey": "atrio direito",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "esclerose sistemica::associado_a::hipertensao",
@@ -43488,13 +43488,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "é_sintoma_de",
     "objectCanonicalKey": "prurido",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::é_sintoma_de::diarreia",
@@ -43513,26 +43513,26 @@
     "subjectCanonicalKey": "simples",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::aterosclerose",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "aterosclerose",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pl::associado_a::em",
@@ -44019,13 +44019,13 @@
     "subjectCanonicalKey": "hiperventilacao",
     "predicate": "causa",
     "objectCanonicalKey": "alcalose",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "acido acetilsalicilico::causa::varfarina",
@@ -44224,13 +44224,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "pele",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::sistemico",
@@ -44333,13 +44333,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "tosse",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::asma",
@@ -44574,13 +44574,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "cirrose hepatica",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::ascite",
@@ -44647,13 +44647,13 @@
     "subjectCanonicalKey": "hipopotassemia",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipopotassemia::causa::diureticos de alca",
@@ -44888,13 +44888,13 @@
     "subjectCanonicalKey": "insulina",
     "predicate": "associado_a",
     "objectCanonicalKey": "glicemia",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pancreas endocrino::associado_a::insulina",
@@ -45081,13 +45081,13 @@
     "subjectCanonicalKey": "obesidade",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipotalamo::associado_a::estado",
@@ -45106,13 +45106,13 @@
     "subjectCanonicalKey": "hipofise",
     "predicate": "associado_a",
     "objectCanonicalKey": "suprarrenal",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "suprarrenal::associado_a::glandula tireoide",
@@ -45479,13 +45479,13 @@
     "subjectCanonicalKey": "hipotireoidismo",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tireoide::causa::simples",
@@ -45504,13 +45504,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "simples",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertireoidismo::causa::simples",
@@ -45637,14 +45637,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "ovario",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tontura::é_sintoma_de::cefaleia",
@@ -46143,13 +46143,13 @@
     "subjectCanonicalKey": "cocaina",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dopamina::associado_a::em",
@@ -46360,39 +46360,39 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "doenca de parkinson",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::doenca de alzheimer",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "doenca de alzheimer",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::doenca de creutzfeldt-jakob",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "doenca de creutzfeldt-jakob",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::doenca de huntington",
@@ -46483,13 +46483,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "dopamina",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::heroina",
@@ -46520,13 +46520,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "avc",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "dopamina::associado_a::hipotensao",
@@ -47097,26 +47097,26 @@
     "subjectCanonicalKey": "constipacao",
     "predicate": "causa",
     "objectCanonicalKey": "depressao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "nauseas::causa::depressao",
     "subjectCanonicalKey": "nauseas",
     "predicate": "causa",
     "objectCanonicalKey": "depressao",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "emese::causa::depressao",
@@ -47663,13 +47663,13 @@
     "subjectCanonicalKey": "cocaina",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "depressao::causa::olho",
@@ -48420,13 +48420,13 @@
     "subjectCanonicalKey": "epilepsia",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "epilepsia::associado_a::cerebro",
@@ -48445,13 +48445,13 @@
     "subjectCanonicalKey": "nauseas",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cannabis::trata::esclerose multipla",
@@ -48506,13 +48506,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "esquizofrenia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipotermia::causa::ictericia",
@@ -48759,26 +48759,26 @@
     "subjectCanonicalKey": "diarreia",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::tontura",
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "tontura",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "ne::associado_a::em",
@@ -48833,14 +48833,14 @@
     "subjectCanonicalKey": "cefaleia",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 6,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "depressao::associado_a::tontura",
@@ -49003,13 +49003,13 @@
     "subjectCanonicalKey": "sudorese",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "etanol::causa::cistite",
@@ -49352,14 +49352,14 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "cirrose",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::etanol",
@@ -49606,13 +49606,13 @@
     "subjectCanonicalKey": "tuberculose",
     "predicate": "causa",
     "objectCanonicalKey": "qualquer",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "tuberculose::causa::covid-19",
@@ -49703,13 +49703,13 @@
     "subjectCanonicalKey": "coronavirus",
     "predicate": "causa",
     "objectCanonicalKey": "hiv",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "raiva::causa::conjuntivite",
@@ -49788,13 +49788,13 @@
     "subjectCanonicalKey": "simples",
     "predicate": "causa",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 4,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "aspergilose pulmonar invasiva::causa::em",
@@ -49885,13 +49885,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "torax",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::coccidioidomicose",
@@ -50006,13 +50006,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "tronco encefalico",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::disenteria amebiana aguda",
@@ -50151,13 +50151,13 @@
     "subjectCanonicalKey": "ureia",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "doenca renal cronica::associado_a::aminoglicosideos",
@@ -50344,13 +50344,13 @@
     "subjectCanonicalKey": "qualquer",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 4,
+    "occurrenceCount": 7,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::intoxicacao",
@@ -50477,13 +50477,13 @@
     "subjectCanonicalKey": "qualquer",
     "predicate": "causa",
     "objectCanonicalKey": "edema",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "febre::causa::tuberculose",
@@ -50874,13 +50874,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "é_sintoma_de",
     "objectCanonicalKey": "febre",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "esquistossomose::é_sintoma_de::febre",
@@ -51019,13 +51019,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "dor abdominal",
-    "occurrenceCount": 5,
+    "occurrenceCount": 9,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "abdome::associado_a::vomitos",
@@ -51872,13 +51872,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "sarcoidose",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "nervo optico::associado_a::em",
@@ -51957,26 +51957,26 @@
     "subjectCanonicalKey": "cefaleia",
     "predicate": "associado_a",
     "objectCanonicalKey": "nauseas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cefaleia::associado_a::vomitos",
     "subjectCanonicalKey": "cefaleia",
     "predicate": "associado_a",
     "objectCanonicalKey": "vomitos",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipertensao arterial sistemica::causa::retina",
@@ -55391,13 +55391,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "causa",
     "objectCanonicalKey": "endometrio",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::causa::colo do utero",
@@ -56376,13 +56376,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "febre reumatica",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estenose mitral::associado_a::febre reumatica",
@@ -59053,13 +59053,13 @@
     "subjectCanonicalKey": "insulina",
     "predicate": "associado_a",
     "objectCanonicalKey": "estomago",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "estomago::associado_a::insulina",
@@ -59186,13 +59186,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "é_sintoma_de",
     "objectCanonicalKey": "estado",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "sindrome carcinoide::causa::insuficiencia tricuspide",
@@ -59859,13 +59859,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "colangite",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "sepse::causa::hipotensao",
@@ -62932,13 +62932,13 @@
     "subjectCanonicalKey": "esplenomegalia",
     "predicate": "associado_a",
     "objectCanonicalKey": "em",
-    "occurrenceCount": 3,
+    "occurrenceCount": 5,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "esplenomegalia::associado_a::hipertensao portal",
@@ -63173,13 +63173,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "ictericia",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::esplenomegalia",
@@ -63522,13 +63522,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "tireoide",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "sepse::associado_a::intoxicacao",
@@ -65215,13 +65215,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "pequenas celulas",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "fraqueza::associado_a::paralisia periodica",
@@ -66716,13 +66716,13 @@
     "subjectCanonicalKey": "cefaleia",
     "predicate": "associado_a",
     "objectCanonicalKey": "estado",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cefaleia::associado_a::epilepsia",
@@ -67461,13 +67461,13 @@
     "subjectCanonicalKey": "febre",
     "predicate": "causa",
     "objectCanonicalKey": "edema",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "febre::causa::paralisia",
@@ -67522,13 +67522,13 @@
     "subjectCanonicalKey": "lcr",
     "predicate": "causa",
     "objectCanonicalKey": "edema",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "lcr::causa::paralisia",
@@ -67667,13 +67667,13 @@
     "subjectCanonicalKey": "cefaleia",
     "predicate": "é_sintoma_de",
     "objectCanonicalKey": "vomitos",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "cisticercose::causa::hidrocefalia comunicante",
@@ -69324,13 +69324,13 @@
     "subjectCanonicalKey": "suprarrenal",
     "predicate": "associado_a",
     "objectCanonicalKey": "rins",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510929324-11",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "hipotalamo::associado_a::rins",
@@ -70705,13 +70705,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "associado_a",
     "objectCanonicalKey": "nausea",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510936109-12",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::cansaco",
@@ -70754,13 +70754,13 @@
     "subjectCanonicalKey": "em",
     "predicate": "trata",
     "objectCanonicalKey": "enalapril",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510936109-12",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::trata::hidroclorotiazida",
@@ -70779,13 +70779,13 @@
     "subjectCanonicalKey": "febre",
     "predicate": "associado_a",
     "objectCanonicalKey": "tosse",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510936109-12",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "em::associado_a::palidez",
@@ -71152,13 +71152,13 @@
     "subjectCanonicalKey": "febre",
     "predicate": "associado_a",
     "objectCanonicalKey": "fadiga",
-    "occurrenceCount": 2,
+    "occurrenceCount": 3,
     "maxConfidence": 1,
     "assetIds": [
       "seed-asset-1786510941345-13",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-12T05:00:10.242Z"
+    "updatedAt": "2026-08-17T01:26:41.233Z"
   },
   {
     "id": "pericardite::associado_a::palpitacoes",

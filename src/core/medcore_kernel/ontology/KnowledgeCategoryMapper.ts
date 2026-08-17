@@ -8,7 +8,6 @@ export enum KnowledgeCategory {
   summary = 'summary',
   protocol = 'protocol',
   clinicalCase = 'clinicalCase',
-  questionBank = 'questionBank',
   flashcard = 'flashcard',
   manual = 'manual',
   apostila = 'apostila',
@@ -21,7 +20,7 @@ export class KnowledgeCategoryMapper {
       case KnowledgeCategory.book:
         return 'Livro';
       case KnowledgeCategory.residencyExam:
-        return 'Prova de Residência';
+        return 'Provas & Banco de Questões';
       case KnowledgeCategory.professorExam:
         return 'Prova de Professor';
       case KnowledgeCategory.guideline:
@@ -36,8 +35,6 @@ export class KnowledgeCategoryMapper {
         return 'Protocolo';
       case KnowledgeCategory.clinicalCase:
         return 'Caso Clínico';
-      case KnowledgeCategory.questionBank:
-        return 'Banco de Questões';
       case KnowledgeCategory.flashcard:
         return 'Flashcard';
       case KnowledgeCategory.manual:
@@ -53,7 +50,16 @@ export class KnowledgeCategoryMapper {
   public static fromDisplayName(name: string): KnowledgeCategory {
     const normalized = name.toLowerCase().trim();
     if (normalized.includes('livro') || normalized.includes('book')) return KnowledgeCategory.book;
-    if (normalized.includes('prova') || normalized.includes('residencia') || normalized.includes('residency')) return KnowledgeCategory.residencyExam;
+    if (
+      normalized.includes('prova') ||
+      normalized.includes('residencia') ||
+      normalized.includes('residency') ||
+      normalized.includes('questoes') ||
+      normalized.includes('question') ||
+      normalized.includes('banco')
+    ) {
+      return KnowledgeCategory.residencyExam;
+    }
     if (normalized.includes('professor') || normalized.includes('banca')) return KnowledgeCategory.professorExam;
     if (normalized.includes('diretriz') || normalized.includes('guideline') || normalized.includes('sbc') || normalized.includes('amb')) return KnowledgeCategory.guideline;
     if (normalized.includes('artigo') || normalized.includes('article') || normalized.includes('paper')) return KnowledgeCategory.article;
@@ -61,7 +67,6 @@ export class KnowledgeCategoryMapper {
     if (normalized.includes('resumo') || normalized.includes('summary')) return KnowledgeCategory.summary;
     if (normalized.includes('protocolo') || normalized.includes('protocol')) return KnowledgeCategory.protocol;
     if (normalized.includes('caso') || normalized.includes('clinical')) return KnowledgeCategory.clinicalCase;
-    if (normalized.includes('questoes') || normalized.includes('question') || normalized.includes('banco')) return KnowledgeCategory.questionBank;
     if (normalized.includes('flashcard') || normalized.includes('anki')) return KnowledgeCategory.flashcard;
     if (normalized.includes('manual')) return KnowledgeCategory.manual;
     if (normalized.includes('apostila')) return KnowledgeCategory.apostila;
@@ -73,7 +78,17 @@ export class KnowledgeCategoryMapper {
     if (lower.includes('harrison') || lower.includes('goldman') || lower.includes('sabiston') || lower.includes('netter') || lower.includes('livro') || lower.includes('book')) {
       return KnowledgeCategory.book;
     }
-    if (lower.includes('enare') || lower.includes('residência') || lower.includes('residencia') || lower.includes('usp') || lower.includes('unifesp') || lower.includes('revalida')) {
+    if (
+      lower.includes('enare') ||
+      lower.includes('residência') ||
+      lower.includes('residencia') ||
+      lower.includes('usp') ||
+      lower.includes('unifesp') ||
+      lower.includes('revalida') ||
+      lower.includes('prova') ||
+      lower.includes('exam') ||
+      lower.includes('questoes')
+    ) {
       return KnowledgeCategory.residencyExam;
     }
     if (lower.includes('sbc') || lower.includes('diretriz') || lower.includes('guideline') || lower.includes('protocolo')) {
@@ -81,9 +96,6 @@ export class KnowledgeCategoryMapper {
     }
     if (lower.includes('artigo') || lower.includes('nejm') || lower.includes('lancet') || lower.includes('jama')) {
       return KnowledgeCategory.article;
-    }
-    if (lower.includes('prova') || lower.includes('exam') || lower.includes('questoes')) {
-      return KnowledgeCategory.questionBank;
     }
     if (lower.includes('apostila') || lower.includes('manual')) {
       return KnowledgeCategory.manual;
@@ -105,7 +117,6 @@ export class KnowledgeCategoryMapper {
         return 'menu_book';
       case KnowledgeCategory.residencyExam:
       case KnowledgeCategory.professorExam:
-      case KnowledgeCategory.questionBank:
         return 'quiz';
       case KnowledgeCategory.guideline:
       case KnowledgeCategory.protocol:
@@ -137,8 +148,6 @@ export class KnowledgeCategoryMapper {
         return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
       case KnowledgeCategory.article:
         return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case KnowledgeCategory.questionBank:
-        return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
       default:
         return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
     }
@@ -151,8 +160,7 @@ export class KnowledgeCategoryMapper {
   public static isQuestionSource(category: KnowledgeCategory): boolean {
     return (
       category === KnowledgeCategory.residencyExam ||
-      category === KnowledgeCategory.professorExam ||
-      category === KnowledgeCategory.questionBank
+      category === KnowledgeCategory.professorExam
     );
   }
 

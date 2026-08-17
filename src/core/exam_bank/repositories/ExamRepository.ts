@@ -23,6 +23,7 @@ export class ExamRepository {
       tamanhoArquivo: asset.file?.size || 1024 * 1024,
       tamanhoFormatado: asset.file?.size ? `${(asset.file.size / (1024 * 1024)).toFixed(1)} MB` : '1.0 MB',
       gabarito: 'Gabarito Oficial',
+      hasRawPdf: !!(asset.file?.hasRawFileBlob || asset.file?.rawFileStorageKey),
       createdAt: asset.createdAt,
       updatedAt: asset.updatedAt,
     };
@@ -69,6 +70,7 @@ export class ExamRepository {
         size: dto.tamanhoArquivo,
         extractedText: dto.conteudoTexto && dto.conteudoTexto.trim().length > 0 ? dto.conteudoTexto : undefined,
       },
+      rawFile: dto.rawFile,
     });
     return this.assetToExam(asset);
   }
@@ -76,6 +78,11 @@ export class ExamRepository {
   public async updateExam(id: string, dto: ExamUpdateDTO): Promise<ExamModel | null> {
     const existing = await medKnowledgeRepository.getAssetById(id);
     if (!existing) return null;
+
+    if (dto.rawFile) {
+      const blob = dto.rawFile instanceof Blob ? dto.rawFile : new Blob([dto.rawFile], { type: 'application/pdf' });
+      await medKnowledgeRepository.saveRawAssetFileBlob(id, blob);
+    }
 
     const hasNewContent = dto.conteudoTexto !== undefined && dto.conteudoTexto !== existing.file?.extractedText;
     const newExtractedText = hasNewContent ? dto.conteudoTexto : existing.file?.extractedText;
@@ -91,11 +98,14 @@ export class ExamRepository {
       semester: dto.semestre || existing.semester,
       board: dto.tipo || existing.board,
       file: {
+        ...existing.file,
         name: existing.file?.name || `${dto.titulo || existing.title}.pdf`,
         size: existing.file?.size || 1024 * 1024,
         type: existing.file?.type || 'application/pdf',
         extension: existing.file?.extension || 'PDF',
         extractedText: newExtractedText && newExtractedText.trim().length > 0 ? newExtractedText : undefined,
+        hasRawFileBlob: dto.rawFile ? true : existing.file?.hasRawFileBlob,
+        rawFileStorageKey: dto.rawFile ? id : existing.file?.rawFileStorageKey,
       },
       updatedAt: new Date().toISOString(),
     });

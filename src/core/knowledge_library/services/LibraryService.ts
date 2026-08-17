@@ -59,7 +59,6 @@ export class LibraryService implements ILibraryService {
       [KnowledgeCategory.summary]: 0,
       [KnowledgeCategory.protocol]: 0,
       [KnowledgeCategory.clinicalCase]: 0,
-      [KnowledgeCategory.questionBank]: 0,
       [KnowledgeCategory.flashcard]: 0,
       [KnowledgeCategory.manual]: 0,
       [KnowledgeCategory.apostila]: 0,

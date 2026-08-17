@@ -404,7 +404,7 @@ export class KnowledgeLibraryNotifier extends StateNotifier<KnowledgeLibraryUISt
 
   private inferCategoryFromFileName(fileName: string): KnowledgeCategory {
     const lower = fileName.toLowerCase();
-    if (lower.includes('prova') || lower.includes('exame') || lower.includes('enare') || lower.includes('usp')) return KnowledgeCategory.residencyExam;
+    if (lower.includes('prova') || lower.includes('exame') || lower.includes('enare') || lower.includes('usp') || lower.includes('questoes') || lower.includes('question') || lower.includes('banco')) return KnowledgeCategory.residencyExam;
     if (lower.includes('livro') || lower.includes('tratado') || lower.includes('harrison') || lower.includes('braunwald')) return KnowledgeCategory.book;
     if (lower.includes('prof') || lower.includes('aula') || lower.includes('curso')) return KnowledgeCategory.professorExam;
     if (lower.includes('diretriz') || lower.includes('consenso') || lower.includes('sbc')) return KnowledgeCategory.guideline;

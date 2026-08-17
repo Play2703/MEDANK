@@ -25,8 +25,10 @@ import {
   HardDrive,
   X,
   Layers,
+  Scissors,
 } from 'lucide-react';
 import { useExamViewModel, EXAM_CATEGORIES, ExamCategory, ExamModel, ExamCreateDTO } from '../../core/exam_bank';
+import { ExamQuestionSegmentationModal } from './ExamQuestionSegmentationModal';
 
 export const ExamBankView: React.FC = () => {
   const {
@@ -83,6 +85,7 @@ export const ExamBankView: React.FC = () => {
   const [editObservacoes, setEditObservacoes] = useState('');
   const [editConteudoTexto, setEditConteudoTexto] = useState('');
   const [editGabarito, setEditGabarito] = useState('');
+  const [isSegmentationModalOpen, setIsSegmentationModalOpen] = useState(false);
 
   const openDetailModal = (exam: ExamModel) => {
     setSelectedExamForDetail(exam);
@@ -369,14 +372,21 @@ export const ExamBankView: React.FC = () => {
                     <span className="px-3 py-1 rounded-xl bg-indigo-500/15 text-indigo-300 font-mono text-[10px] font-bold border border-indigo-500/30">
                       {exam.tipo} ({exam.ano})
                     </span>
-                    {exam.conteudoTexto && exam.conteudoTexto.trim().length > 30 ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-mono border border-emerald-500/30">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                        Grafo (NER)
+                    {exam.hasRawPdf ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-mono border border-purple-500/30" title="PDF Original armazenado no IndexedDB (Pronto para Splitter)">
+                        <FileCheck className="w-3 h-3 text-purple-400" />
+                        PDF Salvo
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-mono border border-amber-500/30">
-                        Não indexado
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-[10px] font-mono border border-slate-700" title="PDF original não armazenado (Necessário reenvio para segmentação)">
+                        <FileText className="w-3 h-3 text-slate-500" />
+                        PDF s/ Binário
+                      </span>
+                    )}
+                    {exam.conteudoTexto && exam.conteudoTexto.trim().length > 30 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-mono border border-emerald-500/30">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        NER
                       </span>
                     )}
                   </div>
@@ -809,19 +819,29 @@ export const ExamBankView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  onClick={() => {
-                    if (window.confirm('Excluir esta prova do banco?')) {
-                      deleteExam(selectedExamForDetail.id);
-                      setIsDetailModalOpen(false);
-                    }
-                  }}
-                  className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold hover:bg-rose-500/30 flex items-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Excluir Prova</span>
-                </button>
+              <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Excluir esta prova do banco?')) {
+                        deleteExam(selectedExamForDetail.id);
+                        setIsDetailModalOpen(false);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold hover:bg-rose-500/30 flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Excluir Prova</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsSegmentationModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold hover:bg-purple-500/30 flex items-center gap-1.5"
+                  >
+                    <Scissors className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Segmentar Questões</span>
+                  </button>
+                </div>
 
                 <button
                   onClick={() => setIsDetailModalOpen(false)}
@@ -834,6 +854,21 @@ export const ExamBankView: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* EXAM QUESTION SEGMENTATION MODAL */}
+      {isSegmentationModalOpen && selectedExamForDetail && (
+        <ExamQuestionSegmentationModal
+          isOpen={isSegmentationModalOpen}
+          onClose={() => setIsSegmentationModalOpen(false)}
+          documentTitle={selectedExamForDetail.titulo}
+          sourceAssetId={selectedExamForDetail.id}
+          specialty={selectedExamForDetail.especialidade}
+          rawContent={selectedExamForDetail.conteudoTexto || ''}
+          onSaveQuestions={(extracted) => {
+            console.log(`[ExamBankView] ${extracted.length} questões segmentadas para ${selectedExamForDetail.titulo}`);
+          }}
+        />
+      )}
     </div>
   );
 };

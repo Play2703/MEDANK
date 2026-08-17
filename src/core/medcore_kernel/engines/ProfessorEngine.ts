@@ -5,9 +5,12 @@ import {
   AcademicCycle,
   ClinicalCycleDNA,
   BasicCycleDNA,
+  ExtractedExamQuestionRecord,
 } from '../../../domain/entities/Question';
 import { aiOrchestrator } from '../ai_orchestrator/AIOrchestrator';
 import { ragEngine } from '../../../data/services/RAGEngine';
+import { db } from '../../../data/db/database';
+import { DeterministicExamStatsCalculator } from './DeterministicExamStatsCalculator';
 
 function clamp01(val: any, defaultVal = 0.5): number {
   const num = Number(val);
@@ -459,6 +462,50 @@ Retorne EXCLUSIVAMENTE um objeto JSON VÁLIDO no seguinte formato exato (sem mar
 
       const calculatedDNA = calculateMovingAverageDNA(previousDNA, finalCiclo, avgClinico, avgBasico);
 
+      // 4. Calibração empírica ancorada em dados determinísticos reais de provas extraídas
+      let finalDNA: ExamDNA = calculatedDNA;
+      try {
+        const docIds = documents.map((d) => d.id).filter(Boolean);
+        let extractedQuestions: ExtractedExamQuestionRecord[] = [];
+
+        if (docIds.length > 0) {
+          extractedQuestions = await db.extractedExamQuestions
+            .where('sourceAssetId')
+            .anyOf(docIds)
+            .toArray();
+        }
+
+        if (extractedQuestions.length === 0 && profile?.id) {
+          extractedQuestions = await db.extractedExamQuestions
+            .where('sourceAssetId')
+            .equals(profile.id)
+            .toArray();
+        }
+
+        if (extractedQuestions.length === 0) {
+          const allExtracted = await db.extractedExamQuestions.toArray();
+          if (allExtracted.length > 0) {
+            const docFileNames = documents.map((d) => (d.fileName || '').toLowerCase());
+            extractedQuestions = allExtracted.filter((q) =>
+              docFileNames.some((dfn) => dfn && (q.sourceAssetId || '').toLowerCase().includes(dfn)) ||
+              (profName && (q.sourceAssetId || '').toLowerCase().includes(profName.toLowerCase()))
+            );
+          }
+        }
+
+        if (extractedQuestions.length > 0) {
+          const realStats = DeterministicExamStatsCalculator.calculateStats(extractedQuestions);
+          if (realStats) {
+            finalDNA = DeterministicExamStatsCalculator.anchorExamDNA(calculatedDNA, realStats);
+          }
+        } else {
+          finalDNA.dataSource = 'ai-only';
+        }
+      } catch (err) {
+        console.warn('[ProfessorEngine] Error anchoring ExamDNA with deterministic stats:', err);
+        finalDNA.dataSource = 'ai-only';
+      }
+
       const temasSet = new Set<string>();
       const pegadinhasSet = new Set<string>();
 
@@ -480,7 +527,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON VÁLIDO no seguinte formato exato (sem mar
         nivelCognitivo: firstValidNivel,
         pegadinhasRecorrentes: pegadinhasRecorrentes.length > 0 ? pegadinhasRecorrentes : ['Falsos sinônimos em distratores', 'Valores limítrofes em exames'],
         resumoEstiloGeral: firstValidResumo,
-        examDNA: calculatedDNA,
+        examDNA: finalDNA,
         analyzedAt: new Date().toISOString(),
       };
     }
@@ -501,13 +548,55 @@ Retorne EXCLUSIVAMENTE um objeto JSON VÁLIDO no seguinte formato exato (sem mar
 
     const fallbackDNA = calculateMovingAverageDNA(previousDNA, fallbackCiclo, fallbackClinico, undefined);
 
+    let finalFallbackDNA: ExamDNA = fallbackDNA;
+    try {
+      const docIds = documents.map((d) => d.id).filter(Boolean);
+      let extractedQuestions: ExtractedExamQuestionRecord[] = [];
+
+      if (docIds.length > 0) {
+        extractedQuestions = await db.extractedExamQuestions
+          .where('sourceAssetId')
+          .anyOf(docIds)
+          .toArray();
+      }
+
+      if (extractedQuestions.length === 0 && profile?.id) {
+        extractedQuestions = await db.extractedExamQuestions
+          .where('sourceAssetId')
+          .equals(profile.id)
+          .toArray();
+      }
+
+      if (extractedQuestions.length === 0) {
+        const allExtracted = await db.extractedExamQuestions.toArray();
+        if (allExtracted.length > 0) {
+          const docFileNames = documents.map((d) => (d.fileName || '').toLowerCase());
+          extractedQuestions = allExtracted.filter((q) =>
+            docFileNames.some((dfn) => dfn && (q.sourceAssetId || '').toLowerCase().includes(dfn)) ||
+            (profName && (q.sourceAssetId || '').toLowerCase().includes(profName.toLowerCase()))
+          );
+        }
+      }
+
+      if (extractedQuestions.length > 0) {
+        const realStats = DeterministicExamStatsCalculator.calculateStats(extractedQuestions);
+        if (realStats) {
+          finalFallbackDNA = DeterministicExamStatsCalculator.anchorExamDNA(fallbackDNA, realStats);
+        }
+      } else {
+        finalFallbackDNA.dataSource = 'ai-only';
+      }
+    } catch (err) {
+      finalFallbackDNA.dataSource = 'ai-only';
+    }
+
     return {
       temasFavoritos: documents.length > 0 ? documents.map((d) => d.fileName.replace(/\.[^/.]+$/, '')) : ['Medicina Geral'],
       estiloDeQuestao: 'Casos clínicos fundamentados em diretrizes oficiais.',
       nivelCognitivo: 'Raciocínio diagnóstico e tomada de decisão.',
       pegadinhasRecorrentes: ['Condutas com contraindicações relativas', 'Valores laboratoriais atípicos'],
       resumoEstiloGeral: `Perfil de cobrança baseado no acervo importado para ${profName}.`,
-      examDNA: fallbackDNA,
+      examDNA: finalFallbackDNA,
       analyzedAt: new Date().toISOString(),
     };
   }

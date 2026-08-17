@@ -163,11 +163,47 @@ export class MedKnowledgeRepository {
 
     try {
       await db.knowledgeAssets.delete(id);
+      await db.knowledgeAssetFiles.delete(id);
     } catch (e) {}
 
     medKnowledgeEventBus.emit('KnowledgeDeleted', existing);
     this.notify();
     return true;
+  }
+
+  async getRawAssetFileBlob(assetId: string): Promise<Blob | null> {
+    try {
+      const record = await db.knowledgeAssetFiles.get(assetId);
+      if (record && record.blob) {
+        return record.blob;
+      }
+    } catch (err) {
+      console.warn(`[MedKnowledgeRepository] Failed to retrieve raw file blob for ${assetId}:`, err);
+    }
+    return null;
+  }
+
+  async saveRawAssetFileBlob(assetId: string, blob: Blob, mimeType = 'application/pdf'): Promise<boolean> {
+    try {
+      await db.knowledgeAssetFiles.put({
+        id: assetId,
+        assetId,
+        blob,
+        mimeType,
+        createdAt: new Date().toISOString(),
+      });
+
+      const asset = await this.getAssetById(assetId);
+      if (asset) {
+        asset.file.hasRawFileBlob = true;
+        asset.file.rawFileStorageKey = assetId;
+        await this.saveAsset(asset);
+      }
+      return true;
+    } catch (err) {
+      console.warn(`[MedKnowledgeRepository] Failed to save raw file blob for ${assetId}:`, err);
+      return false;
+    }
   }
 
   async importAsset(params: {
@@ -184,12 +220,42 @@ export class MedKnowledgeRepository {
     semester?: string;
     tags?: string[];
     metadata?: Record<string, any>;
-    file: { name: string; url?: string; size?: number; type?: string; extension?: string; extractedText?: string };
+    file: { name: string; url?: string; size?: number; type?: string; extension?: string; extractedText?: string; rawFileStorageKey?: string; hasRawFileBlob?: boolean };
+    rawFile?: Blob | File | ArrayBuffer | null;
     thumbnail?: string;
   }): Promise<KnowledgeAsset> {
     const now = new Date().toISOString();
     const id = `asset-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     const category = params.category || KnowledgeCategoryMapper.fromFileName(params.file.name);
+
+    // TAREFA 0: Persistir arquivo PDF original APENAS para residencyExam e professorExam
+    const isExamCategory =
+      category === KnowledgeCategory.residencyExam || category === KnowledgeCategory.professorExam;
+
+    if (isExamCategory && params.rawFile) {
+      let fileBlob: Blob | null = null;
+      if (params.rawFile instanceof Blob) {
+        fileBlob = params.rawFile;
+      } else if (params.rawFile instanceof ArrayBuffer) {
+        fileBlob = new Blob([params.rawFile], { type: params.file.type || 'application/pdf' });
+      }
+
+      if (fileBlob) {
+        try {
+          await db.knowledgeAssetFiles.put({
+            id,
+            assetId: id,
+            blob: fileBlob,
+            mimeType: params.file.type || 'application/pdf',
+            createdAt: now,
+          });
+          params.file.hasRawFileBlob = true;
+          params.file.rawFileStorageKey = id;
+        } catch (fileErr) {
+          console.warn(`[MedKnowledgeRepository] Failed to store raw PDF blob for ${id}:`, fileErr);
+        }
+      }
+    }
 
     const asset: KnowledgeAsset = {
       id,

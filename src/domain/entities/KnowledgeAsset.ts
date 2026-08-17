@@ -9,6 +9,16 @@ export interface KnowledgeAssetFile {
   type?: string;
   extension?: string;
   extractedText?: string;
+  rawFileStorageKey?: string;
+  hasRawFileBlob?: boolean;
+}
+
+export interface KnowledgeAssetFileBinary {
+  id: string; // ID único que referencia o assetId
+  assetId: string;
+  blob: Blob;
+  mimeType: string;
+  createdAt: string;
 }
 
 export interface KnowledgeAsset {

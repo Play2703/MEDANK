@@ -9,7 +9,7 @@ import { apiUrl } from '../../../lib/apiBaseUrl';
 export interface DistractorCandidate {
   text: string;
   entityType?: MedicalEntityType;
-  source: 'grafo' | 'banco_estatico' | 'semantico' | 'decs';
+  source: 'extracted_exam' | 'grafo' | 'banco_estatico' | 'semantico' | 'decs';
   rationale?: string;
 }
 
@@ -287,13 +287,147 @@ export class DistractorEngine {
   }
 
   /**
-   * Combina as quatro fontes (Grafo relacional de conhecimento, Confusion Sets estáticos, DeCS/CID-10 e Busca Semântica),
-   * deduplica (case-insensitive por `text`), prioriza na ordem:
-   * grafo > banco_estatico > decs > semantico
-   * e limita ao número solicitado (default 8).
+   * Fonte 0 (Prioridade Máxima): busca alternativas incorretas de questões reais de provas
+   * segmentadas (confidence: 'high') cuja resposta correta seja idêntica ou semanticamente
+   * similar à resposta correta atual, usando embeddings locais (sem consumo de tokens de IA).
+   */
+  async getRealExtractedCandidates(
+    correctAnswerText: string,
+    specialty?: string,
+    limit: number = 8
+  ): Promise<DistractorCandidate[]> {
+    if (!correctAnswerText) return [];
+
+    try {
+      // 1. Busca questões com alta confiança no banco local
+      const highConfidenceQuestions = await db.extractedExamQuestions
+        .where('confidence')
+        .equals('high')
+        .toArray();
+
+      if (!highConfidenceQuestions || highConfidenceQuestions.length === 0) return [];
+
+      const normCorrect = normalizeStr(correctAnswerText);
+      const scoredCandidates: { candidate: DistractorCandidate; score: number }[] = [];
+
+      // Filtra questões que possuem gabarito identificado e alternativas
+      const validQuestions = highConfidenceQuestions.filter(
+        (q) => q.correctLetter && Array.isArray(q.options) && q.options.length >= 2
+      );
+
+      if (validQuestions.length === 0) return [];
+
+      // Identifica as respostas corretas de cada questão válida
+      const questionsWithCorrectOpt = validQuestions.map((q) => {
+        const correctOpt = q.options.find(
+          (o) => o.letter.toUpperCase() === q.correctLetter?.toUpperCase()
+        );
+        return {
+          question: q,
+          correctText: correctOpt ? correctOpt.text.trim() : '',
+          wrongOptions: q.options.filter(
+            (o) => o.letter.toUpperCase() !== q.correctLetter?.toUpperCase()
+          ),
+        };
+      }).filter((item) => item.correctText.length > 0 && item.wrongOptions.length > 0);
+
+      if (questionsWithCorrectOpt.length === 0) return [];
+
+      // Checa primeiro por correspondência de string exata/subtermo (custo O(1))
+      const exactMatches = questionsWithCorrectOpt.filter(
+        (item) => normalizeStr(item.correctText) === normCorrect
+      );
+
+      for (const match of exactMatches) {
+        for (const wrongOpt of match.wrongOptions) {
+          const normWrong = normalizeStr(wrongOpt.text);
+          if (normWrong && normWrong !== normCorrect) {
+            scoredCandidates.push({
+              candidate: {
+                text: wrongOpt.text,
+                source: 'extracted_exam',
+                rationale: `Distrator real de prova oficial (gabarito verificado: "${match.correctText}")`,
+              },
+              score: 1.0,
+            });
+          }
+        }
+      }
+
+      // Se ainda não atingiu o limite, usa similaridade vetorial local (LocalEmbeddingClient + cosineSimilarity)
+      if (scoredCandidates.length < limit) {
+        const otherQuestions = questionsWithCorrectOpt.filter(
+          (item) => normalizeStr(item.correctText) !== normCorrect
+        );
+
+        if (otherQuestions.length > 0) {
+          try {
+            // Extrai embeddings locais sem gastar tokens
+            const textsToEmbed = [correctAnswerText, ...otherQuestions.map((q) => q.correctText)];
+            const embeddings = await localEmbeddingClient.generateEmbeddings(textsToEmbed);
+            const targetEmbedding = embeddings[0];
+
+            if (targetEmbedding) {
+              for (let i = 0; i < otherQuestions.length; i++) {
+                const candEmb = embeddings[i + 1];
+                if (!candEmb) continue;
+
+                const sim = cosineSimilarity(targetEmbedding, candEmb);
+                // Considera relacionado se similaridade >= 0.45
+                if (sim >= 0.45 && sim <= 0.98) {
+                  const item = otherQuestions[i];
+                  for (const wrongOpt of item.wrongOptions) {
+                    const normWrong = normalizeStr(wrongOpt.text);
+                    if (normWrong && normWrong !== normCorrect) {
+                      scoredCandidates.push({
+                        candidate: {
+                          text: wrongOpt.text,
+                          source: 'extracted_exam',
+                          rationale: `Distrator real de prova de residência (${(sim * 100).toFixed(0)}% similaridade com gabarito)`,
+                        },
+                        score: sim,
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          } catch (embedErr) {
+            console.warn('[DistractorEngine] Embedding similarity fallback failed:', embedErr);
+          }
+        }
+      }
+
+      // Ordena por score decrescente
+      scoredCandidates.sort((a, b) => b.score - a.score);
+
+      // Deduplica
+      const uniqueMap = new Map<string, DistractorCandidate>();
+      for (const { candidate } of scoredCandidates) {
+        const norm = normalizeStr(candidate.text);
+        if (!uniqueMap.has(norm)) {
+          uniqueMap.set(norm, candidate);
+        }
+      }
+
+      return Array.from(uniqueMap.values()).slice(0, limit);
+    } catch (err) {
+      console.warn('[DistractorEngine] Error fetching extracted exam candidates:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Combina as cinco fontes:
+   * 1. Distratores reais de provas extraídas (PRIORIDADE MÁXIMA)
+   * 2. Grafo relacional de conhecimento
+   * 3. Confusion Sets estáticos
+   * 4. DeCS / CID-10
+   * 5. Busca Semântica por Embeddings Locais
    *
-   * Suporta consultas baseadas em topicCanonicalKeys (múltiplas chaves canônicas de contexto)
-   * e/ou correctAnswerText (resposta correta da questão).
+   * Deduplica (case-insensitive por `text`), prioriza na ordem:
+   * extracted_exam > grafo > banco_estatico > decs > semantico
+   * e limita ao número solicitado (default 8).
    */
   async getCandidates(params: DistractorCandidateOptions): Promise<DistractorCandidate[]> {
     const {
@@ -306,6 +440,29 @@ export class DistractorEngine {
       limit = 8,
     } = params;
 
+    const normCorrect = normalizeStr(correctAnswerText);
+    const resultMap = new Map<string, DistractorCandidate>();
+
+    // 0. PRIORIDADE MÁXIMA: Distratores reais de provas extraídas
+    if (correctAnswerText) {
+      try {
+        const realCandidates = await this.getRealExtractedCandidates(
+          correctAnswerText,
+          specialty,
+          limit
+        );
+        for (const item of realCandidates) {
+          const normText = normalizeStr(item.text);
+          if (normCorrect && normText === normCorrect) continue;
+          if (!resultMap.has(normText)) {
+            resultMap.set(normText, item);
+          }
+        }
+      } catch (err) {
+        console.warn('[DistractorEngine] Real extracted candidates lookup failed:', err);
+      }
+    }
+
     // Coleta até 5 chaves canônicas únicas para buscar no grafo sem sobrecarregar o IndexedDB
     const keysToSearch = Array.from(
       new Set(
@@ -317,39 +474,40 @@ export class DistractorEngine {
     ).slice(0, 5);
 
     const graphCandidates: DistractorCandidate[] = [];
-    for (const key of keysToSearch) {
-      try {
-        const candidatesForKey = await this.getGraphCandidates(key, entityType);
-        graphCandidates.push(...candidatesForKey);
-      } catch (err) {
-        console.warn(`[DistractorEngine] Error fetching graph candidates for key "${key}":`, err);
+    if (resultMap.size < limit) {
+      for (const key of keysToSearch) {
+        try {
+          const candidatesForKey = await this.getGraphCandidates(key, entityType);
+          graphCandidates.push(...candidatesForKey);
+        } catch (err) {
+          console.warn(`[DistractorEngine] Error fetching graph candidates for key "${key}":`, err);
+        }
       }
     }
 
-    const staticCandidates = this.getStaticCandidates(
-      correctAnswerText,
-      specialty,
-      topics
-    );
+    const staticCandidates = resultMap.size < limit
+      ? this.getStaticCandidates(correctAnswerText, specialty, topics)
+      : [];
 
-    const normCorrect = normalizeStr(correctAnswerText);
-    const resultMap = new Map<string, DistractorCandidate>();
-
-    // 1. Prioriza candidatos dinâmicos do grafo relacional
-    for (const item of graphCandidates) {
-      const normText = normalizeStr(item.text);
-      if (normCorrect && normText === normCorrect) continue;
-      if (!resultMap.has(normText)) {
-        resultMap.set(normText, item);
+    // 1. Complementa com candidatos dinâmicos do grafo relacional
+    if (resultMap.size < limit) {
+      for (const item of graphCandidates) {
+        const normText = normalizeStr(item.text);
+        if (normCorrect && normText === normCorrect) continue;
+        if (!resultMap.has(normText)) {
+          resultMap.set(normText, item);
+        }
       }
     }
 
     // 2. Complementa com candidatos estáticos dos confusion sets
-    for (const item of staticCandidates) {
-      const normText = normalizeStr(item.text);
-      if (normCorrect && normText === normCorrect) continue;
-      if (!resultMap.has(normText)) {
-        resultMap.set(normText, item);
+    if (resultMap.size < limit) {
+      for (const item of staticCandidates) {
+        const normText = normalizeStr(item.text);
+        if (normCorrect && normText === normCorrect) continue;
+        if (!resultMap.has(normText)) {
+          resultMap.set(normText, item);
+        }
       }
     }
 

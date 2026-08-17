@@ -1,5 +1,22 @@
 import Dexie from 'dexie';
-import { SCHEMAS_V1, SCHEMAS_V2, SCHEMAS_V3, SCHEMAS_V4, SCHEMAS_V5, SCHEMAS_V6, SCHEMAS_V7, SCHEMAS_V8, SCHEMAS_V9, SCHEMAS_V10, SCHEMAS_V11, SCHEMAS_V12, SCHEMAS_V13 } from './schema';
+import {
+  SCHEMAS_V1,
+  SCHEMAS_V2,
+  SCHEMAS_V3,
+  SCHEMAS_V4,
+  SCHEMAS_V5,
+  SCHEMAS_V6,
+  SCHEMAS_V7,
+  SCHEMAS_V8,
+  SCHEMAS_V9,
+  SCHEMAS_V10,
+  SCHEMAS_V11,
+  SCHEMAS_V12,
+  SCHEMAS_V13,
+  SCHEMAS_V14,
+  SCHEMAS_V15,
+  SCHEMAS_V16,
+} from './schema';
 
 
 /**
@@ -85,6 +102,27 @@ export function applyDatabaseMigrations(db: Dexie): void {
   // Version 13: Entity Embeddings Table for Semantic Distractors & Hybrid Graph Retrieval
   db.version(13).stores(SCHEMAS_V13).upgrade(async () => {
     console.log('[MedAnki Migration] Upgrading database to Version 13 for Entity Embeddings...');
+  });
+
+  // Version 14: Unify questionBank into residencyExam category
+  db.version(14).stores(SCHEMAS_V14).upgrade(async (trans) => {
+    console.log('[MedAnki Migration] Upgrading database to Version 14: Unify questionBank into residencyExam category...');
+    const assetsTable = trans.table('knowledgeAssets');
+    await assetsTable.toCollection().modify((asset: any) => {
+      if (asset.category === 'questionBank') {
+        asset.category = 'residencyExam';
+      }
+    });
+  });
+
+  // Version 15: Extracted Exam Questions Table for Distractor Engine & Banca DNA
+  db.version(15).stores(SCHEMAS_V15).upgrade(async () => {
+    console.log('[MedAnki Migration] Upgrading database to Version 15 for Extracted Exam Questions...');
+  });
+
+  // Version 16: Knowledge Asset Binary Files Storage (for raw exam PDFs)
+  db.version(16).stores(SCHEMAS_V16).upgrade(async () => {
+    console.log('[MedAnki Migration] Upgrading database to Version 16 for Knowledge Asset Binary Files...');
   });
 }
 

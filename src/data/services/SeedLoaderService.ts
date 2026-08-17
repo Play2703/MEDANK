@@ -156,17 +156,46 @@ export class SeedLoaderService {
 
       onProgress?.({ stage: 'Gravando dados na biblioteca local...', percent: 85 });
 
+      // 4. Carrega PDFs binários de provas para knowledgeAssetFiles (se disponíveis)
+      const binaryFilesToInsert: Array<{ id: string; assetId: string; blob: Blob; mimeType: string; createdAt: string }> = [];
+      for (const asset of assets) {
+        if (
+          (asset.category === 'residencyExam' || asset.category === 'professorExam') &&
+          asset.file?.url
+        ) {
+          try {
+            const fileRes = await fetch(asset.file.url);
+            if (fileRes.ok) {
+              const fileBlob = await fileRes.blob();
+              binaryFilesToInsert.push({
+                id: asset.id,
+                assetId: asset.id,
+                blob: fileBlob,
+                mimeType: 'application/pdf',
+                createdAt: new Date().toISOString(),
+              });
+              asset.file.hasRawFileBlob = true;
+              asset.file.rawFileStorageKey = asset.id;
+            }
+          } catch (fetchErr) {
+            console.warn(`[SeedLoaderService] Não foi possível carregar PDF bruto de ${asset.file.name}:`, fetchErr);
+          }
+        }
+      }
+
       await db.transaction(
         'rw',
         [
           db.knowledgeAssets,
           db.documentEmbeddings,
           db.graphEdges,
+          db.knowledgeAssetFiles,
         ],
         async () => {
           if (assets.length > 0) await db.knowledgeAssets.bulkPut(assets);
           if (embeddings.length > 0) await db.documentEmbeddings.bulkPut(embeddings);
           if (graphEdges.length > 0) await db.graphEdges.bulkPut(graphEdges);
+          if (binaryFilesToInsert.length > 0) await db.knowledgeAssetFiles.bulkPut(binaryFilesToInsert);
         }
       );
 

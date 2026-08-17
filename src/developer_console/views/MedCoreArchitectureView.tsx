@@ -102,9 +102,9 @@ export const MEDCORE_ARCHITECTURE: ArchitectureNode[] = [
     subModules: [
       {
         name: 'Medical Taxonomy Classifier',
-        description: 'Mapeamento hierárquico em especialidades, subespecialidades e temas de prova.',
+        description: 'Mapeamento hierárquico em especialidades, subespecialidades, termos clínicos e catálogo nacional.',
         status: 'Ready',
-        formatsOrTech: ['CID-11', 'MeSH Terms', 'Taxonomia MedAnki'],
+        formatsOrTech: ['DeCS / MeSH SQLite', 'CID-10 DATASUS', 'RENAME 2024', 'ANS TUSS'],
       },
       {
         name: 'High Yield Predictor',
@@ -135,7 +135,7 @@ export const MEDCORE_ARCHITECTURE: ArchitectureNode[] = [
     status: 'Ativo',
     version: 'v1.8.2',
     metrics: [
-      { label: 'Embeddings Model', value: 'text-embedding-004 (768d)' },
+      { label: 'Embeddings Model', value: 'text-embedding-004 / Local MiniLM' },
       { label: 'Grafo Relacional', value: 'Relações Causa -> Sintoma -> Droga' },
       { label: 'Velocidade Busca', value: '< 12ms Cosine Similarity' },
     ],
@@ -156,13 +156,13 @@ export const MEDCORE_ARCHITECTURE: ArchitectureNode[] = [
         name: 'Semantic Entity Linker',
         description: 'Vinculação de sinônimos médicos, eponímos e abreviações (ex: HAS = Hipertensão Arterial).',
         status: 'Ready',
-        formatsOrTech: ['UMLS Synonyms', 'Medical Dictionary Lookup'],
+        formatsOrTech: ['DeCS Synonyms', 'Medical Dictionary SQLite', 'Negation Detection'],
       },
       {
         name: 'Local Vector Store Cache',
         description: 'Persistência comprimida em banco local para suporte offline e navegação instantânea.',
-        status: 'In Progress',
-        formatsOrTech: ['IndexedDB Vector Store', 'Quantized Weights'],
+        status: 'Ready',
+        formatsOrTech: ['Dexie Document Embeddings', 'Transformers.js Local Vectors', 'Cosine Similarity'],
       },
     ],
   },
@@ -182,9 +182,9 @@ export const MEDCORE_ARCHITECTURE: ArchitectureNode[] = [
     subModules: [
       {
         name: 'Gemini RAG Orchestration',
-        description: 'Geração grounded no acervo do usuário com prevenção rigorosa de alucinações.',
+        description: 'Geração grounded no acervo do usuário com prevenção rigorosa de alucinações e resiliência de déficit.',
         status: 'Ready',
-        formatsOrTech: ['Gemini 2.5 Flash', 'System Prompt Grounding'],
+        formatsOrTech: ['Gemini 2.5 Flash', 'System Prompt Grounding', 'Deficit Replacement Loop'],
       },
       {
         name: 'MedAnki Flashcard Synthesizer',
@@ -200,9 +200,9 @@ export const MEDCORE_ARCHITECTURE: ArchitectureNode[] = [
       },
       {
         name: 'Author & Professor Persona AI',
-        description: 'Simulação do estilo explicativo e foco temático de professores de cursinho.',
-        status: 'In Progress',
-        formatsOrTech: ['Persona Prompt Injector', 'Pedagogical Tone Adjuster'],
+        description: 'Simulação do estilo explicativo e foco temático com ExamDNA e histórico de bancas.',
+        status: 'Ready',
+        formatsOrTech: ['Professor Persona Prompt Injector', 'ExamDNA Style Injector', 'Pedagogical Tone Adjuster'],
       },
     ],
   },
@@ -212,8 +212,8 @@ export const MEDCORE_ARCHITECTURE: ArchitectureNode[] = [
     category: 'engine',
     icon: HelpCircle,
     description: 'Motor de banco de questões de residência, parsing de bancas, geração de distratores e repetição adaptativa.',
-    status: 'Em desenvolvimento',
-    version: 'v1.2.0',
+    status: 'Ativo',
+    version: 'v1.5.0',
     metrics: [
       { label: 'Bancas Mapeadas', value: 'USP, ENARE, AMP, UNICAMP, Revalida' },
       { label: 'Algoritmo SM-2', value: 'Repetição Espaçada Personalizada' },
@@ -222,21 +222,21 @@ export const MEDCORE_ARCHITECTURE: ArchitectureNode[] = [
     subModules: [
       {
         name: 'Exam PDF Question Splitter',
-        description: 'Segmentador automático que isola enunciados, alternativas A-E e gabaritos.',
-        status: 'In Progress',
-        formatsOrTech: ['Regex Layout Parser', 'Bounding Box Extractor'],
+        description: 'Segmentador determinístico que isola enunciados, alternativas A-E e gabaritos via layout de PDF.',
+        status: 'Ready',
+        formatsOrTech: ['PDF.js Layout Extractor', 'Deterministic Regex Block Parser', 'Confidence Scoring'],
       },
       {
         name: 'Banca Pattern Profiler',
-        description: 'Análise estatística do perfil de cobrança de bancas examinadoras específicas.',
-        status: 'In Progress',
-        formatsOrTech: ['Banca Bias Clustering', 'Recurrence Matrix'],
+        description: 'Análise estatística do perfil de cobrança de bancas examinadoras e professores via ExamDNA.',
+        status: 'Ready',
+        formatsOrTech: ['LLM Statistical Profile Analysis', 'Moving Average DNA Versioning', 'Clinical Cycle Classification'],
       },
       {
         name: 'Distractor & Commentary Generator',
-        description: 'Geração de pegadinhas frequentes e comentários aprofundados por alternativa.',
+        description: 'Geração de distratores plausíveis (irmãos de categoria DeCS e embeddings) e comentários aprofundados.',
         status: 'Ready',
-        formatsOrTech: ['Reasoning Explainer', 'Distractor Analyzer'],
+        formatsOrTech: ['Hybrid Distractor Engine (DeCS/Semantic)', 'CID-10 Category Siblings', 'Reasoning Explainer'],
       },
       {
         name: 'Adaptive Practice & SM-2 Queue',

@@ -182,7 +182,7 @@ export function useMaterialViewModel() {
       const mappedCategory = KnowledgeCategoryMapper.fromDisplayName(selectedCategory);
       if (mappedCategory !== KnowledgeCategory.other) {
         if (item.categoria === mappedCategory) return true;
-        if (selectedCategory === 'Provas' && (item.categoria === KnowledgeCategory.residencyExam || item.categoria === KnowledgeCategory.professorExam || item.categoria === KnowledgeCategory.questionBank)) return true;
+        if (selectedCategory === 'Provas' && (item.categoria === KnowledgeCategory.residencyExam || item.categoria === KnowledgeCategory.professorExam)) return true;
         if (selectedCategory === 'Livros' && (item.categoria === KnowledgeCategory.book || item.categoria === KnowledgeCategory.manual)) return true;
         if (selectedCategory === 'Diretrizes' && (item.categoria === KnowledgeCategory.guideline || item.categoria === KnowledgeCategory.protocol)) return true;
         if (selectedCategory === 'Apostilas' && (item.categoria === KnowledgeCategory.apostila || item.categoria === KnowledgeCategory.manual)) return true;

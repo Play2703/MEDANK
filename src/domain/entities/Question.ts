@@ -64,12 +64,36 @@ export interface BasicCycleDNA {
   basesBioquimicas: number;         // 0-1: profundidade de vias metabólicas/bioquímicas
 }
 
+export interface DeterministicExamStats {
+  totalQuestions: number;
+  answerKeyDistribution: Record<string, number>; // Distribuição percentual (A, B, C, D, E)
+  averageStatementChars: number;
+  averageStatementWords: number;
+  clinicalVignetteRatio: number; // 0-1: Proporção de questões com vinheta clínica
+  trickPatternsFrequency: number; // 0-1: Frequência de marcadores de pegadinha (EXCETO, INCORRETA, etc.)
+  calculatedAt: string;
+}
+
 export interface ExamDNA {
   cicloAcademico: AcademicCycle;
   clinico?: ClinicalCycleDNA;   // presente se cicloAcademico for 'clinico' ou 'misto'
   basico?: BasicCycleDNA;       // presente se cicloAcademico for 'basico' ou 'misto'
   version: number;              // contador de quantas vezes foi recalculado (pra média móvel)
+  dataSource?: 'ai-only' | 'ai-anchored-by-real-data';
+  deterministicStats?: DeterministicExamStats;
   updatedAt: string;
+}
+
+export interface ExtractedExamQuestionRecord {
+  id: string;
+  sourceAssetId?: string;
+  questionNumber: number;
+  statement: string;
+  options: { letter: string; text: string }[];
+  correctLetter?: string;
+  specialty?: string;
+  confidence: 'high' | 'low';
+  createdAt: string;
 }
 
 export interface ExamProfile {
