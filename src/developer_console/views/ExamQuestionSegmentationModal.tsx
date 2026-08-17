@@ -31,6 +31,9 @@ import {
   ExtractedExamQuestion,
   ExamSplitterResult,
 } from '../../core/exam_bank/services/ExamPDFQuestionSplitter';
+import { RepositoryFactory } from '../../data/repositories_impl/RepositoryFactory';
+import { medKnowledgeRepository } from '../../data/repositories_impl/MedKnowledgeRepository';
+import { calculateSegmentationStats } from '../../domain/entities/KnowledgeAsset';
 import { db } from '../../data/db/database';
 
 interface ExamQuestionSegmentationModalProps {
@@ -162,23 +165,12 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
 
   const handleSave = async () => {
     try {
-      // Se um novo arquivo binário foi selecionado, armazena na tabela knowledgeAssetFiles
+      // 1. Se um novo arquivo binário foi selecionado, armazena no repositório de arquivos
       if (attachedFile && sourceAssetId) {
-        await db.knowledgeAssetFiles.put({
-          id: sourceAssetId,
-          assetId: sourceAssetId,
-          blob: attachedFile,
-          mimeType: attachedFile.type || 'application/pdf',
-          createdAt: new Date().toISOString(),
-        });
-        const asset = await db.knowledgeAssets.get(sourceAssetId);
-        if (asset) {
-          asset.file.hasRawFileBlob = true;
-          asset.file.rawFileStorageKey = sourceAssetId;
-          await db.knowledgeAssets.put(asset);
-        }
+        await medKnowledgeRepository.saveRawAssetFileBlob(sourceAssetId, attachedFile);
       }
 
+      // 2. Persiste as questões extraídas através da camada resolvida por RepositoryFactory
       if (questions.length > 0) {
         const records = questions.map((q) => ({
           id: `ext_q_${Date.now()}_${q.questionNumber}_${Math.random().toString(36).substring(2, 7)}`,
@@ -191,10 +183,32 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
           confidence: q.confidence,
           createdAt: new Date().toISOString(),
         }));
-        await db.extractedExamQuestions.bulkPut(records);
+
+        const extractedQuestionRepo = RepositoryFactory.getExtractedExamQuestionRepository();
+        await extractedQuestionRepo.bulkSave(records);
+      }
+
+      // 3. Calcula e persiste as estatísticas agregadas de segmentação no KnowledgeAsset de origem
+      if (sourceAssetId && questions.length > 0) {
+        const highCount = questions.filter((q) => q.confidence === 'high').length;
+        const lowCount = questions.filter((q) => q.confidence === 'low').length;
+        const stats = calculateSegmentationStats(questions.length, highCount, lowCount);
+
+        const asset = await medKnowledgeRepository.getAssetById(sourceAssetId);
+        if (asset) {
+          asset.metadata = {
+            ...(asset.metadata || {}),
+            examSegmentationStats: stats,
+          };
+          if (attachedFile) {
+            asset.file.hasRawFileBlob = true;
+            asset.file.rawFileStorageKey = sourceAssetId;
+          }
+          await medKnowledgeRepository.saveAsset(asset);
+        }
       }
     } catch (err) {
-      console.warn('[ExamQuestionSegmentationModal] Erro ao persistir extractedExamQuestions / knowledgeAssetFiles:', err);
+      console.warn('[ExamQuestionSegmentationModal] Erro ao persistir extractedExamQuestions / knowledgeAssetFiles / examSegmentationStats:', err);
     }
 
     if (onSaveQuestions) {

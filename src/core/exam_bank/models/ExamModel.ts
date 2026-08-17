@@ -18,6 +18,10 @@ export type ExamCategory =
   | 'Professor Particular'
   | 'Outro';
 
+import type { ExamSegmentationStats } from '../../../domain/entities/KnowledgeAsset';
+export type { ExamSegmentationStats } from '../../../domain/entities/KnowledgeAsset';
+export { calculateSegmentationStats } from '../../../domain/entities/KnowledgeAsset';
+
 export interface ExamModel {
   id: string;
   titulo: string;
@@ -37,6 +41,7 @@ export interface ExamModel {
   gabarito: string; // Opcional (texto ou link do gabarito)
   hasRawPdf?: boolean;
   rawFileBlob?: Blob;
+  examSegmentationStats?: ExamSegmentationStats;
   createdAt: string;
   updatedAt: string;
 }

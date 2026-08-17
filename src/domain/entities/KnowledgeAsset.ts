@@ -21,6 +21,48 @@ export interface KnowledgeAssetFileBinary {
   createdAt: string;
 }
 
+export interface ExamSegmentationStats {
+  percent: number;
+  level: 'ruim' | 'medio' | 'otimo';
+  totalQuestions: number;
+  highConfidenceCount: number;
+  lowConfidenceCount: number;
+  analyzedAt: string;
+}
+
+export function calculateSegmentationStats(
+  totalQuestions: number,
+  highConfidenceCount: number,
+  lowConfidenceCount?: number
+): ExamSegmentationStats {
+  const lowCount =
+    lowConfidenceCount !== undefined
+      ? lowConfidenceCount
+      : Math.max(0, totalQuestions - highConfidenceCount);
+  const percent =
+    totalQuestions > 0
+      ? Math.round((highConfidenceCount / totalQuestions) * 1000) / 10
+      : 0;
+
+  let level: 'ruim' | 'medio' | 'otimo' = 'ruim';
+  if (percent >= 80) {
+    level = 'otimo';
+  } else if (percent >= 50) {
+    level = 'medio';
+  } else {
+    level = 'ruim';
+  }
+
+  return {
+    percent,
+    level,
+    totalQuestions,
+    highConfidenceCount,
+    lowConfidenceCount: lowCount,
+    analyzedAt: new Date().toISOString(),
+  };
+}
+
 export interface KnowledgeAsset {
   id: string;
   uuid: string;
@@ -36,7 +78,9 @@ export interface KnowledgeAsset {
   year: number;
   semester: string;
   tags: string[];
-  metadata: Record<string, any>;
+  metadata: Record<string, any> & {
+    examSegmentationStats?: ExamSegmentationStats;
+  };
   file: KnowledgeAssetFile;
   thumbnail?: string;
   createdAt: string;

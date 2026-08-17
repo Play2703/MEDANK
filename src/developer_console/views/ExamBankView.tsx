@@ -389,6 +389,37 @@ export const ExamBankView: React.FC = () => {
                         NER
                       </span>
                     )}
+                    {exam.examSegmentationStats ? (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold border ${
+                          exam.examSegmentationStats.level === 'otimo'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                            : exam.examSegmentationStats.level === 'medio'
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                            : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                        }`}
+                        title={`Segmentação: ${exam.examSegmentationStats.percent}% de alta confiança (${exam.examSegmentationStats.highConfidenceCount}/${exam.examSegmentationStats.totalQuestions} questões) - Nível ${exam.examSegmentationStats.level.toUpperCase()}`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            exam.examSegmentationStats.level === 'otimo'
+                              ? 'bg-emerald-400'
+                              : exam.examSegmentationStats.level === 'medio'
+                              ? 'bg-amber-400'
+                              : 'bg-rose-400'
+                          }`}
+                        />
+                        📊 {exam.examSegmentationStats.percent}% ({exam.examSegmentationStats.level === 'otimo' ? 'Ótimo' : exam.examSegmentationStats.level === 'medio' ? 'Médio' : 'Ruim'})
+                      </span>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-[10px] font-mono border border-slate-700"
+                        title="Prova ainda não segmentada mecanicamente"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                        Não segmentada
+                      </span>
+                    )}
                   </div>
                   <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 font-mono text-[10px]">
                     {exam.semestre}
@@ -806,6 +837,30 @@ export const ExamBankView: React.FC = () => {
                     />
                   )}
                 </div>
+
+                {selectedExamForDetail.examSegmentationStats && (
+                  <div className="space-y-2 md:col-span-2 p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 font-semibold text-xs">Estatísticas de Segmentação Mecânica:</span>
+                        <span
+                          className={`px-2.5 py-0.5 rounded-md font-mono font-bold uppercase text-[10px] border ${
+                            selectedExamForDetail.examSegmentationStats.level === 'otimo'
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                              : selectedExamForDetail.examSegmentationStats.level === 'medio'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                              : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                          }`}
+                        >
+                          {selectedExamForDetail.examSegmentationStats.level === 'otimo' ? 'Ótimo' : selectedExamForDetail.examSegmentationStats.level === 'medio' ? 'Médio' : 'Ruim'} ({selectedExamForDetail.examSegmentationStats.percent}%)
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        {selectedExamForDetail.examSegmentationStats.highConfidenceCount} de {selectedExamForDetail.examSegmentationStats.totalQuestions} questões ({selectedExamForDetail.examSegmentationStats.percent}%) com alta confiança
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-1 md:col-span-2">
                   <label className="text-slate-400 font-semibold">Tags</label>

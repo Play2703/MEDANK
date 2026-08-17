@@ -14,6 +14,7 @@ export { OfflineFirstCardRepository } from './OfflineFirstCardRepository';
 export { OfflineFirstQuestionRepository } from './OfflineFirstQuestionRepository';
 export { OfflineFirstStudyHistoryRepository } from './OfflineFirstStudyHistoryRepository';
 export { OfflineFirstStudyStatsRepository } from './OfflineFirstStudyStatsRepository';
+export { OfflineFirstExtractedExamQuestionRepository } from './OfflineFirstExtractedExamQuestionRepository';
 
 export { db, MedAnkiDexieDB } from '@/src/data/db/database';
 

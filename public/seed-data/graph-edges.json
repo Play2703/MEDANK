@@ -322,7 +322,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pneumotorax::associado_a::pericardio",
@@ -491,7 +491,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dor toracica::associado_a::hipotensao",
@@ -530,7 +530,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::dispneia",
@@ -543,7 +543,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::hipotensao",
@@ -556,7 +556,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hemotorax::associado_a::pericardio",
@@ -653,7 +653,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipotensao::associado_a::pericardio",
@@ -714,7 +714,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pericardio::causa::dispneia",
@@ -764,7 +764,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "coracao::causa::dispneia",
@@ -801,7 +801,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dispneia::causa::em",
@@ -850,7 +850,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipotensao::causa::dispneia",
@@ -1067,7 +1067,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510823351-2"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pele::associado_a::ad",
@@ -1503,7 +1503,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::abdome",
@@ -1518,7 +1518,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::doenca de hirschsprung",
@@ -1544,7 +1544,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::colon",
@@ -1558,7 +1558,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::torcicolo",
@@ -1607,7 +1607,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomitos::associado_a::em",
@@ -1622,7 +1622,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomitos::associado_a::doenca de hirschsprung",
@@ -1731,7 +1731,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "usg::associado_a::doenca de hirschsprung",
@@ -2201,7 +2201,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::aminoglicosideos",
@@ -2214,7 +2214,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510837561-3"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::ureia",
@@ -2252,7 +2252,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::ecg",
@@ -2265,7 +2265,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "anuria::causa::insuficiencia cardiaca",
@@ -2362,7 +2362,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tireoide::associado_a::hipertireoidismo",
@@ -2462,7 +2462,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "encefalopatia de wernicke::causa::em",
@@ -2475,7 +2475,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "encefalopatia de wernicke::causa::vomitos",
@@ -2609,7 +2609,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomitos::causa::acidose",
@@ -2622,7 +2622,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomitos::causa::hemodialise",
@@ -2647,7 +2647,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "diarreia::causa::insulina",
@@ -2675,7 +2675,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "diarreia::causa::acidose",
@@ -2688,7 +2688,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "diarreia::causa::hemodialise",
@@ -2809,7 +2809,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "alcalose::causa::hemodialise",
@@ -2847,7 +2847,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insulina::causa::acidose",
@@ -2861,7 +2861,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insulina::causa::hemodialise",
@@ -3018,7 +3018,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "fraqueza::causa::acidose",
@@ -3080,7 +3080,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "paralisia::causa::acidose",
@@ -3142,7 +3142,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "constipacao::causa::acidose",
@@ -3179,7 +3179,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510837561-3"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "eletrocardiograma::causa::insulina",
@@ -3264,7 +3264,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "depressao::causa::acidose",
@@ -3325,7 +3325,7 @@
       "seed-asset-1786510812303-1",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "bradicardia::causa::acidose",
@@ -3446,7 +3446,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomitos::causa::confusao mental",
@@ -3495,7 +3495,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insulina::associado_a::nauseas",
@@ -3616,7 +3616,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "nauseas::associado_a::pancreatite aguda",
@@ -3641,7 +3641,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomitos::associado_a::pancreatite aguda",
@@ -3666,7 +3666,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "diarreia::associado_a::vomitos",
@@ -3919,7 +3919,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "nauseas::associado_a::candidiase",
@@ -4007,7 +4007,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertensao::causa::avc",
@@ -4032,7 +4032,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510846339-4"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pulmao::causa::avc",
@@ -4093,7 +4093,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "puberdade precoce::trata::endometrio",
@@ -4154,7 +4154,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipotireoidismo::trata::endometrio",
@@ -4276,7 +4276,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::usg",
@@ -4373,7 +4373,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomitos::causa::sindrome de down",
@@ -4483,7 +4483,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cefaleia::causa::apendicite aguda",
@@ -4521,7 +4521,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "sindrome de guillain-barre::causa::apendicite aguda",
@@ -4596,7 +4596,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "bcg::causa::em",
@@ -4633,7 +4633,7 @@
       "seed-asset-1786510823351-2",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "angioplastia::trata::em",
@@ -4898,7 +4898,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tetraciclinas::causa::nauseas",
@@ -5007,7 +5007,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "uso de alcool::trata::amoxicilina",
@@ -5032,7 +5032,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "benzodiazepinicos::trata::em",
@@ -5081,7 +5081,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dopamina::associado_a::colinergicos",
@@ -5563,7 +5563,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "benzodiazepinicos::causa::convulsao",
@@ -5795,7 +5795,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insuficiencia cardiaca congestiva::causa::edema",
@@ -5836,7 +5836,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insulina::associado_a::figado",
@@ -5849,7 +5849,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insulina::associado_a::placenta",
@@ -5863,7 +5863,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pancreas::associado_a::em",
@@ -5888,7 +5888,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pancreas::associado_a::figado",
@@ -5913,7 +5913,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "anticoagulantes::trata::placenta",
@@ -6023,7 +6023,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "asma::associado_a::sistemico",
@@ -6432,7 +6432,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "depressao::associado_a::benzodiazepinicos",
@@ -6493,7 +6493,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dopamina::causa::ganglios",
@@ -6506,7 +6506,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dopamina::causa::distonia",
@@ -6651,7 +6651,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ulcera peptica::trata::varicela",
@@ -6776,7 +6776,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "trombocitopenia secundaria::associado_a::edema",
@@ -7473,7 +7473,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "edema::associado_a::irc",
@@ -7498,7 +7498,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "furosemida::associado_a::nefron",
@@ -7547,7 +7547,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "edema::associado_a::furosemida",
@@ -7779,7 +7779,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pele::associado_a::fibrose cistica",
@@ -7792,7 +7792,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::febre tifoide",
@@ -7830,7 +7830,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "choque hipovolemico::causa::diarreia",
@@ -7903,7 +7903,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "diarreia::causa::vomitos",
@@ -8074,7 +8074,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "endocardite infecciosa::associado_a::esplenomegalia",
@@ -8099,7 +8099,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hemocultura::associado_a::esplenomegalia",
@@ -8208,7 +8208,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "febre::associado_a::cefaleia",
@@ -8221,7 +8221,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "febre::associado_a::mialgia",
@@ -8246,7 +8246,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pcr::causa::tuberculose",
@@ -8272,7 +8272,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tuberculose::causa::hiv",
@@ -8286,7 +8286,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ruptura prematura de membranas::causa::em",
@@ -8407,7 +8407,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "sindrome da rubeola congenita::previne::rubeola",
@@ -8482,7 +8482,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tuberculose::associado_a::covid-19",
@@ -8543,7 +8543,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "amoxicilina::associado_a::levofloxacino",
@@ -8845,7 +8845,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "inibidores da anidrase carbonica::associado_a::retina",
@@ -8978,7 +8978,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::ventriculo",
@@ -8991,7 +8991,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::coracao",
@@ -9004,7 +9004,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::sistemico",
@@ -9053,7 +9053,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "qualquer::causa::sistemico",
@@ -9318,7 +9318,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::eletrocardiograma",
@@ -9463,7 +9463,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pericardite::causa::aorta",
@@ -9500,7 +9500,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "torax::trata::asma",
@@ -9705,7 +9705,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::hipertensao",
@@ -9719,7 +9719,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::sincope",
@@ -9732,7 +9732,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dor toracica::causa::ar",
@@ -9842,7 +9842,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ige::causa::em",
@@ -9856,7 +9856,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ar::causa::em",
@@ -9943,7 +9943,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "glicemia::causa::rins",
@@ -10028,7 +10028,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "fibrose cistica::causa::fibula",
@@ -10137,7 +10137,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "sudorese::causa::colinergicos",
@@ -10354,7 +10354,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "rins::causa::em",
@@ -10368,7 +10368,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "rins::causa::coracao",
@@ -10441,7 +10441,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "epinefrina::causa::em",
@@ -10454,7 +10454,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "epinefrina::causa::rins",
@@ -10554,7 +10554,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::encefalo",
@@ -10579,7 +10579,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::miocardio",
@@ -10592,7 +10592,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "febre::trata::sindrome de cushing",
@@ -10761,7 +10761,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estomago::associado_a::hipotalamo",
@@ -10847,7 +10847,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "sindrome de cushing::associado_a::suprarrenal",
@@ -10896,7 +10896,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "suprarrenal::associado_a::prednisona",
@@ -10924,7 +10924,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipotalamo::associado_a::prednisona",
@@ -10949,7 +10949,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insulina::causa::cetonas",
@@ -10962,7 +10962,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cetoacidose diabetica::causa::cetonas",
@@ -11011,7 +11011,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomitos::trata::furosemida",
@@ -11049,7 +11049,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tireoide::causa::tireoidite",
@@ -11088,7 +11088,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::tireoidite",
@@ -11185,7 +11185,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::sudorese",
@@ -11200,7 +11200,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::diarreia",
@@ -11213,7 +11213,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertireoidismo::causa::em",
@@ -11226,7 +11226,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertireoidismo::causa::sudorese",
@@ -11239,7 +11239,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertireoidismo::causa::insuficiencia cardiaca",
@@ -11264,7 +11264,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estado::causa::hipertireoidismo",
@@ -11291,7 +11291,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estado::causa::sudorese",
@@ -11352,7 +11352,7 @@
       "seed-asset-1786510837561-3",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tireoide::causa::sudorese",
@@ -11521,7 +11521,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "palidez::associado_a::em",
@@ -11630,7 +11630,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::bronquios",
@@ -11643,7 +11643,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "digestivos::associado_a::reto",
@@ -11668,7 +11668,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "reto::associado_a::figado",
@@ -11717,7 +11717,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "figado::causa::bexiga",
@@ -11792,7 +11792,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "coluna vertebral::associado_a::escapula",
@@ -11913,7 +11913,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::pulmao",
@@ -11927,7 +11927,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pleura::causa::pulmao",
@@ -12084,7 +12084,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::atrio direito",
@@ -12121,7 +12121,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "timo::associado_a::coracao",
@@ -12542,7 +12542,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "coronarias::causa::esofago",
@@ -12711,7 +12711,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ulcera gastrica::causa::estomago",
@@ -12773,7 +12773,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "duodeno::associado_a::qualquer",
@@ -12921,7 +12921,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vesicula biliar::causa::ictericia",
@@ -12971,7 +12971,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cirrose hepatica::causa::figado",
@@ -13105,7 +13105,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::estomago",
@@ -13120,7 +13120,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::pancreas",
@@ -13133,7 +13133,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::ureter",
@@ -13146,7 +13146,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ureter::causa::rim supranumerario",
@@ -13208,7 +13208,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estomago::associado_a::esofago",
@@ -13233,7 +13233,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "bexiga urinaria::associado_a::vagina",
@@ -13331,7 +13331,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::patela",
@@ -13356,7 +13356,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hidrocefalia::causa::ventriculos",
@@ -13429,7 +13429,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "paralisia de bell::causa::paralisia",
@@ -13526,7 +13526,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::enoftalmia",
@@ -13587,7 +13587,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "esofago::associado_a::lingua",
@@ -13648,7 +13648,7 @@
       "seed-asset-1786510846339-4",
       "seed-asset-1786510866693-5"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pulmoes::causa::traqueia",
@@ -14081,7 +14081,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::pulmoes",
@@ -14142,7 +14142,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ventriculo::causa::ventriculo direito",
@@ -14203,7 +14203,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "intoxicacao::causa::taquicardia ventricular",
@@ -14254,7 +14254,7 @@
       "seed-asset-1786510929324-11",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "aorta::causa::arteria pulmonar",
@@ -14279,7 +14279,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "arteria pulmonar::causa::aorta",
@@ -14352,7 +14352,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dioxido de carbono::causa::cerebro",
@@ -14401,7 +14401,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::hipofise",
@@ -14414,7 +14414,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "placenta::causa::em",
@@ -14487,7 +14487,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insuficiencia cardiaca::causa::coracao",
@@ -14513,7 +14513,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "edema::causa::pulmoes",
@@ -14527,7 +14527,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "edema::causa::dispneia",
@@ -14540,7 +14540,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "edema::causa::ar",
@@ -14602,7 +14602,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::hipotalamo",
@@ -14628,7 +14628,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "edema::causa::em",
@@ -14641,7 +14641,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "edema::causa::insuficiencia cardiaca",
@@ -14654,7 +14654,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "coracao::causa::beriberi",
@@ -14787,7 +14787,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "rim::associado_a::nefrons",
@@ -14910,7 +14910,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::sudorese",
@@ -14925,7 +14925,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::diarreia",
@@ -14941,7 +14941,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::alca de henle",
@@ -14978,7 +14978,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "atrios::associado_a::rins",
@@ -15123,7 +15123,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "rins::trata::dialise",
@@ -15280,7 +15280,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "glomerulonefrite::causa::doenca renal cronica",
@@ -15354,7 +15354,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertensao::causa::rim",
@@ -15379,7 +15379,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "rim::causa::hipertensao",
@@ -15476,7 +15476,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::triquinose",
@@ -15585,7 +15585,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "embolia pulmonar::causa::em",
@@ -15598,7 +15598,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::tetania",
@@ -15672,7 +15672,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insuficiencia cardiaca::causa::qualquer",
@@ -15697,7 +15697,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::intoxicacao",
@@ -15710,7 +15710,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estado::causa::intoxicacao",
@@ -15747,7 +15747,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::pulmoes",
@@ -15761,7 +15761,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "coracao::causa::insuficiencia cardiaca",
@@ -15822,7 +15822,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dispneia::associado_a::ar",
@@ -15907,7 +15907,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::cerebro",
@@ -15957,7 +15957,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::seio frontal",
@@ -16018,7 +16018,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pele::associado_a::colon",
@@ -16151,7 +16151,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tronco cerebral::associado_a::encefalo",
@@ -16200,7 +16200,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dopamina::causa::doenca de alzheimer",
@@ -16273,7 +16273,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "norepinefrina::causa::coracao",
@@ -16298,7 +16298,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "norepinefrina::causa::depressao",
@@ -16529,7 +16529,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "duodeno::associado_a::jejuno",
@@ -16590,7 +16590,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "jejuno::associado_a::vesicula biliar",
@@ -16651,7 +16651,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vesicula biliar::associado_a::jejuno",
@@ -16832,7 +16832,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ganglios::associado_a::estomago",
@@ -16857,7 +16857,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "apendice::causa::paralisia",
@@ -17086,7 +17086,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "intestino delgado::causa::pancreas",
@@ -17268,7 +17268,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "aterosclerose::causa::acidente vascular cerebral",
@@ -17329,7 +17329,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::obesidade",
@@ -17343,7 +17343,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "atrio::causa::figado",
@@ -17464,7 +17464,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "deficiencia de niacina::causa::em",
@@ -17538,7 +17538,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cerebro::causa::sudorese",
@@ -17563,7 +17563,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::febre",
@@ -17578,7 +17578,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipotalamo::associado_a::febre",
@@ -17663,7 +17663,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dopamina::associado_a::hipofise",
@@ -17688,7 +17688,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "testiculos::associado_a::rins",
@@ -17761,7 +17761,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "figado::associado_a::placenta",
@@ -17906,7 +17906,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estado::associado_a::estomago",
@@ -17955,7 +17955,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::insulina",
@@ -17968,7 +17968,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::pancreas",
@@ -17981,7 +17981,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::nervo optico",
@@ -18030,7 +18030,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::edema",
@@ -18043,7 +18043,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipofise::trata::em",
@@ -18068,7 +18068,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "qualquer::causa::hipofise",
@@ -18117,7 +18117,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::figado",
@@ -18132,7 +18132,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insulina::causa::aterosclerose",
@@ -18205,7 +18205,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "obesidade::trata::figado",
@@ -18531,7 +18531,7 @@
       "seed-asset-1786510929324-11",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::induzida pela gravidez",
@@ -18628,7 +18628,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::testiculos",
@@ -18978,7 +18978,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "aterosclerose::associado_a::hipotireoidismo",
@@ -19088,7 +19088,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::hipotireoidismo",
@@ -19101,7 +19101,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::bradicardia",
@@ -19114,7 +19114,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "astenia::associado_a::hipotireoidismo",
@@ -19259,7 +19259,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "heparina::associado_a::bexiga",
@@ -19285,7 +19285,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "beriberi::associado_a::bexiga",
@@ -19370,7 +19370,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::intestino delgado",
@@ -19384,7 +19384,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::intestino grosso",
@@ -20153,7 +20153,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dialise::associado_a::diarreia",
@@ -20251,7 +20251,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "acidose::trata::insuficiencia cardiaca",
@@ -20336,7 +20336,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insuficiencia cardiaca::associado_a::pele",
@@ -20518,7 +20518,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "liquido cefalorraquidiano::associado_a::insulina",
@@ -20735,7 +20735,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510879675-6"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::hipertensao",
@@ -20750,7 +20750,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::sindrome nefrotica",
@@ -20764,7 +20764,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::esquizofrenia",
@@ -21521,7 +21521,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "doenca de alzheimer::trata::hipertensao portal",
@@ -21618,7 +21618,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::hipertensao portal",
@@ -22027,7 +22027,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::esquizofrenia",
@@ -22040,7 +22040,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::hipofise",
@@ -22067,7 +22067,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::hipoparatireoidismo",
@@ -22668,7 +22668,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::ige",
@@ -22681,7 +22681,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "imunoglobulina::associado_a::igg",
@@ -22766,7 +22766,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ige::associado_a::igm",
@@ -22779,7 +22779,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "imunoglobulina::associado_a::tireoide",
@@ -23224,7 +23224,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "obesidade::associado_a::em",
@@ -23309,7 +23309,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomito::associado_a::em",
@@ -23322,7 +23322,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "vomito::associado_a::hipertensao",
@@ -24247,7 +24247,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pele::causa::colapso pulmonar",
@@ -24716,7 +24716,7 @@
       "seed-asset-1786510866693-5",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::rim",
@@ -25149,7 +25149,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "anestesicos locais::associado_a::amnesia anterograda",
@@ -25294,7 +25294,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "midazolam::associado_a::amnesia anterograda",
@@ -25439,7 +25439,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "colon::associado_a::em",
@@ -25512,7 +25512,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "bexiga::associado_a::hematuria",
@@ -25621,7 +25621,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "abdome agudo::causa::pancreas",
@@ -25706,7 +25706,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pancreatite::causa::dor abdominal",
@@ -25827,7 +25827,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dor abdominal::associado_a::tc",
@@ -25864,7 +25864,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::tc",
@@ -25877,7 +25877,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "nauseas::associado_a::tc",
@@ -26166,7 +26166,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dor abdominal::associado_a::febre",
@@ -26179,7 +26179,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dor abdominal::associado_a::aorta",
@@ -26325,7 +26325,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "qualquer::associado_a::ulcera duodenal",
@@ -26626,7 +26626,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "edema::associado_a::cefaleia",
@@ -26651,7 +26651,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "convulsao::causa::epilepsia",
@@ -28056,7 +28056,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ad::trata::amiodarona",
@@ -28873,7 +28873,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::prednisona",
@@ -29151,7 +29151,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::prostata",
@@ -29344,7 +29344,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "insulina::associado_a::hirsutismo",
@@ -29453,7 +29453,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hirsutismo::associado_a::osteonecrose",
@@ -29886,7 +29886,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertensao portal::causa::em",
@@ -30991,7 +30991,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cefaleia::é_sintoma_de::hematuria",
@@ -31508,7 +31508,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dor toracica::associado_a::ecg",
@@ -31701,7 +31701,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::sacubitril",
@@ -31942,7 +31942,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::dispneia",
@@ -31967,7 +31967,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::taquicardia",
@@ -32652,7 +32652,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tuberculose::é_sintoma_de::pulmao",
@@ -32833,7 +32833,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "febre::é_sintoma_de::edema",
@@ -33278,7 +33278,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pulmao::associado_a::glomerulo",
@@ -33315,7 +33315,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pulmao::associado_a::sarcoma de kaposi",
@@ -33640,7 +33640,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tuberculose::associado_a::glomerulo",
@@ -33677,7 +33677,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tuberculose::associado_a::sarcoma de kaposi",
@@ -33930,7 +33930,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::hiv",
@@ -33943,7 +33943,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::glomerulo",
@@ -34004,7 +34004,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::qualquer",
@@ -34017,7 +34017,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "toxoplasmose::associado_a::diarreia",
@@ -34510,7 +34510,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "leucoencefalopatia multifocal progressiva::associado_a::sarcoma de kaposi",
@@ -34631,7 +34631,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hiv::associado_a::rim",
@@ -34680,7 +34680,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hiv::associado_a::sarcoma de kaposi",
@@ -35569,7 +35569,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tosse seca::associado_a::hiv",
@@ -35666,7 +35666,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dispneia::associado_a::sudorese",
@@ -35788,7 +35788,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::tosse seca",
@@ -35801,7 +35801,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ar::associado_a::hiv",
@@ -35922,7 +35922,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tuberculose::causa::diarreia",
@@ -36295,7 +36295,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::mama",
@@ -36309,7 +36309,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::colon",
@@ -36418,7 +36418,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510901633-9"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "obesidade::trata::usg",
@@ -36601,7 +36601,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estado::associado_a::pele",
@@ -36614,7 +36614,7 @@
       "seed-asset-1786510879675-6",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estado::associado_a::sudorese",
@@ -37179,7 +37179,7 @@
       "seed-asset-1786510887617-7",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cerebro::causa::olho",
@@ -37444,7 +37444,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::insuficiencia cardiaca",
@@ -37457,7 +37457,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "coracao::associado_a::hipertensao",
@@ -37470,7 +37470,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "coracao::associado_a::insuficiencia cardiaca",
@@ -37663,7 +37663,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "urticaria::associado_a::pele",
@@ -37952,7 +37952,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::estado de mal asmatico",
@@ -37977,7 +37977,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::tosse",
@@ -37990,7 +37990,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "olho::associado_a::glaucoma",
@@ -38459,7 +38459,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tosse::associado_a::vomitos",
@@ -39324,7 +39324,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "colera::associado_a::em",
@@ -39385,7 +39385,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "coracao::associado_a::insulina",
@@ -39483,7 +39483,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::alzheimer",
@@ -39736,7 +39736,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "sindrome nefrotica::causa::furosemida",
@@ -39797,7 +39797,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "medula espinal::causa::inseminacao artificial",
@@ -40134,7 +40134,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "taquicardia::causa::acidose",
@@ -40159,7 +40159,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "taquicardia::causa::bradicardia",
@@ -40184,7 +40184,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertensao::causa::hipotensao",
@@ -40545,7 +40545,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "torcicolo espasmodico::associado_a::cerebro",
@@ -40666,7 +40666,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::paralisia",
@@ -40679,7 +40679,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "utero::trata::insuficiencia cardiaca",
@@ -41508,7 +41508,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipotensao::associado_a::cerebro",
@@ -41905,7 +41905,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertensao::causa::diarreia",
@@ -43166,7 +43166,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertensao::associado_a::acidente vascular cerebral",
@@ -43179,7 +43179,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertensao::associado_a::demencia vascular",
@@ -43312,7 +43312,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::é_sintoma_de::dispneia",
@@ -43397,7 +43397,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "esclerose sistemica::associado_a::hipertensao",
@@ -43494,7 +43494,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::é_sintoma_de::diarreia",
@@ -43519,7 +43519,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::aterosclerose",
@@ -43532,7 +43532,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pl::associado_a::em",
@@ -44025,7 +44025,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "acido acetilsalicilico::causa::varfarina",
@@ -44230,7 +44230,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::sistemico",
@@ -44339,7 +44339,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::asma",
@@ -44580,7 +44580,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::ascite",
@@ -44653,7 +44653,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipopotassemia::causa::diureticos de alca",
@@ -44894,7 +44894,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pancreas endocrino::associado_a::insulina",
@@ -45087,7 +45087,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipotalamo::associado_a::estado",
@@ -45112,7 +45112,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "suprarrenal::associado_a::glandula tireoide",
@@ -45485,7 +45485,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tireoide::causa::simples",
@@ -45510,7 +45510,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertireoidismo::causa::simples",
@@ -45644,7 +45644,7 @@
       "seed-asset-1786510929324-11",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tontura::é_sintoma_de::cefaleia",
@@ -46149,7 +46149,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dopamina::associado_a::em",
@@ -46366,7 +46366,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::doenca de alzheimer",
@@ -46379,7 +46379,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::doenca de creutzfeldt-jakob",
@@ -46392,7 +46392,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::doenca de huntington",
@@ -46489,7 +46489,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::heroina",
@@ -46526,7 +46526,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "dopamina::associado_a::hipotensao",
@@ -47103,7 +47103,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "nauseas::causa::depressao",
@@ -47116,7 +47116,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "emese::causa::depressao",
@@ -47669,7 +47669,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "depressao::causa::olho",
@@ -48426,7 +48426,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "epilepsia::associado_a::cerebro",
@@ -48451,7 +48451,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cannabis::trata::esclerose multipla",
@@ -48512,7 +48512,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipotermia::causa::ictericia",
@@ -48765,7 +48765,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::tontura",
@@ -48778,7 +48778,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "ne::associado_a::em",
@@ -48840,7 +48840,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "depressao::associado_a::tontura",
@@ -49009,7 +49009,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "etanol::causa::cistite",
@@ -49359,7 +49359,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::etanol",
@@ -49612,7 +49612,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "tuberculose::causa::covid-19",
@@ -49709,7 +49709,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "raiva::causa::conjuntivite",
@@ -49794,7 +49794,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "aspergilose pulmonar invasiva::causa::em",
@@ -49891,7 +49891,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::coccidioidomicose",
@@ -50012,7 +50012,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::disenteria amebiana aguda",
@@ -50157,7 +50157,7 @@
       "seed-asset-1786510901633-9",
       "seed-asset-1786510918945-10"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "doenca renal cronica::associado_a::aminoglicosideos",
@@ -50350,7 +50350,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::intoxicacao",
@@ -50483,7 +50483,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "febre::causa::tuberculose",
@@ -50880,7 +50880,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "esquistossomose::é_sintoma_de::febre",
@@ -51025,7 +51025,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "abdome::associado_a::vomitos",
@@ -51878,7 +51878,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "nervo optico::associado_a::em",
@@ -51963,7 +51963,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cefaleia::associado_a::vomitos",
@@ -51976,7 +51976,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipertensao arterial sistemica::causa::retina",
@@ -55397,7 +55397,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::causa::colo do utero",
@@ -56382,7 +56382,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estenose mitral::associado_a::febre reumatica",
@@ -59059,7 +59059,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "estomago::associado_a::insulina",
@@ -59192,7 +59192,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "sindrome carcinoide::causa::insuficiencia tricuspide",
@@ -59865,7 +59865,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "sepse::causa::hipotensao",
@@ -62938,7 +62938,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "esplenomegalia::associado_a::hipertensao portal",
@@ -63179,7 +63179,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510936109-12"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::esplenomegalia",
@@ -63528,7 +63528,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "sepse::associado_a::intoxicacao",
@@ -65221,7 +65221,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "fraqueza::associado_a::paralisia periodica",
@@ -66722,7 +66722,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cefaleia::associado_a::epilepsia",
@@ -67467,7 +67467,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "febre::causa::paralisia",
@@ -67528,7 +67528,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510929324-11"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "lcr::causa::paralisia",
@@ -67673,7 +67673,7 @@
       "seed-asset-1786510918945-10",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "cisticercose::causa::hidrocefalia comunicante",
@@ -69330,7 +69330,7 @@
       "seed-asset-1786510929324-11",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "hipotalamo::associado_a::rins",
@@ -70711,7 +70711,7 @@
       "seed-asset-1786510936109-12",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::cansaco",
@@ -70760,7 +70760,7 @@
       "seed-asset-1786510936109-12",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::trata::hidroclorotiazida",
@@ -70785,7 +70785,7 @@
       "seed-asset-1786510936109-12",
       "seed-asset-1786510941345-13"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "em::associado_a::palidez",
@@ -71158,7 +71158,7 @@
       "seed-asset-1786510941345-13",
       "seed-asset-1786510973185-14"
     ],
-    "updatedAt": "2026-08-17T02:06:25.931Z"
+    "updatedAt": "2026-08-17T02:27:18.424Z"
   },
   {
     "id": "pericardite::associado_a::palpitacoes",

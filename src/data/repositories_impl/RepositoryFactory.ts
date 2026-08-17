@@ -3,16 +3,19 @@ import { IQuestionRepository } from '../../domain/repositories/IQuestionReposito
 import { ICardRepository } from '../../domain/repositories/ICardRepository';
 import { IStudyHistoryRepository } from '../../domain/repositories/IStudyHistoryRepository';
 import { IStudyStatsRepository } from '../../domain/repositories/IStudyStatsRepository';
+import { IExtractedExamQuestionRepository } from '../../domain/repositories/IExtractedExamQuestionRepository';
 
 import { QuestionRepositoryImpl } from './QuestionRepositoryImpl';
 import { CardRepositoryImpl } from './CardRepositoryImpl';
 import { StudyHistoryRepositoryImpl } from './StudyHistoryRepositoryImpl';
 import { StudyStatsRepositoryImpl } from './StudyStatsRepositoryImpl';
+import { ExtractedExamQuestionRepositoryImpl } from './ExtractedExamQuestionRepositoryImpl';
 
 import { OfflineFirstQuestionRepository } from '../../../lib/shared/repositories/OfflineFirstQuestionRepository';
 import { OfflineFirstCardRepository } from '../../../lib/shared/repositories/OfflineFirstCardRepository';
 import { OfflineFirstStudyHistoryRepository } from '../../../lib/shared/repositories/OfflineFirstStudyHistoryRepository';
 import { OfflineFirstStudyStatsRepository } from '../../../lib/shared/repositories/OfflineFirstStudyStatsRepository';
+import { OfflineFirstExtractedExamQuestionRepository } from '../../../lib/shared/repositories/OfflineFirstExtractedExamQuestionRepository';
 
 /**
  * Composition root que decide em runtime se usa a camada SQLite nativa + Sync
@@ -23,6 +26,7 @@ export class RepositoryFactory {
   private static cardRepoInstance: ICardRepository | null = null;
   private static studyHistoryRepoInstance: IStudyHistoryRepository | null = null;
   private static studyStatsRepoInstance: IStudyStatsRepository | null = null;
+  private static extractedExamQuestionRepoInstance: IExtractedExamQuestionRepository | null = null;
 
   public static getQuestionRepository(): IQuestionRepository {
     if (!this.questionRepoInstance) {
@@ -68,6 +72,17 @@ export class RepositoryFactory {
     return this.studyStatsRepoInstance;
   }
 
+  public static getExtractedExamQuestionRepository(): IExtractedExamQuestionRepository {
+    if (!this.extractedExamQuestionRepoInstance) {
+      if (Capacitor.isNativePlatform()) {
+        this.extractedExamQuestionRepoInstance = new OfflineFirstExtractedExamQuestionRepository();
+      } else {
+        this.extractedExamQuestionRepoInstance = new ExtractedExamQuestionRepositoryImpl();
+      }
+    }
+    return this.extractedExamQuestionRepoInstance;
+  }
+
   /**
    * Reseta instâncias para permitir testes unitários de troca de ambiente
    */
@@ -76,6 +91,7 @@ export class RepositoryFactory {
     this.cardRepoInstance = null;
     this.studyHistoryRepoInstance = null;
     this.studyStatsRepoInstance = null;
+    this.extractedExamQuestionRepoInstance = null;
   }
 }
 
@@ -83,3 +99,4 @@ export const questionRepository = RepositoryFactory.getQuestionRepository();
 export const cardRepository = RepositoryFactory.getCardRepository();
 export const studyHistoryRepository = RepositoryFactory.getStudyHistoryRepository();
 export const studyStatsRepository = RepositoryFactory.getStudyStatsRepository();
+export const extractedExamQuestionRepository = RepositoryFactory.getExtractedExamQuestionRepository();

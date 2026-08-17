@@ -24,6 +24,7 @@ export class ExamRepository {
       tamanhoFormatado: asset.file?.size ? `${(asset.file.size / (1024 * 1024)).toFixed(1)} MB` : '1.0 MB',
       gabarito: 'Gabarito Oficial',
       hasRawPdf: !!(asset.file?.hasRawFileBlob || asset.file?.rawFileStorageKey),
+      examSegmentationStats: asset.metadata?.examSegmentationStats,
       createdAt: asset.createdAt,
       updatedAt: asset.updatedAt,
     };

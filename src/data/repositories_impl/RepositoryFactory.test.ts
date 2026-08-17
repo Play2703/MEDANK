@@ -5,10 +5,12 @@ import { QuestionRepositoryImpl } from './QuestionRepositoryImpl';
 import { CardRepositoryImpl } from './CardRepositoryImpl';
 import { StudyHistoryRepositoryImpl } from './StudyHistoryRepositoryImpl';
 import { StudyStatsRepositoryImpl } from './StudyStatsRepositoryImpl';
+import { ExtractedExamQuestionRepositoryImpl } from './ExtractedExamQuestionRepositoryImpl';
 import { OfflineFirstQuestionRepository } from '../../../lib/shared/repositories/OfflineFirstQuestionRepository';
 import { OfflineFirstCardRepository } from '../../../lib/shared/repositories/OfflineFirstCardRepository';
 import { OfflineFirstStudyHistoryRepository } from '../../../lib/shared/repositories/OfflineFirstStudyHistoryRepository';
 import { OfflineFirstStudyStatsRepository } from '../../../lib/shared/repositories/OfflineFirstStudyStatsRepository';
+import { OfflineFirstExtractedExamQuestionRepository } from '../../../lib/shared/repositories/OfflineFirstExtractedExamQuestionRepository';
 
 describe('RepositoryFactory - Composition Root', () => {
   beforeEach(() => {
@@ -23,11 +25,13 @@ describe('RepositoryFactory - Composition Root', () => {
     const cardRepo = RepositoryFactory.getCardRepository();
     const historyRepo = RepositoryFactory.getStudyHistoryRepository();
     const statsRepo = RepositoryFactory.getStudyStatsRepository();
+    const extractedRepo = RepositoryFactory.getExtractedExamQuestionRepository();
 
     expect(questionRepo).toBeInstanceOf(QuestionRepositoryImpl);
     expect(cardRepo).toBeInstanceOf(CardRepositoryImpl);
     expect(historyRepo).toBeInstanceOf(StudyHistoryRepositoryImpl);
     expect(statsRepo).toBeInstanceOf(StudyStatsRepositoryImpl);
+    expect(extractedRepo).toBeInstanceOf(ExtractedExamQuestionRepositoryImpl);
   });
 
   it('2. Deve resolver implementações Offline-First quando rodando em ambiente Nativo (Capacitor.isNativePlatform() === true)', () => {
@@ -37,11 +41,13 @@ describe('RepositoryFactory - Composition Root', () => {
     const cardRepo = RepositoryFactory.getCardRepository();
     const historyRepo = RepositoryFactory.getStudyHistoryRepository();
     const statsRepo = RepositoryFactory.getStudyStatsRepository();
+    const extractedRepo = RepositoryFactory.getExtractedExamQuestionRepository();
 
     expect(questionRepo).toBeInstanceOf(OfflineFirstQuestionRepository);
     expect(cardRepo).toBeInstanceOf(OfflineFirstCardRepository);
     expect(historyRepo).toBeInstanceOf(OfflineFirstStudyHistoryRepository);
     expect(statsRepo).toBeInstanceOf(OfflineFirstStudyStatsRepository);
+    expect(extractedRepo).toBeInstanceOf(OfflineFirstExtractedExamQuestionRepository);
   });
 
   it('3. Deve manter instâncias singleton consistentes entre chamadas subsequentes', () => {
@@ -49,7 +55,10 @@ describe('RepositoryFactory - Composition Root', () => {
 
     const repo1 = RepositoryFactory.getQuestionRepository();
     const repo2 = RepositoryFactory.getQuestionRepository();
+    const extRepo1 = RepositoryFactory.getExtractedExamQuestionRepository();
+    const extRepo2 = RepositoryFactory.getExtractedExamQuestionRepository();
 
     expect(repo1).toBe(repo2);
+    expect(extRepo1).toBe(extRepo2);
   });
 });

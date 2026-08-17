@@ -20,7 +20,8 @@
 import fs from 'fs';
 import path from 'path';
 import { chunkText } from '../src/data/services/textChunker';
-import { KnowledgeAsset } from '../src/domain/entities/KnowledgeAsset';
+import { KnowledgeAsset, calculateSegmentationStats } from '../src/domain/entities/KnowledgeAsset';
+import { ExamPDFQuestionSplitter } from '../src/core/exam_bank/services/ExamPDFQuestionSplitter';
 import { DocumentEmbedding } from '../src/domain/entities/DocumentEmbedding';
 import {
   ChunkEntityRecord,
@@ -444,7 +445,7 @@ async function runBuildSeedBundle() {
         specialty: entry.specialty || cachedFile.asset.specialty,
       };
 
-      // Se o arquivo original PDF estiver disponível em disco, copia para public/seed-data/raw-exams/
+      // Se o arquivo original PDF estiver disponível em disco, copia para public/seed-data/raw-exams/ e calcula estatísticas de segmentação
       if (fs.existsSync(filePath) && (syncedCategory === 'residencyExam' || syncedCategory === 'professorExam')) {
         try {
           const rawExamsDir = path.join(OUTPUT_DIR, 'raw-exams');
@@ -454,8 +455,21 @@ async function runBuildSeedBundle() {
           fs.copyFileSync(filePath, path.join(rawExamsDir, entry.file));
           syncedAsset.file.url = `/seed-data/raw-exams/${entry.file}`;
           syncedAsset.file.hasRawFileBlob = true;
+
+          const fileBuf = fs.readFileSync(filePath);
+          const splitRes = await ExamPDFQuestionSplitter.split(new Uint8Array(fileBuf));
+          if (splitRes && splitRes.totalQuestions > 0) {
+            syncedAsset.metadata = {
+              ...(syncedAsset.metadata || {}),
+              examSegmentationStats: calculateSegmentationStats(
+                splitRes.totalQuestions,
+                splitRes.highConfidenceCount,
+                splitRes.lowConfidenceCount
+              ),
+            };
+          }
         } catch (copyErr) {
-          console.warn(`⚠️ Não foi possível copiar PDF bruto para raw-exams/${entry.file}:`, copyErr);
+          console.warn(`⚠️ Não foi possível processar PDF bruto para raw-exams/${entry.file}:`, copyErr);
         }
       }
 
@@ -555,7 +569,7 @@ async function runBuildSeedBundle() {
         processingStatus: 'completed',
       };
 
-      // Se o arquivo original PDF estiver disponível em disco, copia para public/seed-data/raw-exams/
+      // Se o arquivo original PDF estiver disponível em disco, copia para public/seed-data/raw-exams/ e calcula estatísticas de segmentação
       if (fs.existsSync(filePath) && (assetCategory === 'residencyExam' || assetCategory === 'professorExam')) {
         try {
           const rawExamsDir = path.join(OUTPUT_DIR, 'raw-exams');
@@ -565,8 +579,21 @@ async function runBuildSeedBundle() {
           fs.copyFileSync(filePath, path.join(rawExamsDir, entry.file));
           asset.file.url = `/seed-data/raw-exams/${entry.file}`;
           asset.file.hasRawFileBlob = true;
+
+          const fileBuf = fs.readFileSync(filePath);
+          const splitRes = await ExamPDFQuestionSplitter.split(new Uint8Array(fileBuf));
+          if (splitRes && splitRes.totalQuestions > 0) {
+            asset.metadata = {
+              ...(asset.metadata || {}),
+              examSegmentationStats: calculateSegmentationStats(
+                splitRes.totalQuestions,
+                splitRes.highConfidenceCount,
+                splitRes.lowConfidenceCount
+              ),
+            };
+          }
         } catch (copyErr) {
-          console.warn(`⚠️ Não foi possível copiar PDF bruto para raw-exams/${entry.file}:`, copyErr);
+          console.warn(`⚠️ Não foi possível processar PDF bruto para raw-exams/${entry.file}:`, copyErr);
         }
       }
 

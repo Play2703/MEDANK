@@ -47,6 +47,18 @@ export interface CachedStatsRow {
   updated_at: string;
 }
 
+export interface CachedExtractedExamQuestionRow {
+  id: string;
+  source_asset_id?: string | null;
+  question_number: number;
+  statement: string;
+  options_json: string;
+  correct_letter?: string | null;
+  specialty?: string | null;
+  confidence: 'high' | 'low';
+  created_at: string;
+}
+
 export interface GraphNodeRow {
   id: string;
   canonical_code: string;
@@ -98,6 +110,7 @@ export class NativeSQLiteService {
   private memStats = new Map<string, CachedStatsRow>();
   private memGraphNodes = new Map<string, GraphNodeRow>();
   private memGraphEdges = new Map<string, GraphEdgeRow>();
+  private memExtractedQuestions = new Map<string, CachedExtractedExamQuestionRow>();
 
 
   constructor() {}
@@ -226,6 +239,20 @@ export class NativeSQLiteService {
       CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_code);
       CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_code);
       CREATE INDEX IF NOT EXISTS idx_graph_edges_predicate ON graph_edges(predicate);
+
+      CREATE TABLE IF NOT EXISTS cached_extracted_exam_questions (
+        id TEXT PRIMARY KEY,
+        source_asset_id TEXT,
+        question_number INTEGER NOT NULL,
+        statement TEXT NOT NULL,
+        options_json TEXT NOT NULL,
+        correct_letter TEXT,
+        specialty TEXT,
+        confidence TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_cached_ext_q_asset ON cached_extracted_exam_questions(source_asset_id);
+      CREATE INDEX IF NOT EXISTS idx_cached_ext_q_num ON cached_extracted_exam_questions(question_number);
     `;
 
     await this.dbConnection.execute(schema);
@@ -747,6 +774,138 @@ export class NativeSQLiteService {
     } else {
       const node = this.memGraphNodes.get(canonicalCode) || this.memGraphNodes.get(normCode);
       return node ? { ...node } : null;
+    }
+  }
+
+  // --- EXTRACTED EXAM QUESTIONS OPERATIONS ---
+
+  public async insertExtractedExamQuestion(row: CachedExtractedExamQuestionRow): Promise<void> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = `
+        INSERT OR REPLACE INTO cached_extracted_exam_questions (
+          id, source_asset_id, question_number, statement, options_json, correct_letter, specialty, confidence, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      await this.dbConnection.run(sql, [
+        row.id,
+        row.source_asset_id || null,
+        row.question_number,
+        row.statement,
+        row.options_json,
+        row.correct_letter || null,
+        row.specialty || null,
+        row.confidence,
+        row.created_at,
+      ]);
+    } else {
+      this.memExtractedQuestions.set(row.id, { ...row });
+    }
+  }
+
+  public async bulkInsertExtractedExamQuestions(rows: CachedExtractedExamQuestionRow[]): Promise<void> {
+    await this.initialize();
+    if (rows.length === 0) return;
+
+    if (this.dbConnection && this.isNative()) {
+      const sql = `
+        INSERT OR REPLACE INTO cached_extracted_exam_questions (
+          id, source_asset_id, question_number, statement, options_json, correct_letter, specialty, confidence, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      for (const row of rows) {
+        await this.dbConnection.run(sql, [
+          row.id,
+          row.source_asset_id || null,
+          row.question_number,
+          row.statement,
+          row.options_json,
+          row.correct_letter || null,
+          row.specialty || null,
+          row.confidence,
+          row.created_at,
+        ]);
+      }
+    } else {
+      for (const row of rows) {
+        this.memExtractedQuestions.set(row.id, { ...row });
+      }
+    }
+  }
+
+  public async getExtractedExamQuestionsByAssetId(assetId: string): Promise<CachedExtractedExamQuestionRow[]> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'SELECT * FROM cached_extracted_exam_questions WHERE source_asset_id = ? ORDER BY question_number ASC';
+      const res = await this.dbConnection.query(sql, [assetId]);
+      return (res.values as CachedExtractedExamQuestionRow[]) || [];
+    } else {
+      const results: CachedExtractedExamQuestionRow[] = [];
+      for (const row of this.memExtractedQuestions.values()) {
+        if (row.source_asset_id === assetId) {
+          results.push({ ...row });
+        }
+      }
+      return results.sort((a, b) => a.question_number - b.question_number);
+    }
+  }
+
+  public async getAllExtractedExamQuestions(): Promise<CachedExtractedExamQuestionRow[]> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'SELECT * FROM cached_extracted_exam_questions ORDER BY created_at DESC, question_number ASC';
+      const res = await this.dbConnection.query(sql);
+      return (res.values as CachedExtractedExamQuestionRow[]) || [];
+    } else {
+      return Array.from(this.memExtractedQuestions.values()).sort(
+        (a, b) => a.created_at.localeCompare(b.created_at) || a.question_number - b.question_number
+      );
+    }
+  }
+
+  public async getExtractedExamQuestionById(id: string): Promise<CachedExtractedExamQuestionRow | null> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'SELECT * FROM cached_extracted_exam_questions WHERE id = ? LIMIT 1';
+      const res = await this.dbConnection.query(sql, [id]);
+      return res.values && res.values.length > 0 ? (res.values[0] as CachedExtractedExamQuestionRow) : null;
+    } else {
+      const row = this.memExtractedQuestions.get(id);
+      return row ? { ...row } : null;
+    }
+  }
+
+  public async deleteExtractedExamQuestionsByAssetId(assetId: string): Promise<void> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'DELETE FROM cached_extracted_exam_questions WHERE source_asset_id = ?';
+      await this.dbConnection.run(sql, [assetId]);
+    } else {
+      for (const [id, row] of this.memExtractedQuestions.entries()) {
+        if (row.source_asset_id === assetId) {
+          this.memExtractedQuestions.delete(id);
+        }
+      }
+    }
+  }
+
+  public async deleteExtractedExamQuestion(id: string): Promise<void> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'DELETE FROM cached_extracted_exam_questions WHERE id = ?';
+      await this.dbConnection.run(sql, [id]);
+    } else {
+      this.memExtractedQuestions.delete(id);
+    }
+  }
+
+  public async clearExtractedExamQuestions(): Promise<void> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'DELETE FROM cached_extracted_exam_questions';
+      await this.dbConnection.run(sql);
+    } else {
+      this.memExtractedQuestions.clear();
     }
   }
 }
