@@ -14,6 +14,5 @@ export * from './ontology/KnowledgeCategoryMapper';
 export * from './ontology/MedicalOntologyEngine';
 export * from './pipeline/PipelineModules';
 export * from './engines/FlashcardEngine';
-export * from './engines/QuestionEngine';
 export * from './engines/ProfessorEngine';
 export * from './providers/KernelProviders';

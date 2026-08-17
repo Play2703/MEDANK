@@ -34,7 +34,10 @@ export interface DictionaryPayload {
   code?: string | null;
 }
 
+import { AhoCorasick } from './ahoCorasick';
 import { levenshteinDistance } from './levenshtein';
+
+export const TOP_TERMS_FOR_L1_CACHE = 15000;
 
 export interface TermRow {
   system: string | null;
@@ -125,7 +128,7 @@ export function getSelectLikeStatement(): Database.Statement<[string], TermRow> 
 }
 
 
-const COMMON_STOP_WORDS = new Set([
+export const COMMON_STOP_WORDS = new Set([
   'pode', 'para', 'como', 'mais', 'pelo', 'pela', 'sobre', 'onde', 'quando',
   'esta', 'este', 'essa', 'esse', 'foram', 'sendo', 'caso', 'grau', 'tipo',
   'alta', 'baixa', 'todo', 'toda', 'qual', 'quais', 'cada', 'entre', 'apenas',
@@ -473,14 +476,121 @@ function tokenize(text: string): Token[] {
 
 export class DictionaryNEREngine {
   private isWarmedUp = false;
+  private automaton: AhoCorasick<DictionaryPayload> | null = null;
+  public l1TermsCount = 0;
+  public l1MemoryDeltaMB = 0;
+  public l1BuildDurationMs = 0;
 
   constructor() {
     // Construtor totalmente desacoplado de I/O síncrono no boot
   }
 
   /**
+   * Constrói o autômato Aho-Corasick L1 em memória com os N termos mais frequentes e prioritários.
+   */
+  private buildL1Automaton(db: Database.Database): AhoCorasick<DictionaryPayload> {
+    const automaton = new AhoCorasick<DictionaryPayload>();
+    
+    // 1. Termos observados na semente (dados de frequência real da biblioteca)
+    const seedTermsSet = new Set<string>();
+    const seedIndexPaths = [
+      path.resolve(process.cwd(), 'public/seed-data/canonical-entity-index.json'),
+      path.resolve(process.cwd(), 'seed-data/canonical-entity-index.json'),
+    ];
+    for (const p of seedIndexPaths) {
+      if (fs.existsSync(p)) {
+        try {
+          const indexData = JSON.parse(fs.readFileSync(p, 'utf-8'));
+          for (const item of Object.values(indexData) as any[]) {
+            const key = normalizeText(item.canonicalKey || item.displayText || '');
+            if (key) seedTermsSet.add(key);
+            if (Array.isArray(item.seenTexts)) {
+              for (const st of item.seenTexts) {
+                const normSt = normalizeText(st);
+                if (normSt) seedTermsSet.add(normSt);
+              }
+            }
+          }
+          break;
+        } catch {}
+      }
+    }
+
+    // String interning para economizar memória do V8
+    const internMap = new Map<string, string>();
+    const intern = (s: string | null | undefined): string | null => {
+      if (!s) return null;
+      let cached = internMap.get(s);
+      if (!cached) {
+        cached = s;
+        internMap.set(s, s);
+      }
+      return cached;
+    };
+
+    const selectedRows: TermRow[] = [];
+    const seen = new Set<string>();
+
+    const findStmt = db.prepare<[string], TermRow>(
+      'SELECT normalized_term, canonical_term, category, system, code FROM terms WHERE normalized_term = ? LIMIT 1'
+    );
+
+    for (const st of seedTermsSet) {
+      const r = findStmt.get(st);
+      if (r && r.normalized_term && !seen.has(r.normalized_term)) {
+        seen.add(r.normalized_term);
+        selectedRows.push(r);
+      }
+    }
+
+    // 2. Preencher com DOENCA, MEDICAMENTO, SINTOMA, etc., respeitando o teto TOP_TERMS_FOR_L1_CACHE
+    const remainingNeeded = Math.max(0, TOP_TERMS_FOR_L1_CACHE - selectedRows.length);
+    if (remainingNeeded > 0) {
+      const fillRows = db.prepare<[number], TermRow>(`
+        SELECT normalized_term, canonical_term, category, system, code 
+        FROM terms 
+        WHERE normalized_term IS NOT NULL AND length(normalized_term) > 0
+        GROUP BY normalized_term
+        ORDER BY 
+          CASE category 
+            WHEN 'DOENCA' THEN 1 
+            WHEN 'MEDICAMENTO' THEN 2 
+            WHEN 'SINTOMA' THEN 3 
+            WHEN 'ESTRUTURA_ANATOMICA' THEN 4
+            ELSE 5 
+          END ASC,
+          length(normalized_term) DESC
+        LIMIT ?
+      `).all(remainingNeeded + 5000);
+
+      for (const r of fillRows) {
+        if (selectedRows.length >= TOP_TERMS_FOR_L1_CACHE) break;
+        if (r.normalized_term && !seen.has(r.normalized_term)) {
+          seen.add(r.normalized_term);
+          selectedRows.push(r);
+        }
+      }
+    }
+
+    // 3. Alimentar o autômato
+    for (const row of selectedRows) {
+      const norm = row.normalized_term!;
+      automaton.add(norm, {
+        canonicalTerm: (intern(row.canonical_term) || norm),
+        category: (intern(row.category) || 'DOENCA'),
+        codeSystem: intern(row.system),
+        code: intern(row.code),
+      });
+    }
+
+    automaton.build();
+    this.l1TermsCount = selectedRows.length;
+    return automaton;
+  }
+
+  /**
    * Inicialização e aquecimento assíncrono do motor terminológico.
-   * Pode ser disparado em background pós-listen do servidor ou aguardado sob demanda.
+   * Constrói a camada L1 (Aho-Corasick) e prepara statements do SQLite L2.
    */
   public async warmup(): Promise<boolean> {
     if (this.isWarmedUp) return true;
@@ -488,20 +598,38 @@ export class DictionaryNEREngine {
 
     warmupPromise = (async () => {
       const start = Date.now();
-      console.log('[DictionaryNEREngine] Iniciando warmup do motor terminológico...');
+      const baselineHeap = typeof process !== 'undefined' && process.memoryUsage ? process.memoryUsage().heapUsed : 0;
+      console.log(
+        `[DictionaryNEREngine] Iniciando warmup do motor terminológico (Baseline Heap: ${(baselineHeap / 1024 / 1024).toFixed(2)} MB)...`
+      );
       try {
         const db = getTerminologyDb();
         if (db) {
           getSelectTermStatement();
           getSelectLikeStatement();
 
-          // Query de validação e aquecimento do cache
+          // Constrói autômato L1
+          const t0Aut = Date.now();
+          this.automaton = this.buildL1Automaton(db);
+          this.l1BuildDurationMs = Date.now() - t0Aut;
+
+          const afterHeap = typeof process !== 'undefined' && process.memoryUsage ? process.memoryUsage().heapUsed : 0;
+          this.l1MemoryDeltaMB = (afterHeap - baselineHeap) / 1024 / 1024;
+
+          // Validação do limite seguro de memória (150 MB para Render Free)
+          if (this.l1MemoryDeltaMB > 150) {
+            console.error(
+              `[DictionaryNEREngine] ALERTA: autômato Aho-Corasick consumiu ${this.l1MemoryDeltaMB.toFixed(2)} MB, acima do limite seguro de 150MB para o plano Render Free — implementação pode precisar de otimização de memória antes de ir para produção.`
+            );
+          }
+
+          // Query de validação do SQLite
           const countRow = db.prepare('SELECT COUNT(*) as count FROM terms').get() as { count: number };
           const testLookup = lookupTerm('hipertensao', false);
 
           const elapsed = Date.now() - start;
           console.log(
-            `[DictionaryNEREngine] Warmup concluído com sucesso em ${elapsed}ms (${countRow?.count ?? 0} termos indexados). Termo de teste: "${testLookup?.canonical_term ?? 'ok'}"`
+            `[DictionaryNEREngine] Warmup concluído com sucesso em ${elapsed}ms: Autômato L1 construído com ${this.l1TermsCount} termos em ${this.l1BuildDurationMs}ms (Delta Heap: ${this.l1MemoryDeltaMB.toFixed(2)} MB, Total DB: ${countRow?.count ?? 0} termos). Termo de teste: "${testLookup?.canonical_term ?? 'ok'}"`
           );
           this.isWarmedUp = true;
           return true;
@@ -527,11 +655,16 @@ export class DictionaryNEREngine {
     }
     selectTermStmt = null;
     selectLikeStmt = null;
+    this.automaton = null;
     this.isWarmedUp = false;
     warmupPromise = null;
   }
 
-
+  /**
+   * Extração híbrida de entidades em 2 camadas:
+   * 1. Camada L1: Autômato Aho-Corasick em memória em O(N + M) com os termos prioritários.
+   * 2. Camada L2: Fallback SQLite para spans não cobertos pelo L1 (preservando exact/fuzzy matching e Levenshtein).
+   */
   extractEntities(text: string): MatchedEntity[] {
     if (!text || typeof text !== 'string' || !text.trim()) {
       return [];
@@ -542,12 +675,98 @@ export class DictionaryNEREngine {
       return [];
     }
 
-    const rawMatches: Array<MatchedEntity & { isExact: boolean }> = [];
-    const maxSpanLength = 8;
+    // Se o autômato ainda não estiver construído, tenta carregar
+    if (!this.automaton) {
+      const db = getTerminologyDb();
+      if (db) {
+        try {
+          this.automaton = this.buildL1Automaton(db);
+          this.isWarmedUp = true;
+        } catch {}
+      }
+    }
 
+    const rawMatches: Array<MatchedEntity & { isExact: boolean; source: 'L1' | 'L2' }> = [];
+    const normTokens = tokens.map((t) => normalizeText(t.text));
+    const normJoined = normTokens.join(' ');
+
+    const startTokenMap = new Map<number, number>();
+    const endTokenMap = new Map<number, number>();
+    let charOffset = 0;
+    for (let i = 0; i < normTokens.length; i++) {
+      startTokenMap.set(charOffset, i);
+      charOffset += normTokens[i].length;
+      endTokenMap.set(charOffset, i);
+      charOffset += 1; // espaço delimitador
+    }
+
+    // 1. Camada L1: Busca em memória via Aho-Corasick em O(N + M)
+    const l1MatchesByTokenStart = new Map<number, number>();
+    if (this.automaton) {
+      const acMatches = this.automaton.search(normJoined);
+      for (const m of acMatches) {
+        const firstTokIdx = startTokenMap.get(m.startIndex);
+        const lastTokIdx = endTokenMap.get(m.endIndex);
+        if (firstTokIdx === undefined || lastTokIdx === undefined) {
+          continue; // Rejeita se não estiver em fronteira exata de palavra/token
+        }
+
+        if (!m.keyword.includes(' ') && COMMON_STOP_WORDS.has(m.keyword)) {
+          continue; // Rejeita stop-words de palavra única
+        }
+
+        const startIdx = tokens[firstTokIdx].startIndex;
+        const endIdx = tokens[lastTokIdx].endIndex;
+        const rawText = text.slice(startIdx, endIdx);
+        const tokCount = lastTokIdx - firstTokIdx + 1;
+
+        rawMatches.push({
+          text: rawText,
+          normalizedTerm: m.value.canonicalTerm || rawText,
+          category: m.value.category || 'DOENCA',
+          startIndex: startIdx,
+          endIndex: endIdx,
+          codeSystem: m.value.codeSystem ?? null,
+          code: m.value.code ?? null,
+          isExact: true,
+          source: 'L1',
+        });
+
+        const currMax = l1MatchesByTokenStart.get(firstTokIdx) || 0;
+        if (tokCount > currMax) {
+          l1MatchesByTokenStart.set(firstTokIdx, tokCount);
+        }
+      }
+    }
+
+    // 2. Mapeia tokens cobertos pelo L1
+    const tokenCoveredByL1 = new Array<boolean>(tokens.length).fill(false);
+    for (const m of rawMatches) {
+      for (let t = 0; t < tokens.length; t++) {
+        if (tokens[t].startIndex >= m.startIndex && tokens[t].endIndex <= m.endIndex) {
+          tokenCoveredByL1[t] = true;
+        }
+      }
+    }
+
+    // 3. Camada L2: Fallback SQLite com janela deslizante + Levenshtein
+    // Se o L1 já casou um prefixo de tamanho K iniciando no token i, consulta o SQLite apenas para spans maiores (8 até K+1).
+    // Se o token i não foi coberto por nenhum match L1, consulta spans de 8 até 1.
+    const maxSpanLength = 8;
     for (let i = 0; i < tokens.length; i++) {
       const maxLen = Math.min(tokens.length - i, maxSpanLength);
-      for (let len = maxLen; len >= 1; len--) {
+      const l1MaxLen = l1MatchesByTokenStart.get(i) || 0;
+
+      let minLen = 1;
+      if (l1MaxLen > 0) {
+        minLen = l1MaxLen + 1;
+      } else if (tokenCoveredByL1[i]) {
+        continue;
+      }
+
+      if (minLen > maxLen) continue;
+
+      for (let len = maxLen; len >= minLen; len--) {
         const startIdx = tokens[i].startIndex;
         const endIdx = tokens[i + len - 1].endIndex;
         const rawText = text.slice(startIdx, endIdx);
@@ -565,12 +784,13 @@ export class DictionaryNEREngine {
             codeSystem: row.system ?? null,
             code: row.code ?? null,
             isExact,
+            source: 'L2',
           });
         }
       }
     }
 
-    // Prioriza matches exatos sobre aproximações e depois termos mais longos
+    // 4. Prioriza matches exatos sobre aproximações e depois termos mais longos
     rawMatches.sort((a, b) => {
       if (a.isExact !== b.isExact) {
         return a.isExact ? -1 : 1;
@@ -581,9 +801,10 @@ export class DictionaryNEREngine {
       return a.startIndex - b.startIndex;
     });
 
-
     const entities: MatchedEntity[] = [];
     const occupied: boolean[] = new Array(text.length).fill(false);
+    let l1Hits = 0;
+    let l2Hits = 0;
 
     for (const match of rawMatches) {
       const { startIndex, endIndex } = match;
@@ -599,7 +820,16 @@ export class DictionaryNEREngine {
       if (alreadyOccupied) continue;
 
       for (let i = startIndex; i < endIndex; i++) occupied[i] = true;
+      if (match.source === 'L1') l1Hits++;
+      else l2Hits++;
       entities.push(match);
+    }
+
+    // Telemetria (visível em modo debug/desenvolvimento)
+    if (typeof console !== 'undefined' && console.debug) {
+      console.debug(
+        `[DictionaryNEREngine] extractEntities telemetria: ${l1Hits} L1 (Aho-Corasick), ${l2Hits} L2 (SQLite fallback) para texto de ${text.length} caracteres.`
+      );
     }
 
     return entities.sort((a, b) => a.startIndex - b.startIndex);

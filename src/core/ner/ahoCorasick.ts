@@ -19,6 +19,7 @@ interface TrieNode<T> {
   children: Map<string, TrieNode<T>>;
   fail: TrieNode<T> | null;
   outputs: Array<{ keyword: string; value: T }>;
+  outputLink: TrieNode<T> | null;
 }
 
 export class AhoCorasick<T> {
@@ -34,6 +35,7 @@ export class AhoCorasick<T> {
       children: new Map(),
       fail: null,
       outputs: [],
+      outputLink: null,
     };
   }
 
@@ -56,7 +58,7 @@ export class AhoCorasick<T> {
   }
 
   /**
-   * Compiles failure links using Breadth-First Search (BFS).
+   * Compiles failure links and output links using Breadth-First Search (BFS).
    */
   build(): void {
     const queue: TrieNode<T>[] = [];
@@ -78,7 +80,7 @@ export class AhoCorasick<T> {
 
         const failNode = failCandidate ? failCandidate.children.get(char)! : this.root;
         child.fail = failNode;
-        child.outputs = child.outputs.concat(failNode.outputs);
+        child.outputLink = failNode.outputs.length > 0 ? failNode : failNode.outputLink;
         queue.push(child);
       }
     }
@@ -108,13 +110,17 @@ export class AhoCorasick<T> {
         current = current.children.get(char)!;
       }
 
-      for (const out of current.outputs) {
-        matches.push({
-          startIndex: i - out.keyword.length + 1,
-          endIndex: i + 1,
-          keyword: out.keyword,
-          value: out.value,
-        });
+      let outNode: TrieNode<T> | null = current.outputs.length > 0 ? current : current.outputLink;
+      while (outNode !== null) {
+        for (const out of outNode.outputs) {
+          matches.push({
+            startIndex: i - out.keyword.length + 1,
+            endIndex: i + 1,
+            keyword: out.keyword,
+            value: out.value,
+          });
+        }
+        outNode = outNode.outputLink;
       }
     }
 
