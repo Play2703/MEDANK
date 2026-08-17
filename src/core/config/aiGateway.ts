@@ -1,7 +1,7 @@
 import { retryWithBackoff } from "../utils/retryUtils";
 
 export const PRIMARY_AI_MODEL = process.env.PRIMARY_AI_MODEL || "gemini-3.6-flash";
-export const LIGHT_AI_MODEL = process.env.LIGHT_AI_MODEL || "gemini-2.5-flash-lite";
+export const LIGHT_AI_MODEL = process.env.LIGHT_AI_MODEL || "gemini-3.5-flash-lite";
 
 function getGatewayConfig() {
   return {

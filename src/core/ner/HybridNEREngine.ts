@@ -121,7 +121,7 @@ export class GeminiAiNerProvider implements AiNerProvider {
       const { GoogleGenAI } = await import('@google/genai');
       const apiKey = process.env.GEMINI_API_KEY || (process.env.VITE_GEMINI_API_KEY as string);
       const ai = new GoogleGenAI({ apiKey });
-      const model = process.env.LIGHT_AI_MODEL || 'gemini-2.5-flash-lite';
+      const model = process.env.LIGHT_AI_MODEL || 'gemini-3.5-flash-lite';
 
       const response = await ai.models.generateContent({
         model,
