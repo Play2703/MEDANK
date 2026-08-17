@@ -26,6 +26,7 @@ export interface ExtractedExamQuestion {
   pageNumber: number;
   confidence: 'high' | 'low';
   warning?: string;
+  topicTags?: string[];
 }
 
 export interface ExamSplitterResult {
@@ -60,11 +61,24 @@ export class ExamPDFQuestionSplitter {
     /^(\d{1,3})[.\)-]\s+(.*)$/;
 
   /**
-   * Padrões de alternativas:
-   * - A) texto, (A) texto, A. texto, a) texto, A - texto
+   * Padrão de alternativa com delimitador explícito:
+   * A) texto, a) texto, (A) texto, (a) texto, A. texto, a. texto, A: texto, A - texto
    */
-  private static readonly OPTION_START_REGEX =
-    /^\(?([A-Ea-e])\)?[.\:\-–\)]\s+(.*)$/;
+  private static readonly OPTION_DELIM_REGEX =
+    /^(?:\(([A-Ea-e])\)|([A-Ea-e])[.\:\-–\)])(?:\s+|$)(.*)$/;
+
+  /**
+   * Padrão de alternativa estilo checkbox: ( ) texto, [ ] texto
+   */
+  private static readonly OPTION_CHECKBOX_REGEX =
+    /^(?:\(\s*\)|\[\s*\])\s+(.*)$/;
+
+  /**
+   * Padrão de alternativa sem delimitador (apenas letra maiúscula isolada A-E seguida de espaço):
+   * A     texto, B     texto
+   */
+  private static readonly OPTION_NO_DELIM_REGEX =
+    /^([A-E])\s+(.*)$/;
 
   /**
    * Padrão inline com múltiplas alternativas na mesma linha
@@ -85,6 +99,17 @@ export class ExamPDFQuestionSplitter {
     /\b(?:GABARITO|RESPOSTA(?:\s+CORRETA)?)\s*[:\-–=]\s*([A-Ea-e])\b/i;
 
   /**
+   * Limpa caracteres invisíveis, form feeds e espaços múltiplos em uma única passagem
+   */
+  public static cleanText(text: string): string {
+    if (!text) return '';
+    return text
+      .replace(/[\u200B-\u200D\uFEFF\f]/g, ' ')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ')
+      .trim();
+  }
+
+  /**
    * Segmenta questões a partir do resultado de layout extraído do PDF.
    */
   public static splitFromLayout(layout: PDFLayoutResult): ExamSplitterResult {
@@ -96,14 +121,15 @@ export class ExamPDFQuestionSplitter {
    * Segmenta questões a partir de texto bruto corrido.
    */
   public static splitFromText(rawText: string): ExamSplitterResult {
+    const cleanedRaw = this.cleanText(rawText);
     const rawLines = rawText.split(/\r?\n/).map((line, idx) => ({
-      text: line.trim(),
+      text: this.cleanText(line),
       x: 0,
       y: idx,
       pageNumber: 1,
     })).filter((l) => l.text.length > 0);
 
-    return this.parseLines(rawLines, rawText);
+    return this.parseLines(rawLines, cleanedRaw);
   }
 
   /**
@@ -129,7 +155,7 @@ export class ExamPDFQuestionSplitter {
   /**
    * Reconstitui linhas de texto ordenadas geometricamente a partir das caixas delimitadoras.
    */
-  private static reconstituteLines(items: PDFLayoutItem[]): ReconstitutedLine[] {
+  public static reconstituteLines(items: PDFLayoutItem[]): ReconstitutedLine[] {
     if (!items || items.length === 0) return [];
 
     const lines: ReconstitutedLine[] = [];
@@ -148,7 +174,7 @@ export class ExamPDFQuestionSplitter {
       const pageItems = itemsByPage.get(pageNumber)!;
       if (pageItems.length === 0) continue;
 
-      // Detecta se a página possui 2 colunas separadas por margem X
+      // Detecta se a página possui 2 colunas reais separadas por margem X
       const isTwoColumns = this.detectTwoColumns(pageItems);
 
       const processColumnItems = (colItems: PDFLayoutItem[]) => {
@@ -174,7 +200,21 @@ export class ExamPDFQuestionSplitter {
         for (const group of yGroups) {
           // Ordena itens da mesma linha da esquerda para a direita (X crescente)
           group.sort((a, b) => a.x - b.x);
-          const lineText = group.map((i) => i.str).join(' ').replace(/\s+/g, ' ').trim();
+          let lineStr = '';
+          for (let k = 0; k < group.length; k++) {
+            const item = group[k];
+            if (k > 0) {
+              const prev = group[k - 1];
+              const gap = item.x - prev.x;
+              if (gap > 25) {
+                lineStr += '   ';
+              } else {
+                lineStr += ' ';
+              }
+            }
+            lineStr += item.str;
+          }
+          const lineText = this.cleanText(lineStr);
           if (lineText) {
             lines.push({
               text: lineText,
@@ -201,7 +241,7 @@ export class ExamPDFQuestionSplitter {
   }
 
   private static detectTwoColumns(items: PDFLayoutItem[]): { midX: number } | null {
-    if (items.length < 20) return null;
+    if (items.length < 30) return null;
     const xCoords = items.map((i) => i.x).sort((a, b) => a - b);
     const minX = xCoords[0];
     const maxX = xCoords[xCoords.length - 1];
@@ -210,15 +250,19 @@ export class ExamPDFQuestionSplitter {
     if (width < 300) return null; // Página estreita / coluna única
 
     const midX = minX + width / 2;
-    const leftCount = items.filter((i) => i.x < midX - 30).length;
-    const rightCount = items.filter((i) => i.x > midX + 30).length;
-    const centerCount = items.filter((i) => Math.abs(i.x - midX) <= 30).length;
+    const leftItems = items.filter((i) => i.x < midX - 30);
+    const rightItems = items.filter((i) => i.x > midX + 30);
+    const centerItems = items.filter((i) => Math.abs(i.x - midX) <= 30);
 
-    if (leftCount > 10 && rightCount > 10 && centerCount < (leftCount + rightCount) * 0.15) {
-      return { midX };
-    }
+    const leftCount = leftItems.length;
+    const rightCount = rightItems.length;
+    const total = leftCount + rightCount;
 
-    return null;
+    if (leftCount < 20 || rightCount < 20) return null;
+    if (Math.min(leftCount, rightCount) / Math.max(leftCount, rightCount) < 0.35) return null;
+    if (centerItems.length > total * 0.2) return null;
+
+    return { midX };
   }
 
   /**
@@ -232,7 +276,8 @@ export class ExamPDFQuestionSplitter {
     let answerKeyFound = false;
 
     // Combine rawText and reconstituted lines
-    const fullContent = (rawText + '\n' + lines.map((l) => l.text).join('\n')).trim();
+    const cleanedRawText = this.cleanText(rawText);
+    const fullContent = (cleanedRawText + '\n' + lines.map((l) => l.text).join('\n')).trim();
 
     // 1. Procura por bloco de gabarito explícito
     const gabaritoMatch = fullContent.match(this.GABARITO_HEADER_REGEX);
@@ -278,6 +323,7 @@ export class ExamPDFQuestionSplitter {
     interface DraftQuestion {
       questionNumber: number;
       statementParts: string[];
+      topicTags?: string[];
       options: ExtractedOption[];
       correctLetter?: string;
       pageNumber: number;
@@ -310,6 +356,7 @@ export class ExamPDFQuestionSplitter {
         pageNumber: currentQ.pageNumber,
         confidence,
         warning,
+        topicTags: currentQ.topicTags,
       });
 
       currentQ = null;
@@ -317,7 +364,7 @@ export class ExamPDFQuestionSplitter {
 
     for (let i = 0; i < lines.length; i++) {
       const lineObj = lines[i];
-      const text = lineObj.text.trim();
+      const text = this.cleanText(lineObj.text);
       if (!text) continue;
 
       // Ignora rodapés / cabeçalhos repetitivos conhecidos
@@ -329,9 +376,24 @@ export class ExamPDFQuestionSplitter {
         finalizeCurrentQuestion();
         expectedNextNumber = qStart.questionNumber + 1;
 
+        // Detecção de tags de assunto no cabeçalho (ex: "Questão 1   Classificação de risco   Infectologia")
+        let topicTags: string[] | undefined = undefined;
+        let statementStart = '';
+        if (qStart.statementRemainder) {
+          const rem = qStart.statementRemainder.trim();
+          if (qStart.isExplicit && !text.includes(':') && !text.includes('-') && rem.length < 120 && /\s{2,}|\t/.test(rem)) {
+            topicTags = rem.split(/\s{2,}|\t/).map((s) => s.trim()).filter(Boolean);
+          } else if (qStart.isExplicit && !text.includes(':') && !text.includes('-') && rem.length < 50 && !rem.endsWith('.') && !rem.endsWith('?')) {
+            topicTags = [rem];
+          } else {
+            statementStart = rem;
+          }
+        }
+
         currentQ = {
           questionNumber: qStart.questionNumber,
-          statementParts: qStart.statementRemainder ? [qStart.statementRemainder] : [],
+          statementParts: statementStart ? [statementStart] : [],
+          topicTags,
           options: [],
           correctLetter: undefined,
           pageNumber: lineObj.pageNumber,
@@ -372,17 +434,45 @@ export class ExamPDFQuestionSplitter {
         continue;
       }
 
-      // 4. Testa se a linha começa com uma alternativa única (A-E)
-      const optMatch = text.match(this.OPTION_START_REGEX);
-      if (optMatch) {
-        const letter = optMatch[1].toUpperCase();
-        const optionText = optMatch[2].trim();
-        currentQ.options.push({ letter, text: optionText });
+      // 4. Testa alternativa com delimitador explícito: a), A), (A), A., A-, etc.
+      const optDelimMatch = text.match(this.OPTION_DELIM_REGEX);
+      if (optDelimMatch) {
+        const letter = (optDelimMatch[1] || optDelimMatch[2]).toUpperCase();
+        const optText = (optDelimMatch[3] || '').trim();
+        const expectedLetter = String.fromCharCode('A'.charCodeAt(0) + currentQ.options.length);
+
+        if (letter === expectedLetter || (currentQ.options.length === 0 && letter === 'A') || currentQ.options.length > 0) {
+          currentQ.options.push({ letter, text: optText });
+          currentQ.currentOptionLetter = letter;
+          continue;
+        }
+      }
+
+      // 5. Testa alternativa estilo checkbox: ( ) ..., [ ] ...
+      const optCheckboxMatch = text.match(this.OPTION_CHECKBOX_REGEX);
+      if (optCheckboxMatch && currentQ.options.length < 5) {
+        const letter = String.fromCharCode('A'.charCodeAt(0) + currentQ.options.length);
+        const optText = optCheckboxMatch[1].trim();
+        currentQ.options.push({ letter, text: optText });
         currentQ.currentOptionLetter = letter;
         continue;
       }
 
-      // 5. Se já estamos dentro das opções, concatena na última opção ativa
+      // 6. Testa alternativa sem delimitador: A ..., B ..., C ... (apenas maiúsculas A-E no contexto de uma questão)
+      const optNoDelimMatch = text.match(this.OPTION_NO_DELIM_REGEX);
+      if (optNoDelimMatch) {
+        const letter = optNoDelimMatch[1].toUpperCase();
+        const optText = optNoDelimMatch[2].trim();
+        const expectedLetter = String.fromCharCode('A'.charCodeAt(0) + currentQ.options.length);
+
+        if (letter === expectedLetter && (currentQ.statementParts.length > 0 || currentQ.options.length > 0)) {
+          currentQ.options.push({ letter, text: optText });
+          currentQ.currentOptionLetter = letter;
+          continue;
+        }
+      }
+
+      // 7. Se já estamos dentro das opções, concatena na última opção ativa (continuação multiline)
       if (currentQ.currentOptionLetter && currentQ.options.length > 0) {
         const lastOpt = currentQ.options[currentQ.options.length - 1];
         lastOpt.text += ' ' + text;
@@ -465,13 +555,13 @@ export class ExamPDFQuestionSplitter {
     text: string,
     expectedNumber: number,
     currentOptionsCount: number
-  ): { questionNumber: number; statementRemainder: string } | null {
+  ): { questionNumber: number; statementRemainder: string; isExplicit: boolean } | null {
     // Padrão explícito: QUESTÃO X
     const qMatch = text.match(this.QUESTION_START_REGEX);
     if (qMatch) {
       const qNum = parseInt(qMatch[1], 10);
       if (qNum > 0 && qNum <= 300) {
-        return { questionNumber: qNum, statementRemainder: qMatch[2] || '' };
+        return { questionNumber: qNum, statementRemainder: qMatch[2] || '', isExplicit: true };
       }
     }
 
@@ -486,7 +576,7 @@ export class ExamPDFQuestionSplitter {
         qNum > 0 &&
         qNum <= 300
       ) {
-        return { questionNumber: qNum, statementRemainder: numMatch[2] || '' };
+        return { questionNumber: qNum, statementRemainder: numMatch[2] || '', isExplicit: false };
       }
     }
 
@@ -533,11 +623,17 @@ export class ExamPDFQuestionSplitter {
   private static isHeaderFooterLine(text: string): boolean {
     const lower = text.toLowerCase();
     return (
-      lower.includes('página') && /\d+\s*(de|\/)\s*\d+/.test(lower) ||
+      (lower.includes('página') && /\d+\s*(de|\/)\s*\d+/.test(lower)) ||
       lower.startsWith('processo seletivo') ||
       lower.startsWith('concurso público') ||
       lower.startsWith('folha de prova') ||
       lower.includes('todos os direitos reservados') ||
+      lower.includes('t.me/medicinalivre') ||
+      lower.includes('essa questão possui comentário') ||
+      lower.includes('essa questão po ssui') ||
+      lower.includes('cessar lista') ||
+      /^\d+\s+\d{6,}$/.test(text) ||
+      /^\d{7,}$/.test(text) ||
       /^-\s*\d+\s*-$/.test(text)
     );
   }

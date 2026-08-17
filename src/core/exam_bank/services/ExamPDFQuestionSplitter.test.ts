@@ -171,4 +171,74 @@ GABARITO: A
     expect(result.questions[0].correctLetter).toBe('A');
     expect(result.questions[0].confidence).toBe('high');
   });
+
+  it('deve reconhecer alternativas sem delimitador (LETRA + espacos + texto) e separar tags de assunto do enunciado', () => {
+    const uspFormatText = `
+Questão 1      Profilaxia Antibiótica
+Homem, 62 anos, com diagnóstico de cirrose hepática por álcool, chegou ao pronto socorro referindo hematêmese.
+A     Vitamina K.
+B     Norfloxacina.
+C     Furosemida.
+D     Omeprazol.
+
+Questão 2      Classificação de risco   Infectologia
+Com relação à dengue grave, assinale a alternativa correta:
+A     diferentemente de outras doenças, a gravidade não está relacionada a fatores de risco individuais.
+B     a imunidade adquirida é permanente apenas para o primeiro sorotipo após a infecção.
+C     a maioria dos pacientes apresenta formas graves hemorrágicas.
+D     o período de viremia se inicia um dia antes da febre.
+`;
+
+    const result = ExamPDFQuestionSplitter.splitFromText(uspFormatText);
+
+    expect(result.totalQuestions).toBe(2);
+    expect(result.highConfidenceCount).toBe(2);
+    expect(result.success).toBe(true);
+
+    const q1 = result.questions[0];
+    expect(q1.questionNumber).toBe(1);
+    expect(q1.topicTags).toEqual(['Profilaxia Antibiótica']);
+    expect(q1.statement).toContain('Homem, 62 anos, com diagnóstico de cirrose hepática');
+    expect(q1.statement).not.toContain('Profilaxia Antibiótica');
+    expect(q1.options).toHaveLength(4);
+    expect(q1.options[0].letter).toBe('A');
+    expect(q1.options[0].text).toBe('Vitamina K.');
+    expect(q1.options[1].letter).toBe('B');
+    expect(q1.options[1].text).toBe('Norfloxacina.');
+    expect(q1.options[2].letter).toBe('C');
+    expect(q1.options[2].text).toBe('Furosemida.');
+    expect(q1.options[3].letter).toBe('D');
+    expect(q1.options[3].text).toBe('Omeprazol.');
+    expect(q1.confidence).toBe('high');
+
+    const q2 = result.questions[1];
+    expect(q2.questionNumber).toBe(2);
+    expect(q2.topicTags).toEqual(['Classificação de risco', 'Infectologia']);
+    expect(q2.statement).toContain('Com relação à dengue grave');
+    expect(q2.options).toHaveLength(4);
+    expect(q2.confidence).toBe('high');
+  });
+
+  it('deve normalizar zero-width space (U+200B) e form feed (\\f) sem quebrar o parsing de alternativas', () => {
+    const dirtyText = `
+Questão 1: Procedimento de emergência para vias aéreas em obstrução alta:
+a)\u200b     Cartilagem tireoide
+b)\u200b     Cartilagem cricóide
+\fc)\u200b     Membrana cricotireoide
+d)\u200b     Membrana tireo-hioide
+e)\u200b     Cartilagem traqueal
+`;
+
+    const result = ExamPDFQuestionSplitter.splitFromText(dirtyText);
+
+    expect(result.totalQuestions).toBe(1);
+    expect(result.highConfidenceCount).toBe(1);
+    const q1 = result.questions[0];
+    expect(q1.options).toHaveLength(5);
+    expect(q1.options[0].letter).toBe('A');
+    expect(q1.options[0].text).toBe('Cartilagem tireoide');
+    expect(q1.options[2].letter).toBe('C');
+    expect(q1.options[2].text).toBe('Membrana cricotireoide');
+    expect(q1.confidence).toBe('high');
+  });
 });
