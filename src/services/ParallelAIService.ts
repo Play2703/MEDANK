@@ -189,16 +189,27 @@ export class ParallelAIService {
 
   /**
    * Executa a validação local determinística com base no DictionaryNEREngine.
-   * Não realiza chamadas de rede externas e roda em <5ms.
+   * OTIMIZAÇÃO: Combina todos os itens do lote numa única string com delimitador
+   * não-ambíguo, executando extractEntities() UMA ÚNICA VEZ por lote em vez de N
+   * chamadas síncronas bloqueantes ao SQLite.
    */
   public runLocalValidation(data: any, context = "generic"): LocalValidationResult {
     const rawItems: any[] = Array.isArray(data)
       ? data
       : data?.cards || data?.questions || (data?.content ? [data] : [data]);
 
-    const validatedItems: LocalValidationItem[] = [];
-    const allUnrecognized: Set<string> = new Set();
-    let totalRecognized = 0;
+    interface ItemSpanMeta {
+      index: number;
+      itemType: "card" | "question" | "general";
+      startOffset: number;
+      endOffset: number;
+      wordsCount: number;
+    }
+
+    const ITEM_BOUNDARY = "\n\n===MEDANKI_ITEM_BOUNDARY===\n\n";
+    const itemMetas: ItemSpanMeta[] = [];
+    const parts: string[] = [];
+    let currentOffset = 0;
 
     rawItems.forEach((item, index) => {
       if (!item || typeof item !== "object") return;
@@ -228,45 +239,91 @@ export class ParallelAIService {
         textToScan = JSON.stringify(item);
       }
 
-      let matches: MatchedEntity[] = [];
-      try {
-        matches = dictionaryNEREngine.extractEntities(textToScan);
-      } catch (err) {
-        // Degradação graciosa em caso de indisponibilidade de banco
-        matches = [];
+      const words = textToScan.split(/\s+/).filter((w) => w.length > 2);
+
+      if (parts.length > 0) {
+        parts.push(ITEM_BOUNDARY);
+        currentOffset += ITEM_BOUNDARY.length;
       }
 
-      const recognizedEntities: RecognizedMedicalEntity[] = matches.map((m) => ({
-        term: m.text,
-        canonicalTerm: m.normalizedTerm,
-        category: m.category,
-        codeSystem: m.codeSystem,
-        code: m.code,
-      }));
+      const startOffset = currentOffset;
+      parts.push(textToScan);
+      currentOffset += textToScan.length;
+      const endOffset = currentOffset;
 
+      itemMetas.push({
+        index,
+        itemType: isQuestion ? "question" : isCard ? "card" : "general",
+        startOffset,
+        endOffset,
+        wordsCount: words.length,
+      });
+    });
+
+    const combinedText = parts.join("");
+    const validatedItems: LocalValidationItem[] = [];
+    const allUnrecognized: Set<string> = new Set();
+    let totalRecognized = 0;
+
+    if (itemMetas.length === 0 || !combinedText.trim()) {
+      return {
+        engine: "DictionaryNEREngine (Local SQLite / DeCS & CID-10)",
+        validatedAt: new Date().toISOString(),
+        totalItems: 0,
+        overallConfidence: 0.85,
+        totalRecognizedEntities: 0,
+        items: [],
+        unrecognizedTermsSummary: [],
+      };
+    }
+
+    // ══ EXECUÇÃO ÚNICA DO NER PARA O LOTE INTEIRO ══
+    let allMatches: MatchedEntity[] = [];
+    try {
+      allMatches = dictionaryNEREngine.extractEntities(combinedText);
+    } catch (err) {
+      allMatches = [];
+    }
+
+    const itemRecognized: RecognizedMedicalEntity[][] = itemMetas.map(() => []);
+
+    for (const m of allMatches) {
+      const targetMetaIdx = itemMetas.findIndex(
+        (meta) => m.startIndex >= meta.startOffset && m.endIndex <= meta.endOffset
+      );
+      if (targetMetaIdx !== -1) {
+        itemRecognized[targetMetaIdx].push({
+          term: m.text,
+          canonicalTerm: m.normalizedTerm,
+          category: m.category,
+          codeSystem: m.codeSystem,
+          code: m.code,
+        });
+      }
+    }
+
+    itemMetas.forEach((meta, idx) => {
+      const recognizedEntities = itemRecognized[idx];
       totalRecognized += recognizedEntities.length;
-
-      // Estima a contagem aproximada de palavras
-      const words = textToScan.split(/\s+/).filter((w) => w.length > 2);
+      const wordsCount = meta.wordsCount;
       const recognizedCount = recognizedEntities.length;
-      
-      // Cálculo de ancoragem: densidade de termos médicos conhecidos
+
       let anchoringConfidence = 0.5;
-      if (words.length > 0) {
-        const density = recognizedCount / (words.length / 10);
+      if (wordsCount > 0) {
+        const density = recognizedCount / (wordsCount / 10);
         anchoringConfidence = Math.min(1.0, Math.max(0.2, Number((density * 0.5 + 0.3).toFixed(2))));
       }
 
       let status: "well_anchored" | "moderate" | "low_anchoring" = "moderate";
       if (recognizedCount >= 2 || anchoringConfidence >= 0.7) {
         status = "well_anchored";
-      } else if (recognizedCount === 0 && words.length > 10) {
+      } else if (recognizedCount === 0 && wordsCount > 10) {
         status = "low_anchoring";
       }
 
       validatedItems.push({
-        index,
-        itemType: isQuestion ? "question" : isCard ? "card" : "general",
+        index: meta.index,
+        itemType: meta.itemType,
         recognizedEntities,
         anchoringConfidence,
         status,
@@ -342,6 +399,7 @@ export class ParallelAIService {
             promptTokenCount: r.usageMetadata.promptTokenCount || 0,
             candidatesTokenCount: r.usageMetadata.candidatesTokenCount || 0,
             totalTokenCount: r.usageMetadata.totalTokenCount || 0,
+            cachedContentTokenCount: (r.usageMetadata as any).cachedContentTokenCount || 0,
           })
         );
       }

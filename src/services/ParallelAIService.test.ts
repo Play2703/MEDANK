@@ -135,4 +135,76 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
 
     mockRouter.mockRestore();
   });
+
+  describe('TAREFA 1 & 4 — Validação em Lote Unificado (Opção A)', () => {
+    it('deve extrair e segregar entidades para cada item do lote sem cruzamento indevido', () => {
+      const batchData = [
+        {
+          statement: 'Paciente com infarto agudo do miocárdio e dor torácica típica.',
+          options: [{ text: 'Ácido acetilsalicílico' }, { text: 'Placebo' }],
+          commentary: { correta: 'AAS é antiagregante plaquetário inicial no IAM.' },
+        },
+        {
+          statement: 'Paciente portador de diabetes mellitus tipo 2 em uso de metformina.',
+          options: [{ text: 'Glicemia normal' }, { text: 'Insulina' }],
+          commentary: { correta: 'Metformina é primeira linha no DM2.' },
+        },
+        {
+          statement: 'Quadro de pneumonia adquirida na comunidade com febre alta e dispneia.',
+          options: [{ text: 'Amoxicilina com clavulanato' }],
+          commentary: 'Antibioticoterapia para PAC.',
+        },
+      ];
+
+      const validation = service.runLocalValidation(batchData, 'test-batch');
+
+      expect(validation).toBeDefined();
+      expect(validation.totalItems).toBe(3);
+      expect(validation.items.length).toBe(3);
+
+      // Item 0 deve conter apenas termos de IAM / cardio
+      const item0Terms = validation.items[0].recognizedEntities.map((e) => e.canonicalTerm.toLowerCase());
+      expect(item0Terms.some((t) => t.includes('infarto') || t.includes('miocárdio'))).toBe(true);
+      expect(item0Terms.some((t) => t.includes('metformina') || t.includes('pneumonia'))).toBe(false);
+
+      // Item 1 deve conter apenas termos de DM2 / endócrino
+      const item1Terms = validation.items[1].recognizedEntities.map((e) => e.canonicalTerm.toLowerCase());
+      expect(item1Terms.some((t) => t.includes('diabetes') || t.includes('metformina'))).toBe(true);
+      expect(item1Terms.some((t) => t.includes('infarto') || t.includes('pneumonia'))).toBe(false);
+
+      // Item 2 deve conter apenas termos de PAC / respiratório
+      const item2Terms = validation.items[2].recognizedEntities.map((e) => e.canonicalTerm.toLowerCase());
+      expect(item2Terms.some((t) => t.includes('pneumonia') || t.includes('febre') || t.includes('dispneia'))).toBe(true);
+      expect(item2Terms.some((t) => t.includes('metformina') || t.includes('infarto'))).toBe(false);
+    });
+
+    it('TAREFA 2: deve registrar cachedContentTokenCount no log de TokenUsage', async () => {
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+      mockGenerateContent.mockResolvedValue({
+        text: JSON.stringify([{ front: 'Pergunta', back: 'Resposta' }]),
+        usageMetadata: {
+          promptTokenCount: 150,
+          candidatesTokenCount: 50,
+          totalTokenCount: 200,
+          cachedContentTokenCount: 100,
+        },
+      });
+
+      await service.executeParallel('prompt', undefined, {
+        temperature: 0.2,
+        context: 'test-cached-tokens',
+      });
+
+      const tokenLogCall = debugSpy.mock.calls.find((call) => call[0] === '[TokenUsage]');
+      expect(tokenLogCall).toBeDefined();
+      const parsedLog = JSON.parse(tokenLogCall![1]);
+      expect(parsedLog.cachedContentTokenCount).toBe(100);
+      expect(parsedLog.promptTokenCount).toBe(150);
+      expect(parsedLog.candidatesTokenCount).toBe(50);
+      expect(parsedLog.totalTokenCount).toBe(200);
+
+      debugSpy.mockRestore();
+    });
+  });
 });
