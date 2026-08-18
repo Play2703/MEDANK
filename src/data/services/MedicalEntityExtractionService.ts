@@ -73,7 +73,11 @@ export class MedicalEntityExtractionService {
    * Em ambiente nativo/offline ou caso o fetch falhe, usa o NERWorkerClient localmente como fallback transparente.
    * Em seguida, normaliza, atualiza o índice canônico e as arestas do grafo, persistindo no Dexie IndexedDB.
    */
-  async extractAndSaveEntities(assetId: string, chunks: string[]): Promise<number> {
+  async extractAndSaveEntities(
+    assetId: string,
+    chunks: string[],
+    options?: { wasOCRProcessed?: boolean }
+  ): Promise<number> {
     if (!assetId || !chunks || chunks.length === 0) return 0;
 
     const BATCH_SIZE = 15;
@@ -107,7 +111,12 @@ export class MedicalEntityExtractionService {
           const res = await fetch(apiUrl('/api/extract-entities'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chunks: batchPayload }),
+            body: JSON.stringify({
+              chunks: batchPayload,
+              options: {
+                enableFuzzyGapRecovery: Boolean(options?.wasOCRProcessed),
+              },
+            }),
           });
 
           if (res.ok) {

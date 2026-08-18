@@ -26,6 +26,7 @@ import {
   DictionaryNEREngine,
   MatchedEntity,
   ExtractedRelation,
+  ExtractEntitiesOptions,
 } from './DictionaryNEREngine';
 import { parseJsonLoose, LIGHT_AI_MODEL } from '../config/aiGateway';
 
@@ -267,9 +268,9 @@ export class HybridNEREngine {
     return this.localEngine.warmup();
   }
 
-  async extractEntities(text: string): Promise<MatchedEntity[]> {
+  async extractEntities(text: string, options?: ExtractEntitiesOptions): Promise<MatchedEntity[]> {
 
-    const local = this.localEngine.extractEntities(text);
+    const local = this.localEngine.extractEntities(text, options);
     let ai: AiNerEntity[] = [];
     try {
       ai = await this.provider.extractEntities(text);

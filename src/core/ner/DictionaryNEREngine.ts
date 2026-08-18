@@ -475,6 +475,11 @@ function tokenize(text: string): Token[] {
   return tokens;
 }
 
+export interface ExtractEntitiesOptions {
+  enableFuzzyGapRecovery?: boolean;
+  maxFuzzyCandidates?: number;
+}
+
 export class DictionaryNEREngine {
   private isWarmedUp = false;
   private automaton: AhoCorasick<DictionaryPayload> | null = null;
@@ -706,9 +711,11 @@ export class DictionaryNEREngine {
   /**
    * Extração de entidades médicas:
    * 1. Caminho normal (Produção): Autômato Aho-Corasick binário compacto 100% em memória em O(N + M) (Zero SQLite).
-   * 2. Modo de segurança: Fallback SQLite L1/L2 se o autômato binário não estiver carregado.
+   * 2. Segunda passada Fuzzy Gap Recovery (Opcional): Se enableFuzzyGapRecovery = true (ex: OCR),
+   *    avalia apenas os tokens não cobertos (buracos) via Levenshtein com orçamento limitado.
+   * 3. Modo de segurança: Fallback SQLite L1/L2 se o autômato binário não estiver carregado.
    */
-  extractEntities(text: string): MatchedEntity[] {
+  extractEntities(text: string, options?: ExtractEntitiesOptions): MatchedEntity[] {
     if (!text || typeof text !== 'string' || !text.trim()) {
       return [];
     }
@@ -730,12 +737,82 @@ export class DictionaryNEREngine {
 
     if (compactAhoCorasickEngine.isLoaded) {
       const matches = compactAhoCorasickEngine.extractEntities(text);
+
+      // Se fuzzy gap recovery NÃO estiver ativo (padrão em documentos de texto direto), retorna imediatamente (Zero SQLite)
+      if (!options?.enableFuzzyGapRecovery) {
+        if (typeof console !== 'undefined' && console.debug) {
+          console.debug(
+            `[DictionaryNEREngine] extractEntities telemetria: ${matches.length} entidades extraídas via Autômato Binário (Zero SQLite) para texto de ${text.length} caracteres.`
+          );
+        }
+        return matches;
+      }
+
+      // ══ SEGUNDA PASSADA: Fuzzy Gap Recovery (apenas para documentos OCR / com erros de digitação) ══
+      const tokens = tokenize(text);
+      if (tokens.length === 0) return matches;
+
+      // 1. Identificar os "buracos" (tokens que não fazem parte de nenhuma entidade já reconhecida)
+      const candidateTokens: Token[] = [];
+      for (const tok of tokens) {
+        // Verifica se o token colide com algum match do autômato
+        const overlaps = matches.some(
+          (m) => !(tok.endIndex <= m.startIndex || tok.startIndex >= m.endIndex)
+        );
+        if (overlaps) continue;
+
+        const norm = normalizeText(tok.text);
+        // Filtrar palavras curtas (< 5 caracteres) ou stopwords comuns
+        if (norm.length >= 5 && !COMMON_STOP_WORDS.has(norm)) {
+          if (/[a-z]/i.test(norm)) {
+            candidateTokens.push(tok);
+          }
+        }
+      }
+
+      const MAX_FUZZY_GAP_CANDIDATES = options?.maxFuzzyCandidates ?? 30;
+      let evaluatedTokens = candidateTokens;
+      if (candidateTokens.length > MAX_FUZZY_GAP_CANDIDATES) {
+        if (typeof console !== 'undefined' && console.debug) {
+          console.debug(
+            `[DictionaryNEREngine] ⚠️ Limite de candidatos fuzzy excedido (${candidateTokens.length} > ${MAX_FUZZY_GAP_CANDIDATES}). Priorizando as ${MAX_FUZZY_GAP_CANDIDATES} palavras mais longas...`
+          );
+        }
+        // Prioriza palavras mais longas (termos técnicos mais específicos)
+        evaluatedTokens = [...candidateTokens]
+          .sort((a, b) => b.text.length - a.text.length)
+          .slice(0, MAX_FUZZY_GAP_CANDIDATES);
+      }
+
+      const fuzzyMatches: MatchedEntity[] = [];
+      for (const tok of evaluatedTokens) {
+        const row = lookupTerm(tok.text, true);
+        if (row) {
+          fuzzyMatches.push({
+            text: tok.text,
+            normalizedTerm: row.canonical_term || tok.text,
+            category: row.category || 'DOENCA',
+            startIndex: tok.startIndex,
+            endIndex: tok.endIndex,
+            codeSystem: row.system ?? null,
+            code: row.code ?? null,
+          });
+        }
+      }
+
       if (typeof console !== 'undefined' && console.debug) {
         console.debug(
-          `[DictionaryNEREngine] extractEntities telemetria: ${matches.length} entidades extraídas via Autômato Binário (Zero SQLite) para texto de ${text.length} caracteres.`
+          `[DictionaryNEREngine] extractEntities telemetria (OCR Gap Recovery): ${matches.length} binários, ${evaluatedTokens.length} gaps avaliados, ${fuzzyMatches.length} recuperados via fuzzy SQLite para texto de ${text.length} caracteres.`
         );
       }
-      return matches;
+
+      if (fuzzyMatches.length === 0) {
+        return matches;
+      }
+
+      // Combina os matches e ordena por posição inicial
+      const allMatches = [...matches, ...fuzzyMatches].sort((a, b) => a.startIndex - b.startIndex);
+      return allMatches;
     }
 
     // ══ 2. MODO DE SEGURANÇA: Fallback SQLite L1 + L2 ══

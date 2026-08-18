@@ -22,14 +22,17 @@ export class DocumentImportService {
     try {
       onProgress(item.id, 10, 'reading');
       
-      const extractedText = await this.parserService.parseDocument(item.file, (p) => {
+      const { text: extractedText, wasOCRProcessed } = await this.parserService.parseDocumentDetailed(item.file, (p) => {
         onProgress(item.id, Math.min(60, 10 + Math.round(p * 0.5)), 'reading');
       });
 
-      // Real Semantic Indexing via Gemini API + Dexie (with optional banca/professor metadata)
+      // Real Semantic Indexing via Gemini API + Dexie (with optional banca/professor metadata and OCR flag)
       onProgress(item.id, 70, 'reading');
       try {
-        await realSemanticSearchService.indexDocument(item.id, extractedText, metadata);
+        await realSemanticSearchService.indexDocument(item.id, extractedText, {
+          ...metadata,
+          wasOCRProcessed,
+        });
       } catch (embErr) {
         console.warn(`[DocumentImportService] Embeddings call skipped or failed for file ${item.name}:`, embErr);
       }

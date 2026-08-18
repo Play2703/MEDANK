@@ -286,10 +286,16 @@ async function startServer() {
       // Garante que o motor terminológico esteja pronto antes do processamento
       await hybridNEREngine.warmup();
 
+      const enableFuzzyGapRecovery = Boolean(
+        req.body?.options?.enableFuzzyGapRecovery || req.body?.enableFuzzyGapRecovery
+      );
+
       const results = await Promise.all(
         chunks.map(async (item: any) => {
           const text = item.text || '';
-          const matchedEntities = await hybridNEREngine.extractEntities(text);
+          const matchedEntities = await hybridNEREngine.extractEntities(text, {
+            enableFuzzyGapRecovery,
+          });
 
           const extractedRelations = hybridNEREngine.extractRelations(text, matchedEntities);
 

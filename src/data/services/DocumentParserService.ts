@@ -1,25 +1,36 @@
 import { OCRService } from './OCRService';
 import { DocumentReaderService } from '../../core/import_engine/services/DocumentReaderService';
 
+export interface ParsedDocumentResult {
+  text: string;
+  wasOCRProcessed: boolean;
+}
+
 export class DocumentParserService {
   private ocrService = new OCRService();
   private readerService = new DocumentReaderService();
 
-  public async parseDocument(file: File, onProgress?: (percent: number) => void): Promise<string> {
+  public async parseDocumentDetailed(file: File, onProgress?: (percent: number) => void): Promise<ParsedDocumentResult> {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
 
     if (['jpg', 'jpeg', 'png', 'webp', 'heic'].includes(ext) || file.type.startsWith('image/')) {
       if (onProgress) onProgress(40);
       const ocrText = await this.ocrService.performOCR(file, onProgress);
       if (onProgress) onProgress(100);
-      return this.cleanExtractedText(ocrText);
+      return {
+        text: this.cleanExtractedText(ocrText),
+        wasOCRProcessed: true,
+      };
     }
 
     if (['txt', 'md', 'markdown'].includes(ext)) {
       if (onProgress) onProgress(50);
       const rawText = await this.readAsText(file);
       if (onProgress) onProgress(100);
-      return this.cleanExtractedText(rawText);
+      return {
+        text: this.cleanExtractedText(rawText),
+        wasOCRProcessed: false,
+      };
     }
 
     // For PDF, DOCX, PPTX files, try local text extraction via DocumentReaderService first
@@ -29,7 +40,10 @@ export class DocumentParserService {
         const content = await this.readerService.readContent(file);
         if (content.rawText && this.isLikelyValidExtractedText(content.rawText)) {
           if (onProgress) onProgress(100);
-          return this.cleanExtractedText(content.rawText);
+          return {
+            text: this.cleanExtractedText(content.rawText),
+            wasOCRProcessed: false,
+          };
         }
       } catch (err) {
         console.warn('[DocumentParserService] Extração local falhou, caindo para OCR via Gemini:', err);
@@ -40,12 +54,23 @@ export class DocumentParserService {
       if (onProgress) onProgress(30);
       const ocrResult = await this.ocrService.performOCR(file, onProgress);
       if (onProgress) onProgress(100);
-      return this.cleanExtractedText(ocrResult);
+      return {
+        text: this.cleanExtractedText(ocrResult),
+        wasOCRProcessed: true,
+      };
     }
 
     // Default text reader fallback
     const rawText = await this.readAsText(file);
-    return this.cleanExtractedText(rawText);
+    return {
+      text: this.cleanExtractedText(rawText),
+      wasOCRProcessed: false,
+    };
+  }
+
+  public async parseDocument(file: File, onProgress?: (percent: number) => void): Promise<string> {
+    const res = await this.parseDocumentDetailed(file, onProgress);
+    return res.text;
   }
 
   /**

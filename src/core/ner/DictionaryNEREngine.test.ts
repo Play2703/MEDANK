@@ -330,6 +330,33 @@ describe('DictionaryNEREngine', () => {
       expect(cefaMatch?.canonical_term).toBe('cefaleia');
     });
 
+    it('deve recuperar termos corrompidos por OCR quando enableFuzzyGapRecovery = true, e ignorar quando = false', () => {
+      const ocrCorruptedText = 'Paciente com quadro de pneunomia bacteriana apresentando cefaleya intensa.';
+
+      // Modo Padrão (Texto Direto / Zero SQLite): Não recupera typos grosseiros, preserva velocidade máxima
+      const fastMatches = dictionaryNEREngine.extractEntities(ocrCorruptedText, { enableFuzzyGapRecovery: false });
+      const fastTerms = fastMatches.map((e) => e.normalizedTerm);
+      expect(fastTerms).not.toContain('pneumonia');
+      expect(fastTerms).not.toContain('cefaleia');
+
+      // Modo OCR / Gap Recovery: Recupera as palavras corrompidas dos "buracos" não casados
+      const ocrMatches = dictionaryNEREngine.extractEntities(ocrCorruptedText, { enableFuzzyGapRecovery: true });
+      const ocrTerms = ocrMatches.map((e) => e.normalizedTerm);
+      expect(ocrTerms).toContain('pneumonia');
+      expect(ocrTerms).toContain('cefaleia');
+      expect(ocrMatches.find((e) => e.normalizedTerm === 'pneumonia')?.code).toBe('D011014');
+    });
+
+    it('deve respeitar o teto de maxFuzzyCandidates priorizando palavras mais longas', () => {
+      const longCorruptedText = 'Apresenta pneunomia e cefaleya com alopurinoll em avaliacao.';
+      const cappedMatches = dictionaryNEREngine.extractEntities(longCorruptedText, {
+        enableFuzzyGapRecovery: true,
+        maxFuzzyCandidates: 1, // Apenas a palavra mais longa deve ser avaliada
+      });
+
+      expect(cappedMatches.length).toBeGreaterThanOrEqual(1);
+    });
+
     it('deve associar corretamente códigos clínicos mesmo em matches com typo', () => {
       const match = dictionaryNEREngine.lookup('pneunomia');
       expect(match).toBeDefined();

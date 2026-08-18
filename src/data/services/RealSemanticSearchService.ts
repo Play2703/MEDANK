@@ -25,6 +25,7 @@ export interface IndexDocumentMetadata {
   examBoard?: string;
   professor?: string;
   onProgress?: (processed: number, total: number) => void;
+  wasOCRProcessed?: boolean;
 }
 
 export interface SemanticSearchFilter {
@@ -136,7 +137,9 @@ export class RealSemanticSearchService {
     const chunks = rawChunks.map(normalizeTextForEmbedding);
 
     // Trigger Medical Entity Extraction (NER) in parallel
-    const nerPromise = medicalEntityExtractionService.extractAndSaveEntities(assetId, chunks);
+    const nerPromise = medicalEntityExtractionService.extractAndSaveEntities(assetId, chunks, {
+      wasOCRProcessed: metadata?.wasOCRProcessed,
+    });
 
     // Low-power hardware mode check
     const hardwareConcurrency = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 4 : 4;
