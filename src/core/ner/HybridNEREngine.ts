@@ -27,7 +27,7 @@ import {
   MatchedEntity,
   ExtractedRelation,
 } from './DictionaryNEREngine';
-import { parseJsonLoose } from '../config/aiGateway';
+import { parseJsonLoose, LIGHT_AI_MODEL } from '../config/aiGateway';
 
 /** Entidade crua retornada por um provedor de IA. */
 export interface AiNerEntity {
@@ -121,7 +121,7 @@ export class GeminiAiNerProvider implements AiNerProvider {
       const { GoogleGenAI } = await import('@google/genai');
       const apiKey = process.env.GEMINI_API_KEY || (process.env.VITE_GEMINI_API_KEY as string);
       const ai = new GoogleGenAI({ apiKey });
-      const model = process.env.LIGHT_AI_MODEL || 'gemini-3.5-flash-lite';
+      const model = LIGHT_AI_MODEL;
 
       const response = await ai.models.generateContent({
         model,

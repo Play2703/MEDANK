@@ -127,9 +127,13 @@ export class DistractorEngine {
 
   /**
    * Fonte 2 (estática): dado o texto da resposta correta + specialty + topics,
-   * faz matching (normalizando acento/caixa) do `specialty` E/OU `context`
-   * contra CONFUSION_SETS, retorna os `members` dos sets que bateram, excluindo
-   * a própria resposta correta (comparação case-insensitive).
+   * faz matching contra CONFUSION_SETS.
+   *
+   * REGRA DE MATCHING:
+   * - isSpecialtyMatch sozinho NÃO inclui o set.
+   * - Um set só é selecionado se (isContextMatch === true) OU (isMemberMatch === true).
+   * - isSpecialtyMatch atua como pré-filtro para a checagem de contexto.
+   * - Se nenhum set bater, retorna array vazio (sem forçar candidatos estáticos irrelevantes).
    */
   getStaticCandidates(
     correctAnswerText: string,
@@ -138,28 +142,38 @@ export class DistractorEngine {
   ): DistractorCandidate[] {
     const normCorrect = normalizeStr(correctAnswerText || '');
     const normSpecialty = normalizeStr(specialty || '');
-    const normTopics = (topics || []).map((t) => normalizeStr(t));
+    const normTopics = (topics || [])
+      .map((t) => normalizeStr(t))
+      .filter((t) => t.length > 0);
 
     const matchedSets: ConfusionSet[] = [];
 
     for (const set of CONFUSION_SETS) {
       const normSetSpecialty = normalizeStr(set.specialty);
       const isSpecialtyMatch =
+        !normSpecialty ||
+        !normSetSpecialty ||
         normSetSpecialty === normSpecialty ||
         normSpecialty.includes(normSetSpecialty) ||
         normSetSpecialty.includes(normSpecialty);
-
-      const isContextMatch = set.context.some((ctx) => {
-        const normCtx = normalizeStr(ctx);
-        if (normSpecialty.includes(normCtx)) return true;
-        return normTopics.some((top) => top.includes(normCtx) || normCtx.includes(top));
-      });
 
       const isMemberMatch = normCorrect
         ? set.members.some((m) => normalizeStr(m) === normCorrect)
         : false;
 
-      if (isSpecialtyMatch || isContextMatch || isMemberMatch) {
+      const isContextMatch =
+        isSpecialtyMatch &&
+        normTopics.length > 0 &&
+        set.context.some((ctx) => {
+          const normCtx = normalizeStr(ctx);
+          if (!normCtx) return false;
+          return normTopics.some(
+            (top) => top.includes(normCtx) || normCtx.includes(top)
+          );
+        });
+
+      // Inclui o set APENAS se o contexto específico bater OU se a resposta for membro conhecido do set
+      if (isContextMatch || isMemberMatch) {
         matchedSets.push(set);
       }
     }

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import { db } from '../../db/database';
 import { distractorEngine } from './DistractorEngine';
-import { BASIC_CYCLE_SPECIALTIES, CLINICAL_CYCLE_SPECIALTIES } from '../../curriculumTopics';
+import { CONFUSION_SETS } from './confusionSets';
 
 describe('DistractorEngine - Graph & ConfusionSets Integration', () => {
   beforeEach(async () => {
@@ -91,67 +91,76 @@ describe('DistractorEngine - Graph & ConfusionSets Integration', () => {
     expect(candidateTexts).toContain('Captopril');
   });
 
-  it('deve usar fallback estático de forma transparente quando topicCanonicalKeys estiver vazio', async () => {
+  it('deve usar fallback estático quando o tópico casar com o contexto do ConfusionSet', async () => {
     const candidates = await distractorEngine.getCandidates({
       topicCanonicalKeys: [],
       specialty: 'Cardiologia',
-      topics: ['Insuficiência Cardíaca'],
+      topics: ['Hipertensão Arterial'],
       limit: 5,
     });
 
     expect(candidates).toBeDefined();
     expect(candidates.length).toBeGreaterThan(0);
     expect(candidates.every((c) => c.source === 'banco_estatico')).toBe(true);
+    const texts = candidates.map((c) => c.text);
+    expect(texts).toContain('Inibidor da ECA (IECA)');
+    expect(texts).toContain('Bloqueador do Receptor de Angiotensina (BRA)');
   });
 
-  it('deve retornar candidatos estáticos válidos para cada especialidade do Ciclo Básico', async () => {
-    for (const specialty of BASIC_CYCLE_SPECIALTIES) {
-      const candidates = await distractorEngine.getCandidates({
-        correctAnswerText: 'Exemplo de conceito',
-        specialty,
-        topics: [specialty],
-        limit: 5,
-      });
+  it('TAREFA 3: getStaticCandidates NÃO deve incluir Pré-carga/Pós-carga/Contratilidade para questão de Transporte de Gases / Efeito Bohr', () => {
+    const staticCandidates = distractorEngine.getStaticCandidates(
+      'Efeito Bohr',
+      'Fisiologia',
+      ['Transporte de Gases no Sangue', 'Fisiologia Respiratória']
+    );
 
-      expect(candidates).toBeDefined();
-      expect(candidates.length).toBeGreaterThan(0);
-    }
+    const texts = staticCandidates.map((c) => c.text);
+    expect(texts).not.toContain('Pré-carga');
+    expect(texts).not.toContain('Pós-carga');
+    expect(texts).not.toContain('Contratilidade');
+    expect(texts).not.toContain('Complacência Ventricular');
+    // Como não há confusion set específico para transporte de gases, deve retornar vazio
+    expect(staticCandidates).toEqual([]);
   });
 
-  it('deve retornar candidatos estáticos válidos para especialidades principais do Ciclo Clínico', async () => {
-    const targetClinical = [
-      'Clínica Médica',
-      'Cardiologia',
-      'Pneumologia',
-      'Gastroenterologia',
-      'Nefrologia',
-      'Endocrinologia',
-      'Hematologia',
-      'Reumatologia',
-      'Neurologia',
-      'Psiquiatria',
-      'Dermatologia',
-      'Oftalmologia',
-      'Otorrinolaringologia',
-      'Urologia',
-      'Cirurgia Geral',
-      'Ortopedia e Traumatologia',
-      'Ginecologia e Obstetrícia',
-      'Pediatria',
-      'Infectologia',
-      'Medicina de Família e Comunidade',
-    ];
+  it('deve incluir determinantes do débito cardíaco quando o contexto for de Débito Cardíaco / Ciclo Cardíaco', () => {
+    const staticCandidates = distractorEngine.getStaticCandidates(
+      'Fração de Ejeção',
+      'Fisiologia',
+      ['Débito Cardíaco e Hemodinâmica', 'Ciclo Cardíaco']
+    );
 
-    for (const specialty of targetClinical) {
-      const candidates = await distractorEngine.getCandidates({
-        correctAnswerText: 'Exemplo de conduta clínica',
-        specialty,
-        topics: [specialty],
-        limit: 5,
-      });
+    const texts = staticCandidates.map((c) => c.text);
+    expect(texts).toContain('Pré-carga');
+    expect(texts).toContain('Pós-carga');
+    expect(texts).toContain('Contratilidade');
+    expect(texts).toContain('Complacência Ventricular');
+  });
 
-      expect(candidates).toBeDefined();
-      expect(candidates.length).toBeGreaterThan(0);
+  it('deve incluir o ConfusionSet quando a resposta correta for um membro conhecido (isMemberMatch)', () => {
+    const staticCandidates = distractorEngine.getStaticCandidates(
+      'Pré-carga',
+      'Fisiologia',
+      ['Outro Tópico Geral']
+    );
+
+    const texts = staticCandidates.map((c) => c.text);
+    // Exclui a própria resposta correta ('Pré-carga')
+    expect(texts).not.toContain('Pré-carga');
+    // Inclui os outros membros do set
+    expect(texts).toContain('Pós-carga');
+    expect(texts).toContain('Contratilidade');
+    expect(texts).toContain('Complacência Ventricular');
+  });
+
+  it('deve validar que todos os CONFUSION_SETS possuem contextos específicos sem strings genéricas', () => {
+    for (const set of CONFUSION_SETS) {
+      expect(set.context.length).toBeGreaterThan(0);
+      for (const ctx of set.context) {
+        expect(ctx.trim().length).toBeGreaterThan(1);
+        // Não deve ser apenas a especialidade crua genérica
+        expect(['fisiologia', 'medicina', 'clinica', 'cirurgia']).not.toContain(ctx.toLowerCase().trim());
+      }
     }
   });
 });

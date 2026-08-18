@@ -150,7 +150,10 @@ export class NativeSQLiteService {
         }
         this.isInitialized = true;
       } catch (err) {
-        console.warn('[NativeSQLiteService] Native SQLite initialization failed, using high-speed in-memory store:', err);
+        console.error(
+          '[NativeSQLiteService] Erro crítico ao inicializar SQLite nativo (degradando para in-memory store):',
+          err
+        );
         this.initMemoryStore();
         this.isInitialized = true;
       }
@@ -162,100 +165,176 @@ export class NativeSQLiteService {
   private async createNativeTables(): Promise<void> {
     if (!this.dbConnection) return;
 
-    const schema = `
-      PRAGMA journal_mode = WAL;
-      PRAGMA synchronous = NORMAL;
-      PRAGMA foreign_keys = ON;
+    // 1. Configuração de PRAGMAs com tratamento isolado (WAL pode falhar em certas versões/plataformas iOS sem ser fatal)
+    try {
+      await this.dbConnection.execute('PRAGMA journal_mode = WAL;');
+    } catch (walErr) {
+      console.warn('[NativeSQLiteService] Falha ao habilitar PRAGMA journal_mode = WAL (continuando sem WAL):', walErr);
+    }
 
-      CREATE TABLE IF NOT EXISTS action_queue (
-        id TEXT PRIMARY KEY,
-        action_type TEXT NOT NULL,
-        payload TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending',
-        retry_count INTEGER DEFAULT 0,
-        error_message TEXT,
-        synced_at TEXT
-      );
-      CREATE INDEX IF NOT EXISTS idx_action_queue_status_created ON action_queue(status, created_at);
+    try {
+      await this.dbConnection.execute('PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;');
+    } catch (pragmaErr) {
+      console.warn('[NativeSQLiteService] Falha ao aplicar PRAGMAs complementares:', pragmaErr);
+    }
 
-      CREATE TABLE IF NOT EXISTS cached_flashcards (
-        id TEXT PRIMARY KEY,
-        deck_id TEXT NOT NULL,
-        front TEXT,
-        back TEXT,
-        due_date TEXT,
-        sm2_state TEXT,
-        updated_at TEXT NOT NULL,
-        data_json TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS idx_cached_cards_deck ON cached_flashcards(deck_id);
-      CREATE INDEX IF NOT EXISTS idx_cached_cards_due ON cached_flashcards(due_date);
+    // 2. Criação individual de cada tabela e seus respectivos índices
+    const tableSchemas: { name: string; sql: string }[] = [
+      {
+        name: 'action_queue',
+        sql: `
+          CREATE TABLE IF NOT EXISTS action_queue (
+            id TEXT PRIMARY KEY,
+            action_type TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            retry_count INTEGER DEFAULT 0,
+            error_message TEXT,
+            synced_at TEXT
+          );
+          CREATE INDEX IF NOT EXISTS idx_action_queue_status_created ON action_queue(status, created_at);
+        `,
+      },
+      {
+        name: 'cached_flashcards',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cached_flashcards (
+            id TEXT PRIMARY KEY,
+            deck_id TEXT NOT NULL,
+            front TEXT,
+            back TEXT,
+            due_date TEXT,
+            sm2_state TEXT,
+            updated_at TEXT NOT NULL,
+            data_json TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_cached_cards_deck ON cached_flashcards(deck_id);
+          CREATE INDEX IF NOT EXISTS idx_cached_cards_due ON cached_flashcards(due_date);
+        `,
+      },
+      {
+        name: 'cached_questions',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cached_questions (
+            id TEXT PRIMARY KEY,
+            set_id TEXT,
+            category TEXT,
+            difficulty TEXT,
+            data_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_cached_questions_set ON cached_questions(set_id);
+        `,
+      },
+      {
+        name: 'cached_study_history',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cached_study_history (
+            id TEXT PRIMARY KEY,
+            card_id TEXT NOT NULL,
+            deck_id TEXT NOT NULL,
+            rating TEXT NOT NULL,
+            reviewed_at TEXT NOT NULL,
+            data_json TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_cached_hist_deck ON cached_study_history(deck_id, reviewed_at);
+        `,
+      },
+      {
+        name: 'cached_stats',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cached_stats (
+            deck_id TEXT PRIMARY KEY,
+            data_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
+        `,
+      },
+      {
+        name: 'graph_nodes',
+        sql: `
+          CREATE TABLE IF NOT EXISTS graph_nodes (
+            id TEXT PRIMARY KEY,
+            canonical_code TEXT NOT NULL,
+            code_system TEXT,
+            type TEXT NOT NULL,
+            display_text TEXT,
+            occurrence_count INTEGER DEFAULT 1
+          );
+          CREATE INDEX IF NOT EXISTS idx_graph_nodes_canonical ON graph_nodes(canonical_code);
+        `,
+      },
+      {
+        name: 'graph_edges',
+        sql: `
+          CREATE TABLE IF NOT EXISTS graph_edges (
+            id TEXT PRIMARY KEY,
+            source_code TEXT NOT NULL,
+            target_code TEXT NOT NULL,
+            predicate TEXT NOT NULL,
+            occurrence_count INTEGER DEFAULT 1,
+            confidence REAL DEFAULT 1.0
+          );
+          CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_code);
+          CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_code);
+          CREATE INDEX IF NOT EXISTS idx_graph_edges_predicate ON graph_edges(predicate);
+        `,
+      },
+      {
+        name: 'cached_extracted_exam_questions',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cached_extracted_exam_questions (
+            id TEXT PRIMARY KEY,
+            source_asset_id TEXT,
+            question_number INTEGER NOT NULL,
+            statement TEXT NOT NULL,
+            options_json TEXT NOT NULL,
+            correct_letter TEXT,
+            specialty TEXT,
+            confidence TEXT NOT NULL,
+            created_at TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_cached_ext_q_asset ON cached_extracted_exam_questions(source_asset_id);
+          CREATE INDEX IF NOT EXISTS idx_cached_ext_q_num ON cached_extracted_exam_questions(question_number);
+        `,
+      },
+    ];
 
-      CREATE TABLE IF NOT EXISTS cached_questions (
-        id TEXT PRIMARY KEY,
-        set_id TEXT,
-        category TEXT,
-        difficulty TEXT,
-        data_json TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS idx_cached_questions_set ON cached_questions(set_id);
+    for (const table of tableSchemas) {
+      try {
+        await this.dbConnection.execute(table.sql);
+      } catch (tableErr) {
+        console.error(`[NativeSQLiteService] Falha ao criar tabela nativa '${table.name}':`, tableErr);
+      }
+    }
 
-      CREATE TABLE IF NOT EXISTS cached_study_history (
-        id TEXT PRIMARY KEY,
-        card_id TEXT NOT NULL,
-        deck_id TEXT NOT NULL,
-        rating TEXT NOT NULL,
-        reviewed_at TEXT NOT NULL,
-        data_json TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS idx_cached_hist_deck ON cached_study_history(deck_id, reviewed_at);
-
-      CREATE TABLE IF NOT EXISTS cached_stats (
-        deck_id TEXT PRIMARY KEY,
-        data_json TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS graph_nodes (
-        id TEXT PRIMARY KEY,
-        canonical_code TEXT NOT NULL,
-        code_system TEXT,
-        type TEXT NOT NULL,
-        display_text TEXT,
-        occurrence_count INTEGER DEFAULT 1
-      );
-      CREATE INDEX IF NOT EXISTS idx_graph_nodes_canonical ON graph_nodes(canonical_code);
-
-      CREATE TABLE IF NOT EXISTS graph_edges (
-        id TEXT PRIMARY KEY,
-        source_code TEXT NOT NULL,
-        target_code TEXT NOT NULL,
-        predicate TEXT NOT NULL,
-        occurrence_count INTEGER DEFAULT 1,
-        confidence REAL DEFAULT 1.0
-      );
-      CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_code);
-      CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_code);
-      CREATE INDEX IF NOT EXISTS idx_graph_edges_predicate ON graph_edges(predicate);
-
-      CREATE TABLE IF NOT EXISTS cached_extracted_exam_questions (
-        id TEXT PRIMARY KEY,
-        source_asset_id TEXT,
-        question_number INTEGER NOT NULL,
-        statement TEXT NOT NULL,
-        options_json TEXT NOT NULL,
-        correct_letter TEXT,
-        specialty TEXT,
-        confidence TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS idx_cached_ext_q_asset ON cached_extracted_exam_questions(source_asset_id);
-      CREATE INDEX IF NOT EXISTS idx_cached_ext_q_num ON cached_extracted_exam_questions(question_number);
-    `;
-
-    await this.dbConnection.execute(schema);
+    // 3. Verificação de integridade pós-criação das tabelas
+    try {
+      const res = await this.dbConnection.query("SELECT name FROM sqlite_master WHERE type='table';");
+      const existingTables = new Set(((res.values as { name: string }[]) || []).map((r) => r.name));
+      const expectedTables = [
+        'action_queue',
+        'cached_flashcards',
+        'cached_questions',
+        'cached_study_history',
+        'cached_stats',
+        'graph_nodes',
+        'graph_edges',
+        'cached_extracted_exam_questions',
+      ];
+      const missingTables = expectedTables.filter((t) => !existingTables.has(t));
+      if (missingTables.length > 0) {
+        console.error(
+          '[NativeSQLiteService] ALERTA CRÍTICO: Tabelas nativas ausentes pós-criação:',
+          missingTables
+        );
+      } else {
+        console.log('[NativeSQLiteService] Todas as 8 tabelas nativas verificadas com sucesso.');
+      }
+    } catch (verifErr) {
+      console.error('[NativeSQLiteService] Erro ao verificar integridade das tabelas nativas:', verifErr);
+    }
   }
 
 
