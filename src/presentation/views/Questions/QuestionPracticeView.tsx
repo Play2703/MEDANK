@@ -32,7 +32,7 @@ interface QuestionPracticeViewProps {
 }
 
 export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBack }) => {
-  const { colors } = useDevice();
+  const { colors, isMobileViewport } = useDevice();
   const {
     activeQuestionSet,
     answerQuestion,
@@ -70,15 +70,17 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20 md:pb-6">
       {/* Top Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className={`flex ${isMobileViewport ? 'flex-col gap-3' : 'items-center justify-between gap-4'}`}>
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={onBack}
-            className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors"
+            className="p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors shrink-0"
+            title="Voltar para a lista de simulados"
+            aria-label="Voltar para a lista de simulados"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-lg font-bold line-clamp-1">{activeQuestionSet.title}</h2>
             <p className="text-xs opacity-75">
               {activeQuestionSet.request.configuration.specialty} • {activeQuestionSet.request.mode === 'banca' ? activeQuestionSet.request.bancaName || 'Banca' : activeQuestionSet.request.professorName || 'Professor'}
@@ -86,12 +88,14 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${isMobileViewport ? 'w-full justify-end flex-wrap' : 'shrink-0'}`}>
           <M3Button
             variant="filled"
             size="sm"
-            className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-md font-semibold"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-md font-semibold shrink-0"
             icon={<FileText className="w-4 h-4 text-white" />}
+            title="Exportar Simulado em PDF (Padrão Oficial)"
+            aria-label="Exportar Simulado em PDF (Padrão Oficial)"
             onClick={async () => {
               try {
                 await PDFExamExportService.exportToPDF(activeQuestionSet);
@@ -100,13 +104,15 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
               }
             }}
           >
-            📄 Exportar Simulado em PDF (Padrão Oficial)
+            PDF
           </M3Button>
           <M3Button
             variant="outlined"
             size="sm"
-            className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 border-purple-500/40 font-bold"
+            className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 border-purple-500/40 font-bold shrink-0"
             icon={<Sparkles className="w-4 h-4 text-purple-400" />}
+            title="Revisar questões erradas e converter em Flashcards"
+            aria-label="Revisar e Criar Flashcards"
             onClick={() => setShowReviewModal(true)}
           >
             Revisar e Criar Flashcards
