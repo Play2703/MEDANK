@@ -381,6 +381,16 @@ export function convertJsonToSqlite(
   console.log(`- Tamanho em disco:       ${sizeMb} MB`);
   console.log(`==================================================\n`);
 
+  // Build binary automaton for 100% in-memory NER execution
+  const automatonPath = path.resolve(process.cwd(), 'src/core/ner/medicalTerminology.automaton.dat');
+  try {
+    const { buildNERAutomaton } = require('./build-ner-automaton');
+    buildNERAutomaton(dbPath, automatonPath);
+  } catch {
+    // Caso esteja rodando em ESM
+    import('./build-ner-automaton.js').then((m) => m.buildNERAutomaton(dbPath, automatonPath)).catch(() => {});
+  }
+
   return {
     totalEntries: rawData.length,
     totalRows,

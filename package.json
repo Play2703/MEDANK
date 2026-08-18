@@ -17,6 +17,7 @@
     "dict:import-decs": "tsx scripts/import-decs.ts",
     "dict:import-rename": "tsx scripts/import-rename.ts",
     "dict:import-tuss": "tsx scripts/import-tuss.ts",
+    "automaton:build": "tsx scripts/build-ner-automaton.ts",
     "db:build": "tsx scripts/convert-to-sqlite.ts"
   },
   "dependencies": {

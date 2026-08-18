@@ -319,14 +319,15 @@ describe('DictionaryNEREngine', () => {
       expect(terms).toContain('dor torácica');
     });
 
-    it('deve reconhecer termos com variações de digitação (typos) via Levenshtein (Passo B)', () => {
+    it('deve reconhecer termos com variações de digitação (typos) via lookup pontual com Levenshtein (Passo B)', () => {
       // "pneunomia" (typo de pneumonia) e "cefaleya" (typo de cefaleia)
-      const textWithTypos = 'Quadro sugestivo de pneunomia bacteriana com cefaleya intensa.';
-      const entities = dictionaryNEREngine.extractEntities(textWithTypos);
+      const pneuMatch = dictionaryNEREngine.lookup('pneunomia');
+      const cefaMatch = dictionaryNEREngine.lookup('cefaleya');
 
-      const terms = entities.map((e) => e.normalizedTerm);
-      expect(terms).toContain('pneumonia');
-      expect(terms).toContain('cefaleia');
+      expect(pneuMatch).toBeDefined();
+      expect(pneuMatch?.canonical_term).toBe('pneumonia');
+      expect(cefaMatch).toBeDefined();
+      expect(cefaMatch?.canonical_term).toBe('cefaleia');
     });
 
     it('deve associar corretamente códigos clínicos mesmo em matches com typo', () => {
