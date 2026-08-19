@@ -22,3 +22,7 @@ medicalTerminologyPt.json
 *.db-wal
 *.db-shm
 
+# Tesseract OCR trained data cache
+*.traineddata
+
+

@@ -18,6 +18,17 @@ export interface PDFLayoutResult {
   items: PDFLayoutItem[];
   totalPages: number;
   rawText: string;
+  inspection?: PDFInspectionResult;
+}
+
+export interface PDFInspectionResult {
+  totalPages: number;
+  processablePages: number;
+  textItemsCount: number;
+  extractedCharsCount: number;
+  emptyPagesCount: number;
+  emptyPagesRatio: number;
+  isScannedPdf: boolean;
 }
 
 /**
@@ -218,21 +229,19 @@ export class DocumentReaderService implements IDocumentReader {
   }
 
   /**
-   * Leitor de PDF (pdfjs-dist com lazy loading, guarda de tamanho de 15MB e fallback para mobile)
+   * Inspeciona um PDF para determinar métricas da camada de texto e detectar PDFs escaneados.
    */
-  private async readPdf(file: File | Blob, onProgress?: (progressPercent: number) => void): Promise<DocumentContent> {
-    const buffer = await this.readAsArrayBuffer(file);
-
-    // GUARDA DE MEMÓRIA: Se for maior que 15MB, usa o fallback de string crua para não travar a aba do mobile
-    if (buffer.byteLength > 15 * 1024 * 1024) {
-      const rawText = this.extractRawStringsFromBuffer(buffer);
-      return {
-        rawText: rawText || undefined,
-        binaryData: buffer,
-        format: 'pdf',
-        charCount: rawText.length,
-        byteLength: buffer.byteLength,
-      };
+  public async inspectPDF(
+    input: File | Blob | ArrayBuffer | Uint8Array,
+    samplePagesLimit = 30
+  ): Promise<PDFInspectionResult> {
+    let buffer: ArrayBuffer;
+    if (input instanceof ArrayBuffer) {
+      buffer = input;
+    } else if (input instanceof Uint8Array) {
+      buffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) as ArrayBuffer;
+    } else {
+      buffer = await this.readAsArrayBuffer(input);
     }
 
     try {
@@ -247,16 +256,86 @@ export class DocumentReaderService implements IDocumentReader {
       }
 
       const pdf = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
-      const maxPages = Math.min(pdf.numPages, 150);
+      const totalPages = pdf.numPages || 1;
+      const processablePages = Math.min(totalPages, samplePagesLimit);
+
+      let textItemsCount = 0;
+      let extractedCharsCount = 0;
+      let emptyPagesCount = 0;
+
+      for (let i = 1; i <= processablePages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const str = content.items.map((it: any) => it.str).join(' ').trim();
+
+        textItemsCount += content.items.length;
+        extractedCharsCount += str.length;
+
+        if (content.items.length === 0 || str.length === 0) {
+          emptyPagesCount++;
+        }
+
+        page.cleanup();
+      }
+
+      const emptyPagesRatio = processablePages > 0 ? emptyPagesCount / processablePages : 1.0;
+      const avgCharsPerPage = processablePages > 0 ? extractedCharsCount / processablePages : 0;
+      const isScannedPdf =
+        textItemsCount === 0 ||
+        avgCharsPerPage < 50 ||
+        emptyPagesRatio >= 0.70;
+
+      return {
+        totalPages,
+        processablePages,
+        textItemsCount,
+        extractedCharsCount,
+        emptyPagesCount,
+        emptyPagesRatio: Math.round(emptyPagesRatio * 100) / 100,
+        isScannedPdf,
+      };
+    } catch (err) {
+      console.warn('[DocumentReaderService] Falha ao inspecionar PDF:', err);
+      return {
+        totalPages: 1,
+        processablePages: 1,
+        textItemsCount: 0,
+        extractedCharsCount: 0,
+        emptyPagesCount: 1,
+        emptyPagesRatio: 1.0,
+        isScannedPdf: true,
+      };
+    }
+  }
+
+  /**
+   * Leitor de PDF (pdfjs-dist com lazy loading e limpeza página a página para streaming seguro)
+   */
+  private async readPdf(file: File | Blob, onProgress?: (progressPercent: number) => void): Promise<DocumentContent> {
+    const buffer = await this.readAsArrayBuffer(file);
+
+    try {
+      let pdfjsLib: any;
+      if (typeof window === 'undefined') {
+        pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      } else {
+        pdfjsLib = await import('pdfjs-dist');
+        // @ts-ignore
+        const pdfjsWorkerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+      }
+
+      const pdf = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
+      const totalPages = pdf.numPages;
       let rawText = '';
 
-      for (let i = 1; i <= maxPages; i++) {
+      for (let i = 1; i <= totalPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         rawText += content.items.map((item: any) => item.str).join(' ') + '\n\n';
         page.cleanup(); // Libera a memória da página processada (CRÍTICO para mobile)
         if (onProgress && i % 5 === 0) {
-          onProgress(Math.round((i / maxPages) * 100));
+          onProgress(Math.round((i / totalPages) * 100));
         }
       }
 
@@ -290,8 +369,16 @@ export class DocumentReaderService implements IDocumentReader {
    */
   public async extractPDFWithLayout(
     input: File | Blob | ArrayBuffer | Uint8Array,
-    onProgress?: (progressPercent: number) => void
+    options?: {
+      maxPages?: number;
+      onProgress?: (progressPercent: number) => void;
+      signal?: AbortSignal;
+    } | ((progressPercent: number) => void)
   ): Promise<PDFLayoutResult> {
+    const onProgress = typeof options === 'function' ? options : options?.onProgress;
+    const maxPagesLimit = typeof options === 'object' && options?.maxPages ? options.maxPages : undefined;
+    const signal = typeof options === 'object' ? options?.signal : undefined;
+
     let buffer: ArrayBuffer;
     if (input instanceof ArrayBuffer) {
       buffer = input;
@@ -313,15 +400,33 @@ export class DocumentReaderService implements IDocumentReader {
       }
 
       const pdf = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
-      const maxPages = Math.min(pdf.numPages, 300);
+      const totalPages = pdf.numPages;
+      const maxPages = maxPagesLimit ? Math.min(totalPages, maxPagesLimit) : totalPages;
       const items: PDFLayoutItem[] = [];
       let fullRawText = '';
 
+      let textItemsCount = 0;
+      let extractedCharsCount = 0;
+      let emptyPagesCount = 0;
+
       for (let i = 1; i <= maxPages; i++) {
+        if (signal?.aborted) {
+          throw new Error('Extração de PDF cancelada pelo usuário.');
+        }
+
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
+        const pageItems = content.items as any[];
+        const pageText = pageItems.map((item: any) => item.str).join(' ');
 
-        for (const item of content.items as any[]) {
+        if (pageItems.length === 0 || pageText.trim().length === 0) {
+          emptyPagesCount++;
+        } else {
+          textItemsCount += pageItems.length;
+          extractedCharsCount += pageText.length;
+        }
+
+        for (const item of pageItems) {
           if (!item || typeof item.str !== 'string') continue;
           const transform = item.transform || [1, 0, 0, 1, 0, 0];
           const x = transform[4] ?? 0;
@@ -339,17 +444,35 @@ export class DocumentReaderService implements IDocumentReader {
           });
         }
 
-        fullRawText += content.items.map((item: any) => item.str).join(' ') + '\n\n';
+        fullRawText += pageText + '\n\n';
         page.cleanup();
-        if (onProgress && i % 5 === 0) {
+        if (onProgress && (i % 5 === 0 || i === maxPages)) {
           onProgress(Math.round((i / maxPages) * 100));
         }
       }
 
+      const emptyPagesRatio = maxPages > 0 ? emptyPagesCount / maxPages : 1.0;
+      const avgCharsPerPage = maxPages > 0 ? extractedCharsCount / maxPages : 0;
+      const isScannedPdf =
+        textItemsCount === 0 ||
+        avgCharsPerPage < 50 ||
+        emptyPagesRatio >= 0.70;
+
+      const inspection: PDFInspectionResult = {
+        totalPages,
+        processablePages: maxPages,
+        textItemsCount,
+        extractedCharsCount,
+        emptyPagesCount,
+        emptyPagesRatio: Math.round(emptyPagesRatio * 100) / 100,
+        isScannedPdf,
+      };
+
       return {
         items,
-        totalPages: pdf.numPages,
+        totalPages,
         rawText: fullRawText,
+        inspection,
       };
     } catch (err) {
       console.warn('[DocumentReaderService] PDF layout extraction failed, falling back to raw strings:', err);
@@ -358,6 +481,15 @@ export class DocumentReaderService implements IDocumentReader {
         items: [],
         totalPages: 1,
         rawText,
+        inspection: {
+          totalPages: 1,
+          processablePages: 1,
+          textItemsCount: 0,
+          extractedCharsCount: rawText.length,
+          emptyPagesCount: rawText ? 0 : 1,
+          emptyPagesRatio: rawText ? 0 : 1,
+          isScannedPdf: !rawText,
+        },
       };
     }
   }

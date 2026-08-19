@@ -789,16 +789,27 @@ Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas 
     }
   });
 
-  // AI Document OCR & Text Extraction Endpoint (2-Step Pipeline: Gemini Raw OCR + Multi-Provider Markdown Structuring)
+  // AI Document OCR & Text Extraction Endpoint (Gemini High-Fidelity OCR)
   app.post("/api/ocr", async (req, res) => {
     try {
-      const { imageBase64, mimeType = "image/png" } = req.body;
+      const { imageBase64, mimeType = "image/png", isExamDocument = true } = req.body;
 
       if (!imageBase64) {
         return res.status(400).json({ error: "Imagem ou arquivo em base64 é obrigatório." });
       }
 
       const ai = getGeminiClient();
+      const prompt = isExamDocument
+        ? `Transcreva com máxima fidelidade todo o texto desta página/documento de prova médica.
+Regras fundamentais:
+1. Transcreva o texto exatamente como está escrito, preservando a ordem de leitura.
+2. Mantenha os marcadores de questão intactos (ex: QUESTÃO 1, QUESTÃO 27, Q. 27, 27., etc.).
+3. Mantenha as alternativas exatamente como apresentadas (ex: A), B), C), D), E) ou (A), (B), etc.), cada uma em sua própria linha quando possível.
+4. Transcreva tabelas célula a célula preservando linhas e colunas.
+5. NÃO responda as questões, NÃO resolva casos clínicos e NÃO invente alternativas ou gabarito.
+6. Retorne apenas o texto transcrito fielmente.`
+        : `Execute OCR neste documento/imagem médica. Extraia todo o texto legível, incluindo conteúdo de tabelas e achados textuais visíveis. Preserve a ordem de leitura sem inventar conteúdo.`;
+
       const response = await retryWithBackoff(
         async () => {
           return await ai.models.generateContent({
@@ -811,7 +822,7 @@ Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas 
                 },
               },
               {
-                text: `Execute OCR neste documento/imagem médica. Extraia todo o texto legível, incluindo conteúdo de tabelas (célula por célula, na ordem em que aparecem) e qualquer achado textual visível em imagens médicas (ECG/RX/etc). Ignore cabeçalhos, rodapés, números de página e marcas d'água repetitivas. Não formate ainda — apenas extraia o texto bruto, preservando a ordem de leitura.`,
+                text: prompt,
               },
             ],
           });
@@ -824,37 +835,7 @@ Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas 
       );
 
       const rawOcrText = response.text || "";
-
-      if (!rawOcrText.trim()) {
-        return res.json({ success: true, text: "" });
-      }
-
-      let structuredText = rawOcrText; // fallback: se a estruturação falhar, devolve o texto bruto mesmo
-      try {
-        const structuringPrompt = `Reformate o texto extraído abaixo em Markdown limpo e estruturado, seguindo estas regras:
-- Tabelas: converta em tabela Markdown de verdade (| coluna | coluna |, com linha separadora).
-- Imagens/figuras/achados visuais mencionados: descreva em UMA frase curta e objetiva, sem elaborar demais (economize palavras).
-- Trechos de destaque, avisos ou caixas de texto: use blockquote (> texto).
-- Tópicos e subtítulos: use cabeçalhos Markdown (##, ###) condizentes com a hierarquia original.
-- Não invente conteúdo que não esteja no texto original. Não adicione comentários seus, só o Markdown reformatado.
-
-Texto bruto:
-${rawOcrText}`;
-
-        const { text: formatted } = await generateWithFallback({
-          prompt: structuringPrompt,
-          temperature: 0.1,
-          responseFormat: "text",
-        });
-        if (formatted && formatted.trim()) {
-          structuredText = formatted;
-        }
-      } catch (structErr) {
-        console.warn("[ocr] Falha ao estruturar via gateway multi-provedor, devolvendo texto bruto do Gemini:", structErr);
-        // structuredText já está com o fallback (rawOcrText), segue o fluxo normalmente
-      }
-
-      return res.json({ success: true, text: structuredText });
+      return res.json({ success: true, text: rawOcrText });
     } catch (error: any) {
       console.error("Erro no serviço de OCR Gemini:", error);
       return res.status(500).json({

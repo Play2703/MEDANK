@@ -98,4 +98,23 @@ describe('DocumentReaderService - EPUB Parsing', () => {
     expect(content.format).toBe('epub');
     expect(content.byteLength).toBe(LARGE_SIZE);
   });
+
+  describe('PDF Inspection & Scanned Document Detection', () => {
+    it('inspectPDF - deve identificar arquivo corrompido/vazio como scannedPdf', async () => {
+      const emptyBuffer = new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer; // "%PDF"
+      const inspection = await service.inspectPDF(emptyBuffer);
+
+      expect(inspection).toBeDefined();
+      expect(inspection.isScannedPdf).toBe(true);
+      expect(inspection.textItemsCount).toBe(0);
+    });
+
+    it('detectFormat - deve detectar PDF e imagens corretamente', () => {
+      const pdfFile = new File([''], 'prova.pdf', { type: 'application/pdf' });
+      const imgFile = new File([''], 'escaner.png', { type: 'image/png' });
+
+      expect(service.detectFormat(pdfFile)).toBe('pdf');
+      expect(service.detectFormat(imgFile)).toBe('image');
+    });
+  });
 });

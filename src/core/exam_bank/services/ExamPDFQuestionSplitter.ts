@@ -4,14 +4,17 @@
  * Segmentador mecânico/determinístico de provas em formato PDF para extração de questões
  * individuais (número, enunciado, alternativas A-E e gabarito quando presente).
  *
- * ⚠️ REQUISITO ARQUITETURAL FUNDAMENTAL:
- * - 100% local via layout de PDF e regex.
- * - ZERO chamadas de IA / LLM (sem consumo de tokens).
- * - Retorna índice de confiança ('high' | 'low') e alertas para layouts não-padrão.
+ * ⚠️ REQUISITOS ARQUITETURAIS:
+ * - Padrão 100% local (layout nativo ou OCR local via Tesseract.js / WASM).
+ * - Zero chamadas de IA / LLM por padrão (sem consumo de tokens).
+ * - Fallback remoto explícito via /api/ocr apenas sob consentimento do usuário ('remote-consent').
+ * - Preserva rastreabilidade de páginas, tabelas e alternativas A-D ou A-E.
  */
 
-import { PDFLayoutItem, PDFLayoutResult, DocumentReaderService } from '../../import_engine/services/DocumentReaderService';
+import { PDFLayoutItem, PDFLayoutResult, PDFInspectionResult, DocumentReaderService } from '../../import_engine/services/DocumentReaderService';
+import { OCRPageResult, OCRMode, localOCRService } from './LocalOCRService';
 import { db } from '../../../data/db/database';
+import { OCRService } from '../../../data/services/OCRService';
 
 export interface ExtractedOption {
   letter: string; // 'A', 'B', 'C', 'D', 'E'
@@ -24,10 +27,21 @@ export interface ExtractedExamQuestion {
   options: ExtractedOption[];
   correctLetter?: string;
   pageNumber: number;
+  endPageNumber?: number;
   confidence: 'high' | 'low';
   warning?: string;
   topicTags?: string[];
+  extractionMethod?: 'native-text' | 'local-ocr' | 'remote-ocr' | 'manual';
+  ocrConfidence?: number;
 }
+
+export type SplitterFailureReason =
+  | 'NO_TEXT_LAYER'
+  | 'OCR_NOT_AVAILABLE'
+  | 'OCR_FAILED'
+  | 'NO_QUESTION_MARKERS'
+  | 'PAGES_NOT_PROCESSED'
+  | 'PARSER_ERROR';
 
 export interface ExamSplitterResult {
   success: boolean;
@@ -36,12 +50,30 @@ export interface ExamSplitterResult {
   lowConfidenceCount: number;
   lowConfidenceRatio: number;
   warning?: string;
+  failureReason?: SplitterFailureReason;
   questions: ExtractedExamQuestion[];
+  detectedQuestions?: ExtractedExamQuestion[];
+  lowConfidenceQuestions?: ExtractedExamQuestion[];
+  unparsedQuestionCandidates?: Array<{ pageNumber: number; rawSnippet: string; reason?: string }>;
+  processingWarnings?: string[];
   answerKeyFound: boolean;
   answerKeyMap: Record<number, string>;
+  inspection?: PDFInspectionResult;
+  totalPages?: number;
+  processedPages?: number;
+  extractionMethod?: 'native-text' | 'local-ocr' | 'remote-ocr';
 }
 
-interface ReconstitutedLine {
+export interface ExamSplitterOptions {
+  ocrMode?: OCRMode; // 'native-only' | 'local' | 'remote-consent' (default: 'local')
+  maxPages?: number;
+  startPage?: number;
+  onProgress?: (info: { stage: string; current: number; total: number; progressPct: number }) => void;
+  signal?: AbortSignal;
+  onConsentRequest?: () => Promise<boolean>;
+}
+
+export interface ReconstitutedLine {
   text: string;
   x: number;
   y: number;
@@ -51,40 +83,44 @@ interface ReconstitutedLine {
 export class ExamPDFQuestionSplitter {
   /**
    * Padrões de início de questão:
-   * - QUESTÃO 01, Questão 1., Q. 1, Questão 12 -
-   * - 1. Enunciado..., 01) Enunciado..., 1 - Enunciado...
+   * - QUESTÃO 01, QUESTÃO 27, Questão 1., Q. 1, Q 27, Questão 12 -
+   * - QUESTÃO Nº 27, QUESTÃO N° 27, QUESTÃO N. 27
+   * - 27. Enunciado..., 01) Enunciado..., 27 - Enunciado...
    */
   private static readonly QUESTION_START_REGEX =
-    /^(?:QUEST[ÃA]O|QUESTAO|Q\.)\s*(\d{1,3})\b[.:\-–)]*\s*(.*)$/i;
+    /^(?:QUEST[ÃA]O|QUESTAO|QUEST[ÃA]O\s*N[º°\.]|Q\.?)\s*(\d{1,3})\b[.:\-–—)]*\s*(.*)$/i;
 
   private static readonly NUMBERED_START_REGEX =
-    /^(\d{1,3})[.\)-]\s+(.*)$/;
+    /^(\d{1,3})[.\)-–—]\s+(.*)$/;
+
+  private static readonly ISOLATED_NUMBER_REGEX =
+    /^(\d{1,3})$/;
 
   /**
    * Padrão de alternativa com delimitador explícito:
-   * A) texto, a) texto, (A) texto, (a) texto, A. texto, a. texto, A: texto, A - texto
+   * A) texto, a) texto, (A) texto, (a) texto, [A] texto, A. texto, a. texto, A: texto, A - texto, Ⓐ texto
    */
   private static readonly OPTION_DELIM_REGEX =
-    /^(?:\(([A-Ea-e])\)|([A-Ea-e])[.\:\-–\)])(?:\s+|$)(.*)$/;
+    /^(?:\(([A-Ea-e])\)|\[([A-Ea-e])\]|([A-Ea-e])[.\:\-–—\)]|([Ⓐ-Ⓔ]))(?:\s+|$)(.*)$/;
 
   /**
-   * Padrão de alternativa estilo checkbox: ( ) texto, [ ] texto
+   * Padrão de alternativa estilo checkbox: ( ) texto, [ ] texto, ◯ texto, ○ texto
    */
   private static readonly OPTION_CHECKBOX_REGEX =
-    /^(?:\(\s*\)|\[\s*\])\s+(.*)$/;
+    /^(?:\(\s*\)|\[\s*\]|[◯○])\s+(.*)$/;
 
   /**
    * Padrão de alternativa sem delimitador (apenas letra maiúscula isolada A-E seguida de espaço):
    * A     texto, B     texto
    */
   private static readonly OPTION_NO_DELIM_REGEX =
-    /^([A-E])\s+(.*)$/;
+    /^([A-Ea-e])\s+(.*)$/;
 
   /**
    * Padrão inline com múltiplas alternativas na mesma linha
    */
   private static readonly INLINE_OPTIONS_REGEX =
-    /\(?([A-Ea-e])\)?[.\:\-–\)]\s+([^A-Ea-e\(\)]+)/g;
+    /\(?([A-Ea-e])\)?[.\:\-–—\)]\s+([^A-Ea-e\(\)]+)/g;
 
   /**
    * Padrões de Gabarito
@@ -112,9 +148,80 @@ export class ExamPDFQuestionSplitter {
   /**
    * Segmenta questões a partir do resultado de layout extraído do PDF.
    */
-  public static splitFromLayout(layout: PDFLayoutResult): ExamSplitterResult {
+  public static splitFromLayout(
+    layout: PDFLayoutResult,
+    options?: { extractionMethod?: 'native-text' | 'local-ocr' | 'remote-ocr' }
+  ): ExamSplitterResult {
     const lines = this.reconstituteLines(layout.items);
-    return this.parseLines(lines, layout.rawText);
+    const res = this.parseLines(lines, layout.rawText);
+    res.inspection = layout.inspection;
+    res.totalPages = layout.totalPages;
+    res.processedPages = layout.items.length > 0 ? Math.max(...layout.items.map((i) => i.pageNumber)) : 0;
+    res.extractionMethod = options?.extractionMethod || 'native-text';
+
+    if (res.totalQuestions === 0 && (layout.items.length === 0 || layout.inspection?.isScannedPdf)) {
+      res.failureReason = 'NO_TEXT_LAYER';
+      res.warning = 'PDF escaneado detectado (sem camada de texto pesquisável). Habilite o OCR para processar este documento.';
+    }
+
+    return res;
+  }
+
+  /**
+   * Segmenta questões a partir de resultados de OCR por página (OCRPageResult[]).
+   */
+  public static splitFromOCR(
+    ocrPages: OCRPageResult[],
+    options?: { extractionMethod?: 'local-ocr' | 'remote-ocr'; totalPages?: number }
+  ): ExamSplitterResult {
+    const lines: ReconstitutedLine[] = [];
+    let fullRawText = '';
+
+    for (const page of ocrPages) {
+      fullRawText += page.text + '\n\n';
+      if (page.blocks && page.blocks.length > 0) {
+        for (const block of page.blocks) {
+          const cleaned = this.cleanText(block.text);
+          if (cleaned) {
+            lines.push({
+              text: cleaned,
+              x: block.x ?? 0,
+              y: block.y ?? 0,
+              pageNumber: page.pageNumber,
+            });
+          }
+        }
+      } else {
+        const rawLines = page.text.split(/\r?\n/);
+        for (let idx = 0; idx < rawLines.length; idx++) {
+          const cleaned = this.cleanText(rawLines[idx]);
+          if (cleaned) {
+            lines.push({
+              text: cleaned,
+              x: 0,
+              y: idx,
+              pageNumber: page.pageNumber,
+            });
+          }
+        }
+      }
+    }
+
+    const res = this.parseLines(lines, fullRawText);
+    res.totalPages = options?.totalPages || ocrPages.length;
+    res.processedPages = ocrPages.length;
+    res.extractionMethod = options?.extractionMethod || 'local-ocr';
+
+    // Anexa confiança média de OCR às questões se disponível
+    const avgConfidence =
+      ocrPages.reduce((acc, p) => acc + (p.confidence || 85), 0) / Math.max(1, ocrPages.length);
+
+    for (const q of res.questions) {
+      q.extractionMethod = res.extractionMethod;
+      q.ocrConfidence = Math.round(avgConfidence);
+    }
+
+    return res;
   }
 
   /**
@@ -133,22 +240,216 @@ export class ExamPDFQuestionSplitter {
   }
 
   /**
-   * Ponto de entrada universal que aceita Buffer, PDFLayoutResult ou string.
+   * Ponto de entrada universal que suporta:
+   * 1. PDFLayoutResult (camada nativa)
+   * 2. OCRPageResult[] (resultado OCR prévio)
+   * 3. string (texto plano)
+   * 4. Buffer / Blob / File com detecção de PDF escaneado e fallback para OCR local/remoto.
    */
   public static async split(
-    input: PDFLayoutResult | string | ArrayBuffer | Uint8Array | File | Blob
+    input: PDFLayoutResult | OCRPageResult[] | string | ArrayBuffer | Uint8Array | File | Blob,
+    options: ExamSplitterOptions = {}
   ): Promise<ExamSplitterResult> {
     if (typeof input === 'string') {
       return this.splitFromText(input);
+    }
+
+    if (Array.isArray(input)) {
+      return this.splitFromOCR(input as OCRPageResult[], {
+        extractionMethod: options.ocrMode === 'remote-consent' ? 'remote-ocr' : 'local-ocr',
+      });
     }
 
     if ('items' in input && Array.isArray((input as any).items)) {
       return this.splitFromLayout(input as PDFLayoutResult);
     }
 
-    // Se for buffer / arquivo binário, extrai com layout primeiro
+    const ocrMode: OCRMode = options.ocrMode || 'local';
     const reader = new DocumentReaderService();
-    const layout = await reader.extractPDFWithLayout(input as any);
+
+    // 1. Tenta extrair a camada de texto nativa com layout geométrico
+    if (options.onProgress) {
+      options.onProgress({ stage: 'Inspecionando camada de texto do PDF...', current: 0, total: 100, progressPct: 5 });
+    }
+
+    const layout = await reader.extractPDFWithLayout(input as any, {
+      maxPages: options.maxPages,
+      onProgress: (pct) => {
+        if (options.onProgress) {
+          options.onProgress({ stage: 'Extraindo layout nativo...', current: pct, total: 100, progressPct: Math.round(pct * 0.3) });
+        }
+      },
+      signal: options.signal,
+    });
+
+    const isScanned = layout.inspection?.isScannedPdf || layout.items.length === 0;
+
+    // Se o PDF tem camada de texto nativa, processa determinísticamente
+    if (!isScanned && layout.items.length > 0) {
+      const nativeResult = this.splitFromLayout(layout, { extractionMethod: 'native-text' });
+      if (nativeResult.totalQuestions > 0) {
+        return nativeResult;
+      }
+    }
+
+    // 2. Se for escaneado ou sem texto nativo:
+    if (isScanned || layout.items.length === 0) {
+      if (ocrMode === 'native-only') {
+        return {
+          success: false,
+          totalQuestions: 0,
+          highConfidenceCount: 0,
+          lowConfidenceCount: 0,
+          lowConfidenceRatio: 1.0,
+          failureReason: 'NO_TEXT_LAYER',
+          warning: 'PDF escaneado detectado (sem camada de texto pesquisável). Habilite o OCR local para processar.',
+          questions: [],
+          detectedQuestions: [],
+          lowConfidenceQuestions: [],
+          answerKeyFound: false,
+          answerKeyMap: {},
+          inspection: layout.inspection,
+        };
+      }
+
+      // Modo Local OCR (Padrão: 100% local, 0 tokens)
+      if (ocrMode === 'local') {
+        if (options.onProgress) {
+          options.onProgress({ stage: 'Iniciando OCR local (Tesseract.js)...', current: 0, total: 100, progressPct: 35 });
+        }
+
+        let pdfjsLib: any;
+        if (typeof window === 'undefined') {
+          pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        } else {
+          pdfjsLib = await import('pdfjs-dist');
+          // @ts-ignore
+          const pdfjsWorkerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+          pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+        }
+
+        let buffer: ArrayBuffer;
+        if (input instanceof ArrayBuffer) {
+          buffer = input;
+        } else if (input instanceof Uint8Array) {
+          buffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) as ArrayBuffer;
+        } else {
+          buffer = await (input as any).arrayBuffer();
+        }
+
+        try {
+          const pdf = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
+          const ocrPages = await localOCRService.processPDF(pdf, {
+            maxPages: options.maxPages,
+            startPage: options.startPage,
+            onProgress: (info) => {
+              if (options.onProgress) {
+                options.onProgress({
+                  stage: `Processando OCR página ${info.page} de ${info.total}...`,
+                  current: info.page,
+                  total: info.total,
+                  progressPct: 35 + Math.round(info.progressPct * 0.6),
+                });
+              }
+            },
+            signal: options.signal,
+          });
+
+          const ocrSplitResult = this.splitFromOCR(ocrPages, {
+            extractionMethod: 'local-ocr',
+            totalPages: pdf.numPages,
+          });
+          ocrSplitResult.inspection = layout.inspection;
+
+          if (ocrSplitResult.totalQuestions === 0) {
+            ocrSplitResult.failureReason = 'NO_QUESTION_MARKERS';
+            ocrSplitResult.warning = 'O OCR processou o documento, mas não encontrou marcadores de questão (ex: QUESTÃO 1, A-D).';
+          }
+
+          return ocrSplitResult;
+        } catch (ocrErr: any) {
+          console.warn('[ExamPDFQuestionSplitter] Falha no OCR local:', ocrErr);
+          return {
+            success: false,
+            totalQuestions: 0,
+            highConfidenceCount: 0,
+            lowConfidenceCount: 0,
+            lowConfidenceRatio: 1.0,
+            failureReason: 'OCR_FAILED',
+            warning: `Falha no motor de OCR local: ${ocrErr.message || ocrErr}`,
+            questions: [],
+            detectedQuestions: [],
+            lowConfidenceQuestions: [],
+            answerKeyFound: false,
+            answerKeyMap: {},
+            inspection: layout.inspection,
+          };
+        }
+      }
+
+      // Modo Remoto com Consentimento Explícito
+      if (ocrMode === 'remote-consent') {
+        if (options.onConsentRequest) {
+          const userConsented = await options.onConsentRequest();
+          if (!userConsented) {
+            return {
+              success: false,
+              totalQuestions: 0,
+              highConfidenceCount: 0,
+              lowConfidenceCount: 0,
+              lowConfidenceRatio: 1.0,
+              failureReason: 'OCR_FAILED',
+              warning: 'Consentimento para processamento em nuvem não autorizado.',
+              questions: [],
+              detectedQuestions: [],
+              lowConfidenceQuestions: [],
+              answerKeyFound: false,
+              answerKeyMap: {},
+              inspection: layout.inspection,
+            };
+          }
+        }
+
+        try {
+          const ocrService = new OCRService();
+          const remoteText = await ocrService.performOCR(input as File, (pct) => {
+            if (options.onProgress) {
+              options.onProgress({
+                stage: `Processando OCR remoto na nuvem...`,
+                current: pct,
+                total: 100,
+                progressPct: pct,
+              });
+            }
+          });
+
+          const remoteResult = this.splitFromText(remoteText);
+          remoteResult.extractionMethod = 'remote-ocr';
+          remoteResult.inspection = layout.inspection;
+          for (const q of remoteResult.questions) {
+            q.extractionMethod = 'remote-ocr';
+          }
+          return remoteResult;
+        } catch (remErr: any) {
+          return {
+            success: false,
+            totalQuestions: 0,
+            highConfidenceCount: 0,
+            lowConfidenceCount: 0,
+            lowConfidenceRatio: 1.0,
+            failureReason: 'OCR_FAILED',
+            warning: `Falha no OCR remoto: ${remErr.message || remErr}`,
+            questions: [],
+            detectedQuestions: [],
+            lowConfidenceQuestions: [],
+            answerKeyFound: false,
+            answerKeyMap: {},
+            inspection: layout.inspection,
+          };
+        }
+      }
+    }
+
     return this.splitFromLayout(layout);
   }
 
@@ -327,10 +628,14 @@ export class ExamPDFQuestionSplitter {
       options: ExtractedOption[];
       correctLetter?: string;
       pageNumber: number;
+      endPageNumber?: number;
       currentOptionLetter: string | null;
     }
 
     const questions: ExtractedExamQuestion[] = [];
+    const unparsedQuestionCandidates: Array<{ pageNumber: number; rawSnippet: string; reason?: string }> = [];
+    const processingWarnings: string[] = [];
+
     let currentQ: DraftQuestion | null = null;
     let expectedNextNumber = 1;
 
@@ -348,16 +653,23 @@ export class ExamPDFQuestionSplitter {
       // Avaliação de Confiança
       const { confidence, warning } = this.evaluateConfidence(statement, options, correctLetter);
 
-      questions.push({
+      const parsedQ: ExtractedExamQuestion = {
         questionNumber: currentQ.questionNumber,
         statement,
         options,
         correctLetter,
         pageNumber: currentQ.pageNumber,
+        endPageNumber: currentQ.endPageNumber || currentQ.pageNumber,
         confidence,
         warning,
         topicTags: currentQ.topicTags,
-      });
+      };
+
+      questions.push(parsedQ);
+
+      if (confidence === 'low' && warning) {
+        processingWarnings.push(`Questão ${parsedQ.questionNumber}: ${warning}`);
+      }
 
       currentQ = null;
     };
@@ -376,7 +688,7 @@ export class ExamPDFQuestionSplitter {
         finalizeCurrentQuestion();
         expectedNextNumber = qStart.questionNumber + 1;
 
-        // Detecção de tags de assunto no cabeçalho (ex: "Questão 1   Classificação de risco   Infectologia")
+        // Detecção de tags de assunto no cabeçalho
         let topicTags: string[] | undefined = undefined;
         let statementStart = '';
         if (qStart.statementRemainder) {
@@ -397,6 +709,7 @@ export class ExamPDFQuestionSplitter {
           options: [],
           correctLetter: undefined,
           pageNumber: lineObj.pageNumber,
+          endPageNumber: lineObj.pageNumber,
           currentOptionLetter: null,
         };
 
@@ -411,7 +724,10 @@ export class ExamPDFQuestionSplitter {
 
       if (!currentQ) continue;
 
-      // 2. Verifica se a linha é um gabarito / resposta pontual da questão ativa (ex: GABARITO: A ou RESPOSTA: B)
+      // Atualiza a página final da questão ativa
+      currentQ.endPageNumber = lineObj.pageNumber;
+
+      // 2. Verifica se a linha é um gabarito / resposta pontual da questão ativa
       const inlineAns = text.match(this.INLINE_ANSWER_REGEX);
       if (inlineAns) {
         currentQ.correctLetter = inlineAns[1].toUpperCase();
@@ -434,11 +750,17 @@ export class ExamPDFQuestionSplitter {
         continue;
       }
 
-      // 4. Testa alternativa com delimitador explícito: a), A), (A), A., A-, etc.
+      // 4. Testa alternativa com delimitador explícito: a), A), (A), [A], A., A-, A:, Ⓐ, etc.
       const optDelimMatch = text.match(this.OPTION_DELIM_REGEX);
       if (optDelimMatch) {
-        const letter = (optDelimMatch[1] || optDelimMatch[2]).toUpperCase();
-        const optText = (optDelimMatch[3] || '').trim();
+        let rawLetter = optDelimMatch[1] || optDelimMatch[2] || optDelimMatch[3] || optDelimMatch[4] || '';
+        // Normaliza caracteres Unicode circulados Ⓐ-Ⓔ
+        if (rawLetter.charCodeAt(0) >= 0x24b6 && rawLetter.charCodeAt(0) <= 0x24ba) {
+          rawLetter = String.fromCharCode('A'.charCodeAt(0) + (rawLetter.charCodeAt(0) - 0x24b6));
+        }
+
+        const letter = rawLetter.toUpperCase();
+        const optText = (optDelimMatch[5] || '').trim();
         const expectedLetter = String.fromCharCode('A'.charCodeAt(0) + currentQ.options.length);
 
         if (letter === expectedLetter || (currentQ.options.length === 0 && letter === 'A') || currentQ.options.length > 0) {
@@ -448,7 +770,7 @@ export class ExamPDFQuestionSplitter {
         }
       }
 
-      // 5. Testa alternativa estilo checkbox: ( ) ..., [ ] ...
+      // 5. Testa alternativa estilo checkbox: ( ) ..., [ ] ..., ◯ ..., ○ ...
       const optCheckboxMatch = text.match(this.OPTION_CHECKBOX_REGEX);
       if (optCheckboxMatch && currentQ.options.length < 5) {
         const letter = String.fromCharCode('A'.charCodeAt(0) + currentQ.options.length);
@@ -458,7 +780,7 @@ export class ExamPDFQuestionSplitter {
         continue;
       }
 
-      // 6. Testa alternativa sem delimitador: A ..., B ..., C ... (apenas maiúsculas A-E no contexto de uma questão)
+      // 6. Testa alternativa sem delimitador: A ..., B ..., C ... (letras A-E isoladas no início)
       const optNoDelimMatch = text.match(this.OPTION_NO_DELIM_REGEX);
       if (optNoDelimMatch) {
         const letter = optNoDelimMatch[1].toUpperCase();
@@ -487,25 +809,35 @@ export class ExamPDFQuestionSplitter {
 
     // Contabiliza métricas gerais
     const totalQuestions = questions.length;
-    const highConfidenceCount = questions.filter((q) => q.confidence === 'high').length;
-    const lowConfidenceCount = totalQuestions - highConfidenceCount;
+    const highConfidenceQuestions = questions.filter((q) => q.confidence === 'high');
+    const lowConfidenceQuestions = questions.filter((q) => q.confidence === 'low');
+    const highConfidenceCount = highConfidenceQuestions.length;
+    const lowConfidenceCount = lowConfidenceQuestions.length;
     const lowConfidenceRatio = totalQuestions > 0 ? lowConfidenceCount / totalQuestions : 1.0;
 
     let generalWarning: string | undefined = undefined;
+    let failureReason: SplitterFailureReason | undefined = undefined;
+
     if (totalQuestions === 0) {
-      generalWarning = 'Nenhuma questão identificada com layout padrão no documento.';
+      failureReason = 'NO_QUESTION_MARKERS';
+      generalWarning = 'Nenhuma questão estruturada encontrada. Este arquivo não possui marcadores numéricos convencionais (ex: QUESTÃO 1, 1., Q. 1) ou alternativas A-D/A-E identificáveis.';
     } else if (lowConfidenceRatio > 0.40) {
-      generalWarning = `Este PDF não segue um layout padrão reconhecível — segmentação automática não confiável para ${Math.round(lowConfidenceRatio * 100)}% das questões.`;
+      generalWarning = `Segmentação automática realizada com baixa confiança para ${Math.round(lowConfidenceRatio * 100)}% das questões. Revise os enunciados e alternativas antes de salvar.`;
     }
 
     return {
-      success: totalQuestions > 0 && lowConfidenceRatio <= 0.40,
+      success: totalQuestions > 0,
       totalQuestions,
       highConfidenceCount,
       lowConfidenceCount,
       lowConfidenceRatio: Math.round(lowConfidenceRatio * 100) / 100,
       warning: generalWarning,
+      failureReason,
       questions,
+      detectedQuestions: questions,
+      lowConfidenceQuestions,
+      unparsedQuestionCandidates,
+      processingWarnings,
       answerKeyFound,
       answerKeyMap,
     };
@@ -523,6 +855,7 @@ export class ExamPDFQuestionSplitter {
       return { confidence: 'low', warning: 'Enunciado muito curto ou vazio.' };
     }
 
+    // Provas com 4 alternativas (A, B, C, D) ou 5 alternativas (A, B, C, D, E) são válidas
     if (options.length < 3) {
       return { confidence: 'low', warning: `Apenas ${options.length} alternativa(s) identificada(s).` };
     }
@@ -556,7 +889,7 @@ export class ExamPDFQuestionSplitter {
     expectedNumber: number,
     currentOptionsCount: number
   ): { questionNumber: number; statementRemainder: string; isExplicit: boolean } | null {
-    // Padrão explícito: QUESTÃO X
+    // 1. Padrão explícito: QUESTÃO 27, QUESTÃO Nº 27, Q. 27, etc.
     const qMatch = text.match(this.QUESTION_START_REGEX);
     if (qMatch) {
       const qNum = parseInt(qMatch[1], 10);
@@ -565,18 +898,34 @@ export class ExamPDFQuestionSplitter {
       }
     }
 
-    // Padrão numérico: "1. Texto..." ou "1) Texto..."
+    // 2. Padrão numérico: "1. Texto..." ou "1) Texto..."
     const numMatch = text.match(this.NUMBERED_START_REGEX);
     if (numMatch) {
       const qNum = parseInt(numMatch[1], 10);
+      const remainder = numMatch[2] || '';
+      const isDosageOrUnit = /^(?:mg|ml|mcg|anos|meses|dias|horas|minutos|mmHg|%|bpm|ipm|cm|kg|g)\b/i.test(remainder.trim());
 
-      // Só aceita se for o próximo número esperado ou se a questão atual já possui 3+ alternativas
-      if (
-        (qNum === expectedNumber || qNum === expectedNumber + 1 || (qNum >= 1 && currentOptionsCount >= 3)) &&
-        qNum > 0 &&
-        qNum <= 300
-      ) {
-        return { questionNumber: qNum, statementRemainder: numMatch[2] || '', isExplicit: false };
+      if (!isDosageOrUnit && qNum > 0 && qNum <= 300) {
+        // Aceita se for o próximo número esperado, ou se a questão anterior já possui 3+ alternativas, ou no início
+        if (
+          qNum === expectedNumber ||
+          qNum === expectedNumber + 1 ||
+          currentOptionsCount >= 3 ||
+          expectedNumber === 1
+        ) {
+          return { questionNumber: qNum, statementRemainder: remainder, isExplicit: false };
+        }
+      }
+    }
+
+    // 3. Número isolado no início de bloco
+    const isoMatch = text.match(this.ISOLATED_NUMBER_REGEX);
+    if (isoMatch) {
+      const qNum = parseInt(isoMatch[1], 10);
+      if (qNum > 0 && qNum <= 300) {
+        if (qNum === expectedNumber || qNum === expectedNumber + 1 || currentOptionsCount >= 3 || expectedNumber === 1) {
+          return { questionNumber: qNum, statementRemainder: '', isExplicit: false };
+        }
       }
     }
 
@@ -632,6 +981,8 @@ export class ExamPDFQuestionSplitter {
       lower.includes('essa questão possui comentário') ||
       lower.includes('essa questão po ssui') ||
       lower.includes('cessar lista') ||
+      lower.includes('inep - revalida') ||
+      lower.includes('enade - ') ||
       /^\d+\s+\d{6,}$/.test(text) ||
       /^\d{7,}$/.test(text) ||
       /^-\s*\d+\s*-$/.test(text)
@@ -657,7 +1008,10 @@ export class ExamPDFQuestionSplitter {
    * Segmenta diretamente a partir do ID de um asset cadastrado,
    * recuperando o PDF original armazenado na tabela knowledgeAssetFiles.
    */
-  public static async splitFromAssetId(assetId: string): Promise<ExamSplitterResult> {
+  public static async splitFromAssetId(
+    assetId: string,
+    options?: ExamSplitterOptions
+  ): Promise<ExamSplitterResult> {
     const rawBlob = await this.getRawExamPDFBlob(assetId);
     if (!rawBlob) {
       return {
@@ -666,13 +1020,16 @@ export class ExamPDFQuestionSplitter {
         highConfidenceCount: 0,
         lowConfidenceCount: 0,
         lowConfidenceRatio: 0,
-        warning: 'PDF original não disponível — Esta prova foi cadastrada sem o arquivo binário. Reenvie o arquivo PDF para habilitar a segmentação automática por coordenadas de layout.',
+        failureReason: 'PAGES_NOT_PROCESSED',
+        warning: 'PDF original não disponível — Esta prova foi cadastrada sem o arquivo binário. Reenvie o arquivo PDF para habilitar a segmentação.',
         questions: [],
+        detectedQuestions: [],
+        lowConfidenceQuestions: [],
         answerKeyFound: false,
         answerKeyMap: {},
       };
     }
 
-    return await this.split(rawBlob);
+    return await this.split(rawBlob, options);
   }
 }
