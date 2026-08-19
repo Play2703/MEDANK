@@ -267,33 +267,35 @@ export class ExamPDFQuestionSplitter {
     const ocrMode: OCRMode = options.ocrMode || 'local';
     const reader = new DocumentReaderService();
 
-    // 1. Tenta extrair a camada de texto nativa com layout geométrico
+    // 1. Inspeciona uma amostra rápida (até 10 páginas) para detectar o tipo de PDF sem percorrer o arquivo inteiro
     if (options.onProgress) {
-      options.onProgress({ stage: 'Inspecionando camada de texto do PDF...', current: 0, total: 100, progressPct: 5 });
+      options.onProgress({ stage: 'Inspecionando estrutura do PDF...', current: 0, total: 100, progressPct: 5 });
     }
 
-    const layout = await reader.extractPDFWithLayout(input as any, {
-      maxPages: options.maxPages,
-      onProgress: (pct) => {
-        if (options.onProgress) {
-          options.onProgress({ stage: 'Extraindo layout nativo...', current: pct, total: 100, progressPct: Math.round(pct * 0.3) });
-        }
-      },
-      signal: options.signal,
-    });
+    const inspection = await reader.inspectPDF(input as any, 10);
+    const isScanned = inspection.isScannedPdf;
 
-    const isScanned = layout.inspection?.isScannedPdf || layout.items.length === 0;
+    // 2. Se tiver camada de texto nativa, extrai o layout geométrico completo e processa determinísticamente
+    if (!isScanned) {
+      const layout = await reader.extractPDFWithLayout(input as any, {
+        maxPages: options.maxPages,
+        onProgress: (pct) => {
+          if (options.onProgress) {
+            options.onProgress({ stage: 'Extraindo layout nativo...', current: pct, total: 100, progressPct: Math.round(pct * 0.9) });
+          }
+        },
+        signal: options.signal,
+      });
 
-    // Se o PDF tem camada de texto nativa, processa determinísticamente
-    if (!isScanned && layout.items.length > 0) {
+      layout.inspection = inspection;
       const nativeResult = this.splitFromLayout(layout, { extractionMethod: 'native-text' });
       if (nativeResult.totalQuestions > 0) {
         return nativeResult;
       }
     }
 
-    // 2. Se for escaneado ou sem texto nativo:
-    if (isScanned || layout.items.length === 0) {
+    // 3. Se for escaneado (ou sem texto nativo):
+    if (isScanned) {
       if (ocrMode === 'native-only') {
         return {
           success: false,
@@ -302,53 +304,33 @@ export class ExamPDFQuestionSplitter {
           lowConfidenceCount: 0,
           lowConfidenceRatio: 1.0,
           failureReason: 'NO_TEXT_LAYER',
-          warning: 'PDF escaneado detectado (sem camada de texto pesquisável). Habilite o OCR local para processar.',
+          warning: 'PDF escaneado detectado (sem camada de texto pesquisável). Habilite o OCR para processar este documento.',
           questions: [],
           detectedQuestions: [],
           lowConfidenceQuestions: [],
           answerKeyFound: false,
           answerKeyMap: {},
-          inspection: layout.inspection,
+          inspection,
         };
       }
 
       // Modo Local OCR (Padrão: 100% local, 0 tokens)
       if (ocrMode === 'local') {
         if (options.onProgress) {
-          options.onProgress({ stage: 'Iniciando OCR local (Tesseract.js)...', current: 0, total: 100, progressPct: 35 });
-        }
-
-        let pdfjsLib: any;
-        if (typeof window === 'undefined') {
-          pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-        } else {
-          pdfjsLib = await import('pdfjs-dist');
-          // @ts-ignore
-          const pdfjsWorkerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-          pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
-        }
-
-        let buffer: ArrayBuffer;
-        if (input instanceof ArrayBuffer) {
-          buffer = input;
-        } else if (input instanceof Uint8Array) {
-          buffer = input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) as ArrayBuffer;
-        } else {
-          buffer = await (input as any).arrayBuffer();
+          options.onProgress({ stage: 'Iniciando OCR local...', current: 0, total: 100, progressPct: 10 });
         }
 
         try {
-          const pdf = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
-          const ocrPages = await localOCRService.processPDF(pdf, {
+          const ocrPages = await localOCRService.processPDF(input, {
             maxPages: options.maxPages,
             startPage: options.startPage,
             onProgress: (info) => {
               if (options.onProgress) {
                 options.onProgress({
-                  stage: `Processando OCR página ${info.page} de ${info.total}...`,
+                  stage: info.stage || `Processando OCR página ${info.page} de ${info.total}...`,
                   current: info.page,
                   total: info.total,
-                  progressPct: 35 + Math.round(info.progressPct * 0.6),
+                  progressPct: 10 + Math.round(info.progressPct * 0.85),
                 });
               }
             },
@@ -357,9 +339,9 @@ export class ExamPDFQuestionSplitter {
 
           const ocrSplitResult = this.splitFromOCR(ocrPages, {
             extractionMethod: 'local-ocr',
-            totalPages: pdf.numPages,
+            totalPages: inspection.totalPages,
           });
-          ocrSplitResult.inspection = layout.inspection;
+          ocrSplitResult.inspection = inspection;
 
           if (ocrSplitResult.totalQuestions === 0) {
             ocrSplitResult.failureReason = 'NO_QUESTION_MARKERS';
@@ -369,20 +351,22 @@ export class ExamPDFQuestionSplitter {
           return ocrSplitResult;
         } catch (ocrErr: any) {
           console.warn('[ExamPDFQuestionSplitter] Falha no OCR local:', ocrErr);
+          const isCancel = ocrErr?.code === 'OCR_CANCELLED' || ocrErr?.message?.includes('cancelado');
+          const isUnsupported = ocrErr?.code === 'OCR_RUNTIME_UNSUPPORTED';
           return {
             success: false,
             totalQuestions: 0,
             highConfidenceCount: 0,
             lowConfidenceCount: 0,
             lowConfidenceRatio: 1.0,
-            failureReason: 'OCR_FAILED',
+            failureReason: isUnsupported ? 'OCR_NOT_AVAILABLE' : isCancel ? 'PAGES_NOT_PROCESSED' : 'OCR_FAILED',
             warning: `Falha no motor de OCR local: ${ocrErr.message || ocrErr}`,
             questions: [],
             detectedQuestions: [],
             lowConfidenceQuestions: [],
             answerKeyFound: false,
             answerKeyMap: {},
-            inspection: layout.inspection,
+            inspection,
           };
         }
       }
@@ -405,7 +389,7 @@ export class ExamPDFQuestionSplitter {
               lowConfidenceQuestions: [],
               answerKeyFound: false,
               answerKeyMap: {},
-              inspection: layout.inspection,
+              inspection,
             };
           }
         }
@@ -425,7 +409,7 @@ export class ExamPDFQuestionSplitter {
 
           const remoteResult = this.splitFromText(remoteText);
           remoteResult.extractionMethod = 'remote-ocr';
-          remoteResult.inspection = layout.inspection;
+          remoteResult.inspection = inspection;
           for (const q of remoteResult.questions) {
             q.extractionMethod = 'remote-ocr';
           }
@@ -444,13 +428,17 @@ export class ExamPDFQuestionSplitter {
             lowConfidenceQuestions: [],
             answerKeyFound: false,
             answerKeyMap: {},
-            inspection: layout.inspection,
+            inspection,
           };
         }
       }
     }
 
-    return this.splitFromLayout(layout);
+    const fallbackLayout = await reader.extractPDFWithLayout(input as any, {
+      maxPages: options.maxPages,
+      signal: options.signal,
+    });
+    return this.splitFromLayout(fallbackLayout);
   }
 
   /**

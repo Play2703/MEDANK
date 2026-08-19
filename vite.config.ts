@@ -13,11 +13,11 @@ export default defineConfig(() => {
     },
     build: {
       rollupOptions: {
-        external: ['better-sqlite3'],
+        external: ['better-sqlite3', '@napi-rs/canvas'],
       },
     },
     optimizeDeps: {
-      exclude: ['better-sqlite3'],
+      exclude: ['better-sqlite3', '@napi-rs/canvas'],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
