@@ -43,3 +43,18 @@ funcionando (catálogo, entidades e grafo carregam normalmente; só a busca
 semântica/híbrida fica vazia). Veja
 [`scripts/seed-source/RECUPERAR-EMBEDDINGS.md`](scripts/seed-source/RECUPERAR-EMBEDDINGS.md)
 para as flags `SKIP_LFS_FETCH`, `LFS_STRICT` e `GITHUB_TOKEN`.
+
+---
+
+## Compatibilidade Mobile (Capacitor iOS & Android) & PDF.js
+
+- **Fixação da versão do `pdfjs-dist` (`4.10.38`)**:
+  - A biblioteca `pdfjs-dist` está fixada exatamente em `4.10.38` (sem `^`).
+  - Versões recentes (v5.x e v6.x) utilizam internamente métodos da proposta TC39 Map Upsert (`Map.prototype.getOrInsertComputed()`), que ainda não estão presentes em WebViews móveis (iOS WKWebView <= 18.1 e Android System WebView < 134).
+  - **NÃO altere para `^` nem atualize para v6** sem validar extensivamente em aparelhos físicos iOS/Android.
+- **Polyfills (`src/polyfills.ts`)**:
+  - Fornece polyfills para `Map.prototype.getOrInsertComputed`, `Map.prototype.getOrInsert`, `WeakMap.prototype.getOrInsertComputed`, `Promise.withResolvers` e `Object.groupBy`.
+  - Importado como primeiro statement em `src/main.tsx`, `LocalOCRService.ts` e `DocumentReaderService.ts`.
+- **Target de Build**:
+  - Configurado `build.target: ['es2022', 'chrome89', 'edge89', 'firefox89', 'safari15']` no `vite.config.ts` e `browserslist` no `package.json` para garantir transpile adequado para dispositivos móveis.
+

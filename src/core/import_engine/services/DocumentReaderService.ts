@@ -1,3 +1,4 @@
+import '../../../polyfills';
 import { IDocumentReader } from '../interfaces/IDocumentReader';
 import { RawDocument } from '../models/RawDocument';
 import { BinaryDocument } from '../models/BinaryDocument';

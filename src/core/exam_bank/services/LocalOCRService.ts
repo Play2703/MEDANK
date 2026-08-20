@@ -13,6 +13,7 @@
  * - Suporta cancelamento via AbortSignal e feedback detalhado de progresso.
  * - Preserva tokens, linhas visuais agrupadas por coordenadas Y/X e bounding boxes.
  */
+import '../../../polyfills';
 
 export type OCRRuntime = 'web' | 'capacitor-ios' | 'capacitor-android' | 'node';
 export type OCRMode = 'native-only' | 'local' | 'remote-consent';
