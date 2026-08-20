@@ -48,6 +48,7 @@ import { OCRMode, localOCRService } from '../../core/exam_bank/services/LocalOCR
 import { RepositoryFactory } from '../../data/repositories_impl/RepositoryFactory';
 import { medKnowledgeRepository } from '../../data/repositories_impl/MedKnowledgeRepository';
 import { calculateSegmentationStats } from '../../domain/entities/KnowledgeAsset';
+import { SegmentationSyncBridge } from '../../core/exam_bank/services/SegmentationSyncBridge';
 
 interface ExamQuestionSegmentationModalProps {
   isOpen: boolean;
@@ -303,6 +304,12 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
         }));
 
         await extractedQuestionRepo.bulkSave(records);
+        // Bridge sync: ensure extracted questions are also written to the alternate storage backend
+        if (sourceAssetId) {
+          SegmentationSyncBridge.syncExtractedQuestions(sourceAssetId, records).catch(function(e2: any) {
+            console.warn("[ExamQuestionSegmentationModal] Bridge syncExtractedQuestions warning:", e2);
+          });
+        }
       }
 
       if (sourceAssetId && questions.length > 0) {
@@ -321,6 +328,10 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
             asset.file.rawFileStorageKey = sourceAssetId;
           }
           await medKnowledgeRepository.saveAsset(asset);
+          // Bridge sync: ensure data is also written to the alternate storage backend (native SQLite <-> Dexie)
+          await SegmentationSyncBridge.syncKnowledgeAsset(asset).catch(function(e: any) {
+            console.warn("[ExamQuestionSegmentationModal] Bridge syncKnowledgeAsset warning:", e);
+          });
         }
       }
     } catch (err) {
