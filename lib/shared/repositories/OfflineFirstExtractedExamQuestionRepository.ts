@@ -5,6 +5,7 @@ import {
   NativeSQLiteService,
   CachedExtractedExamQuestionRow,
 } from '../../core/services/NativeSQLiteService';
+import { db } from '../../../src/data/db/database';
 
 export class OfflineFirstExtractedExamQuestionRepository implements IExtractedExamQuestionRepository {
   constructor(private sqlite: NativeSQLiteService = nativeSQLiteService) {}
@@ -46,12 +47,22 @@ export class OfflineFirstExtractedExamQuestionRepository implements IExtractedEx
 
   async save(record: ExtractedExamQuestionRecord): Promise<void> {
     await this.sqlite.insertExtractedExamQuestion(this.recordToRow(record));
+    try { await db.extractedExamQuestions.put(record); } catch {}
   }
 
   async bulkSave(records: ExtractedExamQuestionRecord[]): Promise<void> {
     if (records.length === 0) return;
     const rows = records.map((r) => this.recordToRow(r));
     await this.sqlite.bulkInsertExtractedExamQuestions(rows);
+    try {
+      if (records[0]?.sourceAssetId) {
+        await db.extractedExamQuestions
+          .where('sourceAssetId')
+          .equals(records[0].sourceAssetId)
+          .delete();
+      }
+      await db.extractedExamQuestions.bulkPut(records);
+    } catch {}
   }
 
   async getByAssetId(assetId: string): Promise<ExtractedExamQuestionRecord[]> {
@@ -71,13 +82,21 @@ export class OfflineFirstExtractedExamQuestionRepository implements IExtractedEx
 
   async deleteByAssetId(assetId: string): Promise<void> {
     await this.sqlite.deleteExtractedExamQuestionsByAssetId(assetId);
+    try {
+      await db.extractedExamQuestions
+        .where('sourceAssetId')
+        .equals(assetId)
+        .delete();
+    } catch {}
   }
 
   async deleteById(id: string): Promise<void> {
     await this.sqlite.deleteExtractedExamQuestion(id);
+    try { await db.extractedExamQuestions.delete(id); } catch {}
   }
 
   async clear(): Promise<void> {
     await this.sqlite.clearExtractedExamQuestions();
+    try { await db.extractedExamQuestions.clear(); } catch {}
   }
 }
