@@ -33,29 +33,50 @@ describe('ExamAcceptancePDF100Clinica - Regressão e Aceitação Completa', () =
   const fixturePath = path.resolve(__dirname, '../fixtures/prova_100_clinica_ocr.json');
   const ocrPages = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 
-  it('deve segmentar todas as 100 questões do PDF de aceitação', () => {
+  it('1. deve extrair o gabarito oficial de forma isolada das páginas finais de respostas', () => {
+    const { answerKeyMap, answerKeyFound } = ExamPDFQuestionSplitter.extractAnswerKey('', [], ocrPages);
+
+    expect(answerKeyFound).toBe(true);
+    for (let q = 1; q <= 100; q++) {
+      if (q === 19) continue;
+      expect(answerKeyMap[q]).toBe(OFFICIAL_ANSWER_KEY[q]);
+    }
+  });
+
+  it('2. deve segmentar todas as 100 questões do PDF de aceitação', () => {
     const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
 
     expect(result.success).toBe(true);
     expect(result.totalQuestions).toBe(100);
   });
 
-  it('deve atingir >= 95% de questões com confiança diferente de "low"', () => {
+  it('3. deve atingir >= 95% de questões com confiança "high" sob os novos critérios de qualidade real', () => {
     const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
 
-    const nonLowCount = (result.highConfidenceCount || 0) + (result.mediumConfidenceCount || 0);
-    const nonLowRatio = nonLowCount / result.totalQuestions;
+    const highCount = result.highConfidenceCount || 0;
+    const highRatio = highCount / result.totalQuestions;
 
-    expect(nonLowRatio).toBeGreaterThanOrEqual(0.95);
-    expect(result.lowConfidenceRatio).toBeLessThanOrEqual(0.05);
+    expect(highRatio).toBeGreaterThanOrEqual(0.95);
+    expect(result.lowConfidenceRatio).toBeLessThanOrEqual(0.02);
   });
 
-  it('deve extrair exatamente o número correto de alternativas não vazias para todas as 99 questões de múltipla escolha', () => {
+  it('4. deve preencher correctLetter para todas as 99 questões de múltipla escolha correspondendo ao gabarito oficial', () => {
+    const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
+
+    for (const q of result.questions) {
+      if (q.questionNumber !== 19) {
+        expect(q.correctLetter).toBe(OFFICIAL_ANSWER_KEY[q.questionNumber]);
+      }
+    }
+  });
+
+  it('5. deve extrair exatamente o número correto de alternativas sem duplicação de letras nem mais de 5 opções', () => {
     const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
 
     for (const q of result.questions) {
       const expCount = EXPECTED_OPTIONS_COUNT[q.questionNumber];
       expect(q.options.length).toBe(expCount);
+      expect(q.options.length).toBeLessThanOrEqual(5);
 
       if (q.questionNumber !== 19) {
         // Todas as alternativas devem ter texto não vazio
@@ -63,7 +84,12 @@ describe('ExamAcceptancePDF100Clinica - Regressão e Aceitação Completa', () =
           expect(opt.text.trim().length).toBeGreaterThan(0);
         }
 
-        // Não deve haver duplicação de texto idêntico entre alternativas da mesma questão
+        // Sem letras duplicadas
+        const letters = q.options.map((o) => o.letter);
+        const uniqueLetters = new Set(letters);
+        expect(uniqueLetters.size).toBe(letters.length);
+
+        // Sem duplicação de texto idêntico entre alternativas
         const texts = q.options.map((o) => o.text.trim().toLowerCase());
         const uniqueTexts = new Set(texts);
         expect(uniqueTexts.size).toBe(texts.length);
@@ -71,38 +97,32 @@ describe('ExamAcceptancePDF100Clinica - Regressão e Aceitação Completa', () =
     }
   });
 
-  it('deve conter a alternativa correta oficial para cada questão de múltipla escolha', () => {
-    const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
-
-    for (const q of result.questions) {
-      const expectedLetter = OFFICIAL_ANSWER_KEY[q.questionNumber];
-      if (expectedLetter) {
-        const correctOpt = q.options.find((o) => o.letter === expectedLetter);
-        expect(correctOpt).toBeDefined();
-        expect(correctOpt?.text.trim().length).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  it('deve resolver o caso crítico da Q68 isolando 4 alternativas com precisão', () => {
+  it('6. deve resolver perfeitamente o caso da Questão 68 isolando 4 alternativas com gabarito C', () => {
     const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
     const q68 = result.questions.find((q) => q.questionNumber === 68);
 
     expect(q68).toBeDefined();
     expect(q68?.options.length).toBe(4);
-    expect(q68?.confidence).not.toBe('low');
+    expect(q68?.confidence).toBe('high');
+    expect(q68?.correctLetter).toBe('C');
     expect(q68?.options.map((o) => o.letter)).toEqual(['A', 'B', 'C', 'D']);
-    expect(q68?.options[2].letter).toBe('C');
-    expect(q68?.options[2].text).toContain('discos voadores');
+    expect(q68?.options[0].text).toBe('Sintomas catatônicos.');
+    expect(q68?.options[1].text).toContain('Alucinações auditivas');
+    expect(q68?.options[2].text).toBe('Crença de que discos voadores o estão vigiando.');
+    expect(q68?.options[3].text).toBe('Afeto inadequado.');
+    // Garante que o enunciado termina antes das alternativas
+    expect(q68?.statement).toContain('estabelecidos para a Esquizofrenia?');
+    expect(q68?.statement).not.toContain('Sintomas catatônicos');
   });
 
-  it('deve tratar a questão Q53 (Certo/Errado) com 2 alternativas com confiança adequada', () => {
+  it('7. deve tratar a questão Q53 (Certo/Errado) com 2 alternativas com confiança "high"', () => {
     const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
     const q53 = result.questions.find((q) => q.questionNumber === 53);
 
     expect(q53).toBeDefined();
     expect(q53?.options.length).toBe(2);
     expect(q53?.confidence).toBe('high');
+    expect(q53?.correctLetter).toBe('A');
     expect(q53?.options[0].text).toContain('CERTO');
     expect(q53?.options[1].text).toContain('ERRADO');
   });
