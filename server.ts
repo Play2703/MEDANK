@@ -737,12 +737,17 @@ Configurações Solicitadas:
 
 ${questionTypeSection}
 
-REGRAS RÍGIDAS DE ELABORAÇÃO E QUALIDADE CLÍNICA (OBRIGATÓRIO):
-1. DISTRATORES PLAUSÍVEIS E ERROS DE RACIOCÍNIO ESPECÍFICOS: Cada distrator (opções incorretas) deve representar um erro de raciocínio clínico plausível e específico (ex: confundir fisiopatologias correlatas, indicar conduta de estágio/gravidade diferente, ou esquecer contraindicação relevante). É PROIBIDO criar opções absurdas, vazias ou óbvias que qualquer leigo descartaria.
-2. SIMETRIA E EQUILÍBRIO DAS ALTERNATIVAS: As 4 alternativas (A, B, C, D) devem ter extensão, profundidade técnica e formato gramatical semelhantes entre si. É PROIBIDO que a alternativa correta seja visivelmente mais longa, detalhada ou gramaticalmente destacada das demais.
-3. UNICIDADE E CLAREZA DO GABARITO: O enunciado deve fornecer todos os dados necessários (dados conceituais se tipo="conceitual", ou dados de anamnese/sinais se tipo="caso_clinico") para que exista EXATAMENTE UMA alternativa correta indiscutivelmente perante as diretrizes médicas vigentes.
-4. VARIABILIDADE E DIREITOS AUTORAIS: Altere ativamente os dados demográficos, histórico e valores de exames em relação a materiais de origem, mantendo a essência do conceito. NUNCA reproduza 4 ou mais palavras consecutivas idênticas do material de referência RAG.
-5. TAGUEAMENTO DE ENTIDADES CLÍNICAS E CID-10: Utilize as entidades estruturadas (CIDs, SNOMED, sintomas) dos trechos RAG para incluir códigos CID-10 e termos clínicos principais na lista de tags da questão gerada.
+REGRAS RÍGIDAS DE ELABORAÇÃO PEDAGÓGICA E QUALIDADE CLÍNICA (OBRIGATÓRIO):
+1. ANCORAGEM ESTRITA AO TEXTO-FONTE: Toda questão, resposta correta e distractores DEVEM ser derivados EXCLUSIVAMENTE do trecho/material atribuído. NÃO invente conceitos, exemplos ou variações não mencionadas no texto. Se o texto não contiver informação suficiente, sinalize "INSUFICIENTE_CONTEXTO".
+2. RESPOSTA CORRETA NÃO ATRELADA AO TAMANHO: Varie intencionalmente o comprimento da resposta correta entre as questões do lote (Q1 mais curta, Q2 mais longa, Q3 intermediária). Isso impede que o aluno desenvolva o vício de escolher sempre a alternativa mais longa.
+3. DISTRACTORES ESTRATÉGICOS E CONVINCENTES: Cada alternativa incorreta deve ser extraída ou derivada do material (não inventada), plausível para quem tem compreensão superficial e explorar um erro conceitual comum.
+4. DIVERSIDADE DE TIPOS DE ERRO (DISTRATORES): Cada distrator (isCorrect: false) deve ser classificado em um dos tipos válidos:
+   - "inversão_função" (ex: trocar auditivo por visual)
+   - "ordem_errada" (ex: inverter sequência crânio-caudal ou temporal)
+   - "componente_relacionado" (ex: citar outra estrutura ou mecanismo presente no mesmo trecho)
+   - "terminologia_parcial" (ex: usar termo parcialmente correto ou nomenclatura incompleta)
+5. UNICIDADE E SIMETRIA: Exatamente 1 alternativa correta (isCorrect: true) e 3 incorretas (isCorrect: false). As 4 alternativas devem ter profundidade técnica e formato gramatical compatíveis.
+6. TAGUEAMENTO E RASTREABILIDADE: Preencha "sourceContextExcerpt" com o trecho exato que originou a questão e inclua os códigos CID-10 e especialidade nas tags.
 
 Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos de texto fora do JSON):
 [
@@ -751,11 +756,36 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
     "clinicalContext": "Resumo clínico opcional",
     "correctAnswerText": "Texto da resposta/conduta/diagnóstico correto, de forma objetiva",
     "correctAnswerExplanation": "Por que esta é a resposta correta",
+    "options": [
+      {
+        "letter": "A",
+        "text": "Texto da alternativa A...",
+        "isCorrect": true
+      },
+      {
+        "letter": "B",
+        "text": "Texto do distrator B...",
+        "isCorrect": false,
+        "distractorType": "inversão_função"
+      },
+      {
+        "letter": "C",
+        "text": "Texto do distrator C...",
+        "isCorrect": false,
+        "distractorType": "componente_relacionado"
+      },
+      {
+        "letter": "D",
+        "text": "Texto do distrator D...",
+        "isCorrect": false,
+        "distractorType": "ordem_errada"
+      }
+    ],
     "commentary": {
       "correta": "Justificativa da alternativa correta embasada nas diretrizes médicas...",
       "correlacaoClinica": "Síntese da correlação clínica e conceito fundamental."
     },
-    "sourceContextExcerpt": "Citação direta ou resumo do trecho do material de estudo que originou esta questão",
+    "sourceContextExcerpt": "Trecho exato do material de estudo que originou esta questão",
     "coverageUnitId": "unit-1",
     "references": ["Diretriz de referência médica oficial"],
     "tags": ["${specialty}", "CID10_Opcional"],
@@ -767,7 +797,7 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
 ]
 ${avoidTopicsSection}${customContextSection}${existingQuestionsSection}
 COMANDO DE GERAÇÃO:
-Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas na ${originLabel}, seguindo fielmente todas as regras e o material acima.`;
+Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas na ${originLabel}, seguindo fielmente todas as 6 regras pedagógicas e o material acima.`;
 
 
       const selectedModel = (useLightModel && USE_LIGHT_MODEL_FOR_SIMILARITY_REGENERATION)

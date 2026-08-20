@@ -7,7 +7,13 @@ import {
 import { ragEngine } from './RAGEngine';
 import { knowledgeGraphService } from './KnowledgeGraphService';
 import { distractorEngine } from './distractorEngine/DistractorEngine';
-import { isValidGeneratedQuestion, isValidOptionText } from '../../core/utils/contentValidation';
+import {
+  isValidGeneratedQuestion,
+  isValidOptionText,
+  validateDistracter,
+  ensureVariedCorrectLength,
+  DistractorType,
+} from '../../core/utils/contentValidation';
 import { mapWithConcurrency } from '../../core/utils/asyncUtils';
 import { formatCompactAntiDuplicationList } from '../../core/utils/termExtractor';
 import { balanceAndShuffleQuestionOptions } from '../../core/utils/optionBalancer';
@@ -579,9 +585,10 @@ async function assemblePrescriptiveQuestionOptions(
   topics: string[],
   fallbackDistractorHints: any[] = []
 ): Promise<QuestionOption[]> {
-  // Se a IA já retornou um array options estruturado (com pelo menos 2 opções), mantém compatibilidade
-  if (Array.isArray(q.options) && q.options.length >= 2) {
-    return q.options
+  const rawOpts = Array.isArray(q.options) ? q.options : Array.isArray(q.alternatives) ? q.alternatives : [];
+  // Se a IA já retornou um array options/alternatives estruturado (com pelo menos 2 opções), mantém compatibilidade
+  if (rawOpts.length >= 2) {
+    return rawOpts
       .filter((opt: any) => opt && isValidOptionText(opt.text))
       .map((opt: any, oIdx: number) => ({
         id: `opt-${qId}-${opt.letter || String.fromCharCode(65 + oIdx)}`,
@@ -589,6 +596,7 @@ async function assemblePrescriptiveQuestionOptions(
         text: (opt.text || '').trim(),
         isCorrect: opt.isCorrect ?? (opt.letter === q.correctOptionLetter),
         explanation: opt.explanation || '',
+        distractorType: opt.distractorType || undefined,
       }));
   }
 
@@ -978,9 +986,33 @@ export class QuestionGenerationService {
           (v: any) => v.itemType === 'question' && data.questions.indexOf(q) === v.index
         );
         const assigned = batchCoverageAssignments[qIdx] || batchCoverageAssignments.find((a) => a.unitId === q.coverageUnitId);
+        const statement = (q.statement || q.questionText || '').trim();
+        const options = Array.isArray(q.options) ? q.options : Array.isArray(q.alternatives) ? q.alternatives : undefined;
+        const explanation = q.explanation || q.correctAnswerExplanation;
+        const sourceExcerpt = q.sourceContextExcerpt || (assigned ? assigned.unitContent.slice(0, 300) : undefined);
+
+        // Validação de distractores e variação de tamanho
+        if (Array.isArray(options) && options.length > 0) {
+          options.forEach((opt: any) => {
+            if (!opt.isCorrect && sourceExcerpt) {
+              const validation = validateDistracter(sourceExcerpt, opt.text, opt.distractorType);
+              if (!validation.valid) {
+                console.warn(`[QuestionGenerationService] Q${qIdx + 1}: ${validation.reason}`);
+              }
+            }
+          });
+
+          if (!ensureVariedCorrectLength(options, qIdx)) {
+            console.warn(`[QuestionGenerationService] Q${qIdx + 1}: Padrão detectado no tamanho da resposta correta`);
+          }
+        }
+
         return {
           ...q,
-          sourceContextExcerpt: q.sourceContextExcerpt || (assigned ? assigned.unitContent.slice(0, 300) : undefined),
+          statement,
+          options,
+          correctAnswerExplanation: explanation,
+          sourceContextExcerpt: sourceExcerpt,
           coverageUnitId: q.coverageUnitId || assigned?.unitId,
           coverageUnitLabel: assigned?.unitLabel,
           __needsReview: matchedValidation?.status === 'low_anchoring',
@@ -1521,9 +1553,33 @@ export class QuestionGenerationService {
             (v: any) => v.itemType === 'question' && data.questions.indexOf(q) === v.index
           );
           const assigned = topicCoverageAssignments[qIdx] || topicCoverageAssignments.find((a) => a.unitId === q.coverageUnitId);
+          const statement = (q.statement || q.questionText || '').trim();
+          const options = Array.isArray(q.options) ? q.options : Array.isArray(q.alternatives) ? q.alternatives : undefined;
+          const explanation = q.explanation || q.correctAnswerExplanation;
+          const sourceExcerpt = q.sourceContextExcerpt || (assigned ? assigned.unitContent.slice(0, 300) : undefined);
+
+          // Validação de distractores e variação de tamanho
+          if (Array.isArray(options) && options.length > 0) {
+            options.forEach((opt: any) => {
+              if (!opt.isCorrect && sourceExcerpt) {
+                const validation = validateDistracter(sourceExcerpt, opt.text, opt.distractorType);
+                if (!validation.valid) {
+                  console.warn(`[QuestionGenerationService] Q${qIdx + 1}: ${validation.reason}`);
+                }
+              }
+            });
+
+            if (!ensureVariedCorrectLength(options, qIdx)) {
+              console.warn(`[QuestionGenerationService] Q${qIdx + 1}: Padrão detectado no tamanho da resposta correta`);
+            }
+          }
+
           return {
             ...q,
-            sourceContextExcerpt: q.sourceContextExcerpt || (assigned ? assigned.unitContent.slice(0, 300) : undefined),
+            statement,
+            options,
+            correctAnswerExplanation: explanation,
+            sourceContextExcerpt: sourceExcerpt,
             coverageUnitId: q.coverageUnitId || assigned?.unitId,
             coverageUnitLabel: assigned?.unitLabel,
             __needsReview: matchedValidation?.status === 'low_anchoring',

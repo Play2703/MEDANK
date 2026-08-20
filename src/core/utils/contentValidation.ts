@@ -184,3 +184,81 @@ export function isValidGeneratedCard(c: any): boolean {
 
   return true;
 }
+
+export type DistractorType = 
+  | 'inversão_função'
+  | 'ordem_errada'
+  | 'componente_relacionado'
+  | 'terminologia_parcial';
+
+/**
+ * Valida se um distrator vem do texto-fonte (match >= 40%)
+ */
+export function validateDistracter(
+  sourceExcerpt?: string,
+  distractorText?: string,
+  distractorType?: DistractorType | string
+): { valid: boolean; reason?: string } {
+  if (!sourceExcerpt || typeof sourceExcerpt !== 'string' || !distractorText || typeof distractorText !== 'string') {
+    return { valid: true };
+  }
+
+  const normSource = sourceExcerpt
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  const words = distractorText
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 3);
+
+  if (words.length === 0) {
+    return { valid: true };
+  }
+
+  const sourceWords = normSource.split(/[^a-z0-9]+/);
+  const matchCount = words.filter((w) => sourceWords.includes(w) || normSource.includes(w)).length;
+  const matchRatio = matchCount / words.length;
+
+  if (matchRatio < 0.4) {
+    return {
+      valid: false,
+      reason: `Distractor menos de 40% conectado ao texto fonte (${(matchRatio * 100).toFixed(0)}%)`,
+    };
+  }
+
+  return { valid: true };
+}
+
+export const validateDistractor = validateDistracter;
+
+/**
+ * Garante que alternativas corretas não sigam um padrão previsível de tamanho
+ */
+export function ensureVariedCorrectLength(
+  alternatives: Array<{ text: string; isCorrect: boolean }>,
+  questionIndex: number
+): boolean {
+  if (!Array.isArray(alternatives) || alternatives.length === 0) return true;
+  const correctAlt = alternatives.find((a) => a && a.isCorrect);
+  if (!correctAlt || !correctAlt.text) return true;
+
+  const lengths = alternatives.map((a) => (a && a.text ? a.text.length : 0));
+  const avgLength = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+
+  if (questionIndex % 3 === 0) {
+    // Q1, Q4, Q7... -> resposta correta tende a ser a mais curta
+    return correctAlt.text.length <= avgLength;
+  } else if (questionIndex % 3 === 1) {
+    // Q2, Q5, Q8... -> resposta correta tende a ser a mais longa
+    return correctAlt.text.length >= avgLength;
+  }
+  // Q3, Q6... -> intermediária
+  return (
+    Math.abs(correctAlt.text.length - avgLength) <= avgLength * 0.4 ||
+    (lengths.some((l) => l > correctAlt.text.length) && lengths.some((l) => l < correctAlt.text.length))
+  );
+}

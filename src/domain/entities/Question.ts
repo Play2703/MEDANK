@@ -179,12 +179,19 @@ export interface StructuredCommentary {
 
 export type QuestionCommentary = string | StructuredCommentary;
 
+export type DistractorType = 
+  | 'inversão_função'
+  | 'ordem_errada'
+  | 'componente_relacionado'
+  | 'terminologia_parcial';
+
 export interface QuestionOption {
   id: string;
   letter: string;                    // 'A', 'B', 'C', 'D'
   text: string;
   isCorrect: boolean;
   explanation?: string;
+  distractorType?: DistractorType;
 }
 
 export interface CoverageUnit {

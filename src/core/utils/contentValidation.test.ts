@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { isValidGeneratedQuestion, isValidGeneratedCard, isValidOptionText } from './contentValidation';
+import {
+  isValidGeneratedQuestion,
+  isValidGeneratedCard,
+  isValidOptionText,
+  validateDistracter,
+  validateDistractor,
+  ensureVariedCorrectLength,
+} from './contentValidation';
 
 describe('contentValidation', () => {
   describe('isValidOptionText', () => {
@@ -165,6 +172,43 @@ describe('contentValidation', () => {
         back: 'Verso do card',
       };
       expect(isValidGeneratedCard(invalidClozeCard)).toBe(false);
+    });
+  });
+
+  describe('validateDistracter', () => {
+    const sourceExcerpt = 'Mesencéfalo: porção cranial contendo colículos superiores e substância negra dopaminérgica.';
+
+    it('deve aprovar distrator conectado ao texto-fonte (match >= 40%)', () => {
+      const result = validateDistracter(sourceExcerpt, 'Colículos superiores da visão', 'componente_relacionado');
+      expect(result.valid).toBe(true);
+    });
+
+    it('deve reprovar distrator não conectado ao texto-fonte (match < 40%)', () => {
+      const result = validateDistracter(sourceExcerpt, 'Fibras transversais da ponte', 'componente_relacionado');
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('menos de 40% conectado');
+    });
+  });
+
+  describe('ensureVariedCorrectLength', () => {
+    it('deve verificar variação de tamanho para diferentes índices de questão', () => {
+      // Q0: resposta correta mais curta
+      const altsQ0 = [
+        { text: 'Bulbo', isCorrect: true },
+        { text: 'Porção cranial do mesencéfalo', isCorrect: false },
+        { text: 'Fibras transversais da ponte', isCorrect: false },
+        { text: 'Pedúnculos cerebrais superiores', isCorrect: false },
+      ];
+      expect(ensureVariedCorrectLength(altsQ0, 0)).toBe(true);
+
+      // Q1: resposta correta mais longa
+      const altsQ1 = [
+        { text: 'Bulbo', isCorrect: false },
+        { text: 'Ponte', isCorrect: false },
+        { text: 'Mesencéfalo', isCorrect: false },
+        { text: 'Estrutura caudal do tronco encefálico que aloja os centros vitais respiratórios', isCorrect: true },
+      ];
+      expect(ensureVariedCorrectLength(altsQ1, 1)).toBe(true);
     });
   });
 });
