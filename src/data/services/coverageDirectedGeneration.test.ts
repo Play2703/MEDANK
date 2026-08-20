@@ -175,6 +175,9 @@ NOTAS DE ANATOMIA - TRONCO ENCEFÁLICO
         questionType: 'conceitual',
         customContext: notesTronco,
         strictCustomContextOnly: true,
+        includeCommentary: true,
+        showReferences: true,
+        autoGenerateFlashcards: false,
       },
       createdAt: new Date().toISOString(),
     };
