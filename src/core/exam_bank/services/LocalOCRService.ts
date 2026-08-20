@@ -167,39 +167,57 @@ export function groupOCRTokensIntoVisualLines(
   const validTokens = tokens.filter((t) => t.text && t.text.trim().length > 0);
   if (validTokens.length === 0) return [];
 
-  // Ordena prioritariamente por Y e secundariamente por X
+  // Ordena prioritariamente por Y do centro e secundariamente por X
   const sorted = [...validTokens].sort((a, b) => {
-    if (Math.abs(a.y - b.y) <= 4) {
+    const cyA = a.y + (a.height || 12) / 2;
+    const cyB = b.y + (b.height || 12) / 2;
+    if (Math.abs(cyA - cyB) <= 4) {
       return a.x - b.x;
     }
-    return a.y - b.y;
+    return cyA - cyB;
   });
 
   const lineGroups: OCRTextToken[][] = [];
 
   for (const token of sorted) {
-    const tokenHeight = token.height || 12;
-    const tolerance = Math.max(4, Math.min(10, tokenHeight * 0.5));
+    const tTop = token.y;
+    const tH = token.height || 12;
+    const tBottom = token.y + tH;
+    const tCenter = token.y + tH / 2;
 
-    let addedToGroup = false;
+    let bestGroup: OCRTextToken[] | null = null;
+    let maxOverlap = 0;
+
     for (const group of lineGroups) {
-      const avgY = group.reduce((acc, t) => acc + t.y, 0) / group.length;
-      if (Math.abs(token.y - avgY) <= tolerance) {
-        group.push(token);
-        addedToGroup = true;
-        break;
+      const gTop = Math.min(...group.map((t) => t.y));
+      const gBottom = Math.max(...group.map((t) => t.y + (t.height || 12)));
+      const gH = gBottom - gTop;
+      const gCenter = gTop + gH / 2;
+
+      const overlap = Math.min(tBottom, gBottom) - Math.max(tTop, gTop);
+      const minH = Math.min(tH, gH);
+
+      if (overlap > 0 && overlap / minH >= 0.35) {
+        if (overlap > maxOverlap) {
+          maxOverlap = overlap;
+          bestGroup = group;
+        }
+      } else if (Math.abs(tCenter - gCenter) <= 6) {
+        if (!bestGroup) bestGroup = group;
       }
     }
 
-    if (!addedToGroup) {
+    if (bestGroup) {
+      bestGroup.push(token);
+    } else {
       lineGroups.push([token]);
     }
   }
 
   // Ordena grupos de cima para baixo
   lineGroups.sort((g1, g2) => {
-    const avgY1 = g1.reduce((acc, t) => acc + t.y, 0) / g1.length;
-    const avgY2 = g2.reduce((acc, t) => acc + t.y, 0) / g2.length;
+    const avgY1 = g1.reduce((acc, t) => acc + (t.y + (t.height || 12) / 2), 0) / g1.length;
+    const avgY2 = g2.reduce((acc, t) => acc + (t.y + (t.height || 12) / 2), 0) / g2.length;
     return avgY1 - avgY2;
   });
 
@@ -299,15 +317,46 @@ function formatTesseractResult(ret: any, pageNumber: number): OCRPageResult {
   const rawText = ret?.data?.text || '';
   const confidence = typeof ret?.data?.confidence === 'number' ? ret.data.confidence : undefined;
 
-  const tokens: OCRTextToken[] = (ret?.data?.words || []).map((w: any, idx: number) => ({
-    text: w.text?.trim() || '',
-    x: w.bbox?.x0 || 0,
-    y: w.bbox?.y0 || 0,
-    width: w.bbox ? w.bbox.x1 - w.bbox.x0 : 0,
-    height: w.bbox ? w.bbox.y1 - w.bbox.y0 : 0,
-    confidence: w.confidence,
-    lineId: idx,
-  })).filter((t: OCRTextToken) => t.text.length > 0);
+  const tokens: OCRTextToken[] = [];
+  let tokenIdx = 0;
+
+  if (Array.isArray(ret?.data?.words) && ret.data.words.length > 0) {
+    for (const w of ret.data.words) {
+      const tText = w.text?.trim() || '';
+      if (tText) {
+        tokens.push({
+          text: tText,
+          x: w.bbox?.x0 || 0,
+          y: w.bbox?.y0 || 0,
+          width: w.bbox ? w.bbox.x1 - w.bbox.x0 : 0,
+          height: w.bbox ? w.bbox.y1 - w.bbox.y0 : 0,
+          confidence: w.confidence,
+          lineId: tokenIdx++,
+        });
+      }
+    }
+  } else if (Array.isArray(ret?.data?.blocks)) {
+    for (const block of ret.data.blocks) {
+      for (const para of (block.paragraphs || [])) {
+        for (const line of (para.lines || [])) {
+          for (const w of (line.words || [])) {
+            const tText = w.text?.trim() || '';
+            if (tText) {
+              tokens.push({
+                text: tText,
+                x: w.bbox?.x0 || 0,
+                y: w.bbox?.y0 || 0,
+                width: w.bbox ? w.bbox.x1 - w.bbox.x0 : 0,
+                height: w.bbox ? w.bbox.y1 - w.bbox.y0 : 0,
+                confidence: w.confidence,
+                lineId: tokenIdx++,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
 
   const visualLines = groupOCRTokensIntoVisualLines(tokens, pageNumber);
 
@@ -410,7 +459,7 @@ export class BrowserLocalOCRAdapter implements LocalOCRAdapter {
     }
 
     const worker = await this.getWorker();
-    const ret = await worker.recognize(input);
+    const ret = await worker.recognize(input, {}, { blocks: true, text: true });
 
     if (signal?.aborted) {
       throw new LocalOCRError('OCR_CANCELLED', 'OCR cancelado pelo usuário.');
@@ -585,7 +634,7 @@ export class CapacitorLocalOCRAdapter implements LocalOCRAdapter {
     }
 
     const worker = await this.getWorker();
-    const ret = await worker.recognize(input);
+    const ret = await worker.recognize(input, {}, { blocks: true, text: true });
 
     if (signal?.aborted) {
       throw new LocalOCRError('OCR_CANCELLED', 'OCR cancelado pelo usuário.');
@@ -771,7 +820,7 @@ export class NodeLocalOCRAdapter implements LocalOCRAdapter {
     }
 
     const worker = await this.getWorker();
-    const ret = await worker.recognize(input);
+    const ret = await worker.recognize(input, {}, { blocks: true, text: true });
 
     if (signal?.aborted) {
       throw new LocalOCRError('OCR_CANCELLED', 'OCR cancelado pelo usuário.');
