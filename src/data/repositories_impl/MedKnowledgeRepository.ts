@@ -10,6 +10,7 @@ import { medKnowledgeEventBus } from '../../core/events/MedKnowledgeEventBus';
 import { calculateSM2, createInitialSM2State, ReviewRating } from '../../core/algorithm/sm2';
 import { medKnowledgeService, GenerateQuestionsParams, CloneExamStyleParams } from '../services/medKnowledgeService';
 
+import { SegmentationSyncBridge } from '../../core/exam_bank/services/SegmentationSyncBridge';
 import { realSemanticSearchService } from '../services/RealSemanticSearchService';
 
 export class MedKnowledgeRepository {
@@ -136,6 +137,10 @@ export class MedKnowledgeRepository {
 
     try {
       await db.knowledgeAssets.put(updatedAsset);
+      // Bridge sync to native SQLite when on mobile (ensures segmentation stats are available)
+      SegmentationSyncBridge.syncKnowledgeAsset(updatedAsset).catch(function(e: any) {
+        console.trace("[MedKnowledgeRepository] Bridge sync warning (non-fatal):", e);
+      });
       this.saveToLocalStorage();
     } catch (e) {
       this.saveToLocalStorage();

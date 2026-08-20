@@ -47,6 +47,25 @@ export interface CachedStatsRow {
   updated_at: string;
 }
 
+export interface CachedKnowledgeAssetRow {
+  id: string;
+  title: string;
+  category: string;
+  subcategory: string;
+  institution: string;
+  board: string | null;
+  professor: string | null;
+  discipline: string;
+  specialty: string;
+  year: number;
+  semester: string;
+  tags_json: string;
+  metadata_json: string;
+  processing_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CachedExtractedExamQuestionRow {
   id: string;
   source_asset_id?: string | null;
@@ -111,6 +130,7 @@ export class NativeSQLiteService {
   private memGraphNodes = new Map<string, GraphNodeRow>();
   private memGraphEdges = new Map<string, GraphEdgeRow>();
   private memExtractedQuestions = new Map<string, CachedExtractedExamQuestionRow>();
+  private memKnowledgeAssets = new Map<string, CachedKnowledgeAssetRow>();
 
 
   constructor() {}
@@ -299,6 +319,31 @@ export class NativeSQLiteService {
           CREATE INDEX IF NOT EXISTS idx_cached_ext_q_num ON cached_extracted_exam_questions(question_number);
         `,
       },
+      {
+        name: 'cached_knowledge_assets',
+        sql: `
+          CREATE TABLE IF NOT EXISTS cached_knowledge_assets (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT '',
+            subcategory TEXT DEFAULT '',
+            institution TEXT DEFAULT '',
+            board TEXT,
+            professor TEXT,
+            discipline TEXT DEFAULT '',
+            specialty TEXT DEFAULT '',
+            year INTEGER DEFAULT 2026,
+            semester TEXT DEFAULT '',
+            tags_json TEXT DEFAULT '[]',
+            metadata_json TEXT DEFAULT '{}',
+            processing_status TEXT DEFAULT 'pending',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_knowledge_assets_category ON cached_knowledge_assets(category);
+          CREATE INDEX IF NOT EXISTS idx_knowledge_assets_institution ON cached_knowledge_assets(institution);
+        `,
+      },
     ];
 
     for (const table of tableSchemas) {
@@ -322,6 +367,7 @@ export class NativeSQLiteService {
         'graph_nodes',
         'graph_edges',
         'cached_extracted_exam_questions',
+        'cached_knowledge_assets',
       ];
       const missingTables = expectedTables.filter((t) => !existingTables.has(t));
       if (missingTables.length > 0) {
@@ -330,7 +376,7 @@ export class NativeSQLiteService {
           missingTables
         );
       } else {
-        console.log('[NativeSQLiteService] Todas as 8 tabelas nativas verificadas com sucesso.');
+        console.log('[NativeSQLiteService] Todas as 9 tabelas nativas verificadas com sucesso.');
       }
     } catch (verifErr) {
       console.error('[NativeSQLiteService] Erro ao verificar integridade das tabelas nativas:', verifErr);
@@ -987,7 +1033,103 @@ export class NativeSQLiteService {
       this.memExtractedQuestions.clear();
     }
   }
+
+
+  // --- KNOWLEDGE ASSETS OPERATIONS ---
+
+  public async upsertCachedKnowledgeAsset(asset: CachedKnowledgeAssetRow): Promise<void> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = `
+        INSERT OR REPLACE INTO cached_knowledge_assets (
+          id, title, category, subcategory, institution, board, professor,
+          discipline, specialty, year, semester, tags_json, metadata_json,
+          processing_status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      await this.dbConnection.run(sql, [
+        asset.id,
+        asset.title,
+        asset.category,
+        asset.subcategory,
+        asset.institution,
+        asset.board,
+        asset.professor,
+        asset.discipline,
+        asset.specialty,
+        asset.year,
+        asset.semester,
+        asset.tags_json,
+        asset.metadata_json,
+        asset.processing_status,
+        asset.created_at,
+        asset.updated_at,
+      ]);
+    } else {
+      this.memKnowledgeAssets.set(asset.id, { ...asset });
+    }
+  }
+
+  public async getCachedKnowledgeAssetById(id: string): Promise<CachedKnowledgeAssetRow | null> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'SELECT * FROM cached_knowledge_assets WHERE id = ? LIMIT 1';
+      const res = await this.dbConnection.query(sql, [id]);
+      return res.values && res.values.length > 0 ? (res.values[0] as CachedKnowledgeAssetRow) : null;
+    } else {
+      const asset = this.memKnowledgeAssets.get(id);
+      return asset ? { ...asset } : null;
+    }
+  }
+
+  public async getCachedKnowledgeAssetsByCategory(category: string): Promise<CachedKnowledgeAssetRow[]> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'SELECT * FROM cached_knowledge_assets WHERE category = ? ORDER BY updated_at DESC';
+      const res = await this.dbConnection.query(sql, [category]);
+      return (res.values as CachedKnowledgeAssetRow[]) || [];
+    } else {
+      const results: CachedKnowledgeAssetRow[] = [];
+      for (const asset of this.memKnowledgeAssets.values()) {
+        if (asset.category === category) {
+          results.push({ ...asset });
+        }
+      }
+      return results.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    }
+  }
+
+  public async getAllCachedKnowledgeAssets(): Promise<CachedKnowledgeAssetRow[]> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'SELECT * FROM cached_knowledge_assets ORDER BY updated_at DESC';
+      const res = await this.dbConnection.query(sql);
+      return (res.values as CachedKnowledgeAssetRow[]) || [];
+    } else {
+      return Array.from(this.memKnowledgeAssets.values()).sort(
+        (a, b) => b.updated_at.localeCompare(a.updated_at)
+      );
+    }
+  }
+
+  public async deleteCachedKnowledgeAsset(id: string): Promise<void> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      await this.dbConnection.run('DELETE FROM cached_knowledge_assets WHERE id = ?', [id]);
+    } else {
+      this.memKnowledgeAssets.delete(id);
+    }
+  }
+
+  public async clearCachedKnowledgeAssets(): Promise<void> {
+    await this.initialize();
+    if (this.dbConnection && this.isNative()) {
+      const sql = 'DELETE FROM cached_knowledge_assets';
+      await this.dbConnection.run(sql);
+    } else {
+      this.memKnowledgeAssets.clear();
+    }
+  }
 }
 
 export const nativeSQLiteService = new NativeSQLiteService();
-
