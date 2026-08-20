@@ -305,4 +305,69 @@ Ga) o curto período de história sugere um quadro reativo.
     expect(q.options[2].text).toContain('lúpus eritematoso sistêmico');
     expect(q.options[3].text).toContain('artrite reumatoide');
   });
+
+  // 13. Fixture de Prova 100 Clínica Q1: não confundir "E. coli" com marcador de alternativa "E."
+  it('13. deve preservar "E. coli" no texto da alternativa sem tratar "E." como marcador de opção', () => {
+    const q1Fixture = `
+QUESTÃO 01
+Bacteremias por germes adquiridos em residências de idosos com cuidados médicos e aquelas adquiridas em unidades de queimados:
+a) E. coli e Klebsiella pneumoniae.
+(b) Pseudomonas aeruginosa e Staphylococcus epidermidis.
+O) Klebsiella pneumoniae e Staphylococcus aureus.
+(O) E.coli e Pseudomonas aeruginosa.
+o) Acinetobacter sp e enterococos.
+`;
+    const result = ExamPDFQuestionSplitter.splitFromText(q1Fixture);
+    expect(result.totalQuestions).toBe(1);
+    const q = result.questions[0];
+    expect(q.questionNumber).toBe(1);
+    expect(q.options).toHaveLength(5);
+    expect(q.options.map((o) => o.letter)).toEqual(['A', 'B', 'C', 'D', 'E']);
+    expect(q.options[0].text).toContain('E. coli e Klebsiella pneumoniae');
+    expect(q.options[1].text).toContain('Pseudomonas aeruginosa');
+    expect(q.options[4].text).toContain('Acinetobacter sp e enterococos');
+  });
+
+  // 14. Fixture de Prova 100 Clínica Q6: reconhecer (€) e [(C) como C e D
+  it('14. deve reconhecer artefatos OCR (€) e [(C) e mapear sequencialmente para C e D', () => {
+    const q6Fixture = `
+QUESTÃO 06
+Homem de 52 anos, etilista com história de aumento do uso de álcool recentemente:
+a) Ceftriaxona por 7 dias. Ciprofloxacina profilática após.
+GG) Cefotaxima por 7 dias, sem profilaxia após.
+(€) Prednisolona por 28 dias associada a norfloxacina.
+[(C) Hidratação e repetição de paracentese em 48 horas.
+(E) Prednisolona por 28 dias.
+`;
+    const result = ExamPDFQuestionSplitter.splitFromText(q6Fixture);
+    expect(result.totalQuestions).toBe(1);
+    const q = result.questions[0];
+    expect(q.questionNumber).toBe(6);
+    expect(q.options).toHaveLength(5);
+    expect(q.options.map((o) => o.letter)).toEqual(['A', 'B', 'C', 'D', 'E']);
+    expect(q.options[0].text).toContain('Ceftriaxona');
+    expect(q.options[2].text).toContain('Prednisolona por 28 dias');
+    expect(q.options[3].text).toContain('Hidratação e repetição');
+  });
+
+  // 15. Descarte de bloco fantasma com ruído no final do documento
+  it('15. deve descartar bloco com ruído gráfico e enunciado vazio no final do documento', () => {
+    const ghostText = `
+QUESTÃO 01
+Paciente com apendicite aguda.
+A) Cirurgia.
+B) Observação.
+C) Analgesia.
+D) Alta.
+
+QUESTÃO 01
+
+c o «e 33 a e c (OQ: 6 a (cc o «e ss - Q c - 5 Q: c o «e so À: c o «e 6
+`;
+    const result = ExamPDFQuestionSplitter.splitFromText(ghostText);
+    expect(result.totalQuestions).toBe(1);
+    expect(result.questions[0].questionNumber).toBe(1);
+    expect(result.questions[0].statement).toBe('Paciente com apendicite aguda.');
+    expect(result.questions[0].options).toHaveLength(4);
+  });
 });

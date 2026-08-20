@@ -175,16 +175,26 @@ export class ExamPDFQuestionSplitter {
     statement: string;
     options: ExtractedOption[];
   } {
-    const optSplitRegex =
-      /(?=(?:^|\s+)(?:\([A-Ea-eO0o\?]\)|\[[A-Ea-e]\]|[A-Ea-e][\)\.\:\-–—]|[Ⓐ-Ⓔ]|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|G[ab]\))\s+)/gi;
-
-    const isStartOfOption = (line: string): boolean =>
-      /^(?:\(([A-Ea-eO0o\?])\)|\[([A-Ea-e])\]|([A-Ea-e])[.\:\-–—\)]|([Ⓐ-Ⓔ])|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|G[ab]\))/i.test(
-        line.trim()
+    const isStartOfOption = (line: string): boolean => {
+      const trimmed = line.trim();
+      // Ignora abreviações biológicas como "E. coli", "S. aureus", etc.
+      if (
+        /^[A-E]\.\s+(?:coli|aeruginosa|faecalis|pneumoniae|aureus|sp|spp|difficile|albicans|histolytica|cruzi|mansoni)\b/i.test(
+          trimmed
+        )
+      ) {
+        return false;
+      }
+      return /^(?:\([A-Ea-eO0o\?€]\)|\[[A-Ea-e€]\]|\[\([A-Ea-e€]\)|[A-Ea-e][\)\:\-–—]|[A-Ea-e]\.(?!\s+(?:coli|aeruginosa|faecalis|pneumoniae|aureus|sp|spp|difficile|albicans|histolytica|cruzi|mansoni)\b)|[Ⓐ-Ⓔ]|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|[Oo0][\)\.\:\-–—]|G[abG]\))\s+/i.test(
+        trimmed
       );
+    };
 
     const cleanMarkerRegex =
-      /^(?:\(([A-Ea-eO0o\?])\)|\[([A-Ea-e])\]|([A-Ea-e])[.\:\-–—\)]|([Ⓐ-Ⓔ])|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|G[ab]\))\s*(.*)$/si;
+      /^(?:\(([A-Ea-eO0o\?€])\)|\[([A-Ea-e€])\]|\[\(([A-Ea-e€])\)|([A-Ea-e])[.\:\-–—\)]|([Ⓐ-Ⓔ])|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|[Oo0][\)\.\:\-–—]|G[abG]\))\s*(.*)$/si;
+
+    const optSplitRegex =
+      /(?=(?:^|\s+)(?:\([A-Ea-eO0o\?€]\)|\[[A-Ea-e€]\]|\[\([A-Ea-e€]\)|[A-Ea-e][\)\:\-–—]|[A-Ea-e]\.(?!\s+(?:coli|aeruginosa|faecalis|pneumoniae|aureus|sp|spp|difficile|albicans|histolytica|cruzi|mansoni)\b)|[Ⓐ-Ⓔ]|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|[Oo0][\)\.\:\-–—]|G[abG]\))\s+)/gi;
 
     const lines = rawText.split(/\r?\n/).map((l) => this.cleanText(l)).filter(Boolean);
     const statementLines: string[] = [];
@@ -202,9 +212,10 @@ export class ExamPDFQuestionSplitter {
           rawOptionChunks.push(sc);
         }
       } else if (isParsingOptions) {
-        // Continuação de linha da alternativa atual
+        // Continuação de linha da alternativa atual (remove traço de início se for hífen/em-dash)
+        const cleanContinuation = line.replace(/^[—\-–]\s*/, '');
         if (rawOptionChunks.length > 0) {
-          rawOptionChunks[rawOptionChunks.length - 1] += ' ' + line;
+          rawOptionChunks[rawOptionChunks.length - 1] += ' ' + cleanContinuation;
         } else {
           statementLines.push(line);
         }
@@ -236,23 +247,24 @@ export class ExamPDFQuestionSplitter {
       let optText = chunk;
 
       if (match) {
-        rawLetter = (match[1] || match[2] || match[3] || match[4] || '').toUpperCase();
-        optText = match[5]?.trim() || '';
+        rawLetter = (match[1] || match[2] || match[3] || match[4] || match[5] || '').toUpperCase();
+        optText = match[6]?.trim() || '';
       }
 
       // Normaliza Unicode circulado Ⓐ-Ⓔ
       if (rawLetter.charCodeAt(0) >= 0x24b6 && rawLetter.charCodeAt(0) <= 0x24ba) {
         rawLetter = String.fromCharCode('A'.charCodeAt(0) + (rawLetter.charCodeAt(0) - 0x24b6));
       }
+      if (rawLetter === '€') rawLetter = 'C';
 
       let letter = '';
       let inferred = false;
 
       const expectedLetter = letters[options.length];
-      if (['A', 'B', 'C', 'D', 'E'].includes(rawLetter) && (rawLetter === expectedLetter || rawOptionChunks.length !== 4)) {
+      if (['A', 'B', 'C', 'D', 'E'].includes(rawLetter) && (rawLetter === expectedLetter || rawOptionChunks.length < 4)) {
         letter = rawLetter;
       } else {
-        letter = expectedLetter || 'D';
+        letter = expectedLetter || 'E';
         inferred = true;
       }
 
@@ -269,7 +281,8 @@ export class ExamPDFQuestionSplitter {
     // Re-sequencia se houver 4 ou 5 opções fora de ordem
     if (options.length === 4 || options.length === 5) {
       const lettersPresent = options.map((o) => o.letter).join('');
-      if (lettersPresent !== 'ABCD' && lettersPresent !== 'ABCDE') {
+      const target = options.length === 4 ? 'ABCD' : 'ABCDE';
+      if (lettersPresent !== target) {
         for (let k = 0; k < options.length; k++) {
           if (options[k].letter !== letters[k]) {
             options[k].letter = letters[k];
@@ -921,23 +934,30 @@ export class ExamPDFQuestionSplitter {
 
     finalizeCurrentQuestion();
 
-    // Deduplicação inteligente de questões repetidas na mesma página
+    // Deduplicação inteligente de questões repetidas e descarte de fantasmas de ruído gráfico
     const deduplicatedQuestions: ExtractedExamQuestion[] = [];
-    const seenMap = new Map<string, ExtractedExamQuestion>();
+    const seenMap = new Map<number, ExtractedExamQuestion>();
 
     for (const q of questions) {
-      const key = `${q.pageNumber}_${q.questionNumber}`;
-      if (!seenMap.has(key)) {
-        seenMap.set(key, q);
+      // Descarta blocos com enunciado vazio / ruído gráfico
+      if (!q.statement || (q.statement.length < 15 && q.options.length <= 1)) {
+        continue;
+      }
+
+      if (!seenMap.has(q.questionNumber)) {
+        seenMap.set(q.questionNumber, q);
         deduplicatedQuestions.push(q);
       } else {
-        const existing = seenMap.get(key)!;
-        // Se a nova versão tiver mais alternativas, substitui
-        if (q.options.length > existing.options.length) {
+        const existing = seenMap.get(q.questionNumber)!;
+        // Se a nova versão tiver mais alternativas ou enunciado mais completo, substitui
+        if (
+          q.options.length > existing.options.length ||
+          (q.options.length === existing.options.length && q.statement.length > existing.statement.length)
+        ) {
           const idx = deduplicatedQuestions.indexOf(existing);
           if (idx !== -1) {
             deduplicatedQuestions[idx] = q;
-            seenMap.set(key, q);
+            seenMap.set(q.questionNumber, q);
           }
         }
       }
