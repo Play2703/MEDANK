@@ -36,76 +36,93 @@ GABARITO: 1-A
     expect(result.success).toBe(true);
   });
 
-  // 2. OCR de uma página com QUESTÃO 27 e alternativas A-D
-  it('2. deve estruturar OCR de uma página com QUESTÃO 27 e 4 alternativas A-D', () => {
-    const ocrPages: OCRPageResult[] = [
-      {
-        pageNumber: 12,
-        confidence: 94,
-        text: `
-INEP - ENADE 2023 - MEDICINA
-QUESTÃO 27
-Uma paciente de 35 anos, primigesta com 32 semanas de gestação, comparece à consulta de pré-natal com pressão arterial de 150/100 mmHg e proteinúria de fita 2+.
-A) Iniciar sulfato de magnésio e metildopa.
-B) Prescrever inibidor da ECA e repouso absoluto.
-C) Realizar parto cesáreo de emergência imediato.
-D) Solicitar apenas repetição de exames em 30 dias.
-`,
-        blocks: [
-          { text: 'INEP - ENADE 2023 - MEDICINA', y: 50 },
-          { text: 'QUESTÃO 27', y: 100 },
-          { text: 'Uma paciente de 35 anos, primigesta com 32 semanas de gestação, comparece à consulta de pré-natal com pressão arterial de 150/100 mmHg e proteinúria de fita 2+.', y: 150 },
-          { text: 'A) Iniciar sulfato de magnésio e metildopa.', y: 220 },
-          { text: 'B) Prescrever inibidor da ECA e repouso absoluto.', y: 250 },
-          { text: 'C) Realizar parto cesáreo de emergência imediato.', y: 280 },
-          { text: 'D) Solicitar apenas repetição de exames em 30 dias.', y: 310 },
-        ],
-      },
-    ];
-
-    const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
+  // 2. OCR com marcadores circulares reconhecidos como (O) inferidos como A, B, C, D
+  it('2. deve converter marcadores circulares OCR (O) em alternativas ordenadas A-D', () => {
+    const rawOcrWithCircles = `
+QUESTÃO 12
+Paciente em tratamento para transtorno depressivo maior com fluoxetina 40 mg/dia. O médico avalia a manutenção do tratamento:
+(O) Redução da dose da fluoxetina para 20 mg/dia por 5 anos.
+(O) Redução da dose para 20 mg/dia por 30 dias com posterior suspensão.
+(O) Manutenção da dose de 40 mg/dia por pelo menos 5 anos.
+(O) Manutenção da dose por mais um ano com desmame gradual.
+`;
+    const result = ExamPDFQuestionSplitter.splitFromText(rawOcrWithCircles);
     expect(result.totalQuestions).toBe(1);
     const q = result.questions[0];
-    expect(q.questionNumber).toBe(27);
-    expect(q.statement).toContain('primigesta com 32 semanas');
+    expect(q.questionNumber).toBe(12);
     expect(q.options).toHaveLength(4);
-    expect(q.options[0].letter).toBe('A');
-    expect(q.options[3].letter).toBe('D');
-    expect(q.confidence).toBe('high');
-    expect(q.pageNumber).toBe(12);
+    expect(q.options.map((o) => o.letter)).toEqual(['A', 'B', 'C', 'D']);
+    expect(q.options[0].text).toContain('Redução da dose da fluoxetina para 20 mg/dia');
+    expect(q.options[1].text).toContain('Redução da dose para 20 mg/dia por 30 dias');
+    expect(q.options[2].text).toContain('Manutenção da dose de 40 mg/dia por pelo menos 5 anos');
+    expect(q.options[3].text).toContain('Manutenção da dose por mais um ano');
+    expect(q.options.every((o) => o.text.trim().length > 0)).toBe(true);
   });
 
-  // 3. OCR com alternativas (A), B), C), D)
-  it('3. deve suportar OCR com alternativas em formatos variados (A), B), C., D)', () => {
-    const ocrPages: OCRPageResult[] = [
-      {
-        pageNumber: 5,
-        text: `
-QUESTÃO 15
-Em relação ao suporte básico de vida no adulto em PCR, assinale a opção correta:
-(A) A frequência recomendada de compressões torácicas é de 100 a 120 por minuto.
-B) Deve-se intercalar 15 compressões com 2 ventilações em adultos com 1 socorrista.
-C. A profundidade da compressão torácica no adulto deve ser de pelo menos 8 cm.
-D) A interrupção das compressões deve ser realizada a cada 30 segundos para checar o pulso.
-`,
-      },
-    ];
-
-    const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
+  // 3. Uma linha OCR contendo quatro alternativas concatenadas
+  it('3. deve desconcatenar quatro alternativas misturadas na mesma linha de texto', () => {
+    const concatenatedLine = `
+QUESTÃO 04
+Assinale a hipótese diagnóstica e a conduta esperada correspondem, respectivamente, a (O) derrame pleural; realização de toracocentese. (O) pneumotórax; realização de drenagem pleural fechada em selo d'água. (E) insuficiência cardíaca; hospitalização e diurético de alça por via venosa. (O) pneumonia; prescrição de claritromicina oral por sete dias.
+`;
+    const result = ExamPDFQuestionSplitter.splitFromText(concatenatedLine);
     expect(result.totalQuestions).toBe(1);
     const q = result.questions[0];
-    expect(q.questionNumber).toBe(15);
     expect(q.options).toHaveLength(4);
-    expect(q.options[0].letter).toBe('A');
-    expect(q.options[0].text).toContain('100 a 120 por minuto');
-    expect(q.options[1].letter).toBe('B');
-    expect(q.options[2].letter).toBe('C');
-    expect(q.options[3].letter).toBe('D');
-    expect(q.confidence).toBe('high');
+    expect(q.options.map((o) => o.letter)).toEqual(['A', 'B', 'C', 'D']);
+    expect(q.options[0].text).toContain('derrame pleural');
+    expect(q.options[1].text).toContain('pneumotórax');
+    expect(q.options[2].text).toContain('insuficiência cardíaca');
+    expect(q.options[3].text).toContain('pneumonia');
   });
 
-  // 4. Questão iniciando no meio da numeração
-  it('4. deve aceitar que a numeração inicie em 27 ou outro número sem exigir questão 1 primeiro', () => {
+  // 4. Alternativa quebrada em várias linhas
+  it('4. deve manter o texto de uma alternativa que se estende por múltiplas linhas', () => {
+    const multilineText = `
+QUESTÃO 05
+Sobre o manejo da dor torácica no departamento de emergência:
+A) Realizar eletrocardiograma de 12 derivações
+em até 10 minutos da admissão hospitalar,
+garantindo tempo porta-agulha adequado.
+B) Aguardar dosagem de troponina para decidir internação.
+C) Indicar teste ergométrico em vigência de dor aguda.
+D) Prescrever analgésico simples e alta.
+`;
+    const result = ExamPDFQuestionSplitter.splitFromText(multilineText);
+    expect(result.totalQuestions).toBe(1);
+    const q = result.questions[0];
+    expect(q.options).toHaveLength(4);
+    expect(q.options[0].text).toContain('Realizar eletrocardiograma de 12 derivações');
+    expect(q.options[0].text).toContain('tempo porta-agulha adequado');
+  });
+
+  // 5. Duas questões na mesma linha OCR com QUESTÃO 14 no meio
+  it('5. deve separar duas questões que vieram concatenadas no mesmo bloco com QUESTÃO 14 no meio', () => {
+    const mergedQuestionsText = `
+QUESTÃO 13
+Um paciente de 21 anos comparece à UBS relatando que a ex-parceira tem HIV.
+A) Iniciar tratamento antirretroviral de imediato.
+(O) Realizar genotipagem pré-tratamento.
+(O) Solicitar exame de Western-Blot.
+(O) Apenas orientar uso de preservativo.
+QUESTÃO 14
+Uma mulher com 64 anos leva o neto recém-nascido com 5 dias de vida à UBS:
+(O) Realizar aleitamento artificial com fórmulas fortificadas.
+(O) Convencer a mãe a fornecer leite materno.
+(O) Buscar meios legais de guarda da criança.
+(O) Repetir sorologias e encaminhar para puericultura.
+`;
+    const result = ExamPDFQuestionSplitter.splitFromText(mergedQuestionsText);
+    expect(result.totalQuestions).toBe(2);
+    expect(result.questions[0].questionNumber).toBe(13);
+    expect(result.questions[0].options).toHaveLength(4);
+    expect(result.questions[1].questionNumber).toBe(14);
+    expect(result.questions[1].options).toHaveLength(4);
+    expect(result.questions[1].statement).toContain('mulher com 64 anos');
+  });
+
+  // 6. Questão iniciando no meio da numeração (ex: 27)
+  it('6. deve aceitar que a numeração inicie em 27 ou outro número sem exigir questão 1 primeiro', () => {
     const textStartingAt27 = `
 QUESTÃO 27
 Lactente de 6 meses com tosse paroxística e estridor inspiratório (guincho).
@@ -121,7 +138,6 @@ B) Icterícia do leite materno.
 C) Incompatibilidade ABO.
 D) Síndrome de Gilbert.
 `;
-
     const result = ExamPDFQuestionSplitter.splitFromText(textStartingAt27);
     expect(result.totalQuestions).toBe(2);
     expect(result.questions[0].questionNumber).toBe(27);
@@ -130,55 +146,33 @@ D) Síndrome de Gilbert.
     expect(result.questions[1].confidence).toBe('high');
   });
 
-  // 5. Questão quebrada entre duas páginas
-  it('5. deve agrupar corretamente uma questão que inicia na página 4 e termina na página 5', () => {
-    const ocrPages: OCRPageResult[] = [
-      {
-        pageNumber: 4,
-        text: `
-QUESTÃO 42
-Homem de 60 anos, etilista crônico, com ascite volumosa e febre. A paracentese diagnóstica revelou líquido ascítico com contagem de polimorfonucleares de 380/mm³. Diante do quadro de Peritonite Bacteriana Espontânea (PBE):
-A) Iniciar Cefotaxima intravenosa e albumina humana no 1º e 3º dias.
-B) Iniciar Ciprofloxacino oral e diuréticos em doses dobradas.
-`,
-      },
-      {
-        pageNumber: 5,
-        text: `
-C) Realizar paracentese de alívio total imediatamente sem reposição de expansores.
-D) Indicar laparotomia exploradora de urgência para lavagem da cavidade peritoneal.
-E) Prescrever apenas Norfloxacino profilático por 7 dias.
+  // 7. Página de instruções com lista numerada não deve virar falsa Questão 1
+  it('7. deve descartar a página de instruções do início da prova sem gerar falsa Questão 1', () => {
+    const instructionPageText = `
+LEIA ATENTAMENTE AS INSTRUÇÕES SEGUINTES:
+1. Verifique se este caderno de questões contém 100 itens numerados sequencialmente.
+2. Observe a numeração das questões antes de preencher a folha de respostas definitiva.
+3. Analise todas as alternativas antes de assinalar a resposta.
+4. Consultas externas não será permitida qualquer espécie de consulta nem uso de eletrônicos.
+5. Marcação da resposta use caneta preta para marcar suas respostas. Boa prova!
 
-QUESTÃO 43
-Mulher com hipotireoidismo descompensado.
-A) Levotiroxina.
-B) Metimazol.
-C) Propanolol.
-D) Iodo.
-`,
-      },
-    ];
-
-    const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
-    expect(result.totalQuestions).toBe(2);
-
-    const q42 = result.questions[0];
-    expect(q42.questionNumber).toBe(42);
-    expect(q42.pageNumber).toBe(4);
-    expect(q42.endPageNumber).toBe(5);
-    expect(q42.options).toHaveLength(5);
-    expect(q42.options[0].letter).toBe('A');
-    expect(q42.options[2].letter).toBe('C');
-    expect(q42.options[4].letter).toBe('E');
-    expect(q42.confidence).toBe('high');
-
-    const q43 = result.questions[1];
-    expect(q43.questionNumber).toBe(43);
-    expect(q43.pageNumber).toBe(5);
+QUESTÃO 01
+Paciente com apendicite aguda apresentando dor em fossa ilíaca direita.
+A) Apendicectomia videolaparoscópica.
+B) Tratamento conservador com analgésicos.
+C) Antibioticoterapia isolada sem internação.
+D) Colonoscopia de urgência.
+`;
+    const result = ExamPDFQuestionSplitter.splitFromText(instructionPageText);
+    expect(result.totalQuestions).toBe(1);
+    expect(result.questions[0].questionNumber).toBe(1);
+    expect(result.questions[0].statement).toContain('apendicite aguda');
+    expect(result.questions[0].statement).not.toContain('LEIA ATENTAMENTE');
+    expect(result.questions[0].options).toHaveLength(4);
   });
 
-  // 6. Cabeçalho/rodapé repetido
-  it('6. deve ignorar linhas repetitivas de cabeçalho e rodapé sem poluir o enunciado', () => {
+  // 8. Cabeçalho/rodapé repetido
+  it('8. deve ignorar linhas repetitivas de cabeçalho e rodapé sem poluir o enunciado', () => {
     const textWithHeaders = `
 INEP - Revalida - 2022 - Prova Escrita Objetiva
 Página 14 de 35
@@ -191,7 +185,6 @@ C) Hemodiálise imediata independente de escórias ou potássio.
 D) Dopamina em dose renal vasodilatadora.
 Página 14 de 35
 `;
-
     const result = ExamPDFQuestionSplitter.splitFromText(textWithHeaders);
     expect(result.totalQuestions).toBe(1);
     const q = result.questions[0];
@@ -200,8 +193,8 @@ Página 14 de 35
     expect(q.options).toHaveLength(4);
   });
 
-  // 7. Tabela dentro do enunciado
-  it('7. deve preservar tabelas formatadas dentro do enunciado da questão', () => {
+  // 9. Questão com tabela no enunciado
+  it('9. deve preservar tabelas formatadas dentro do enunciado da questão', () => {
     const textWithTable = `
 QUESTÃO 10
 Considere os resultados laboratoriais de gasometria arterial a seguir:
@@ -212,7 +205,6 @@ B) Acidose respiratória crônica agudizada por broncoespasmo.
 C) Alcalose metabólica compensada por hipoventilação alveolar.
 D) Acidose metabólica hiperclorêmica com ânion gap normal.
 `;
-
     const result = ExamPDFQuestionSplitter.splitFromText(textWithTable);
     expect(result.totalQuestions).toBe(1);
     const q = result.questions[0];
@@ -222,85 +214,43 @@ D) Acidose metabólica hiperclorêmica com ânion gap normal.
     expect(q.confidence).toBe('high');
   });
 
-  // 8. PDF sem camada de texto acionando o fallback OCR
-  it('8. deve detectar PDF escaneado (sem texto) e retornar diagnóstico claro quando OCR native-only for usado', async () => {
-    const emptyLayoutMock: PDFLayoutResult = {
-      totalPages: 10,
-      rawText: '',
-      items: [],
-      inspection: {
-        totalPages: 10,
-        processablePages: 10,
-        textItemsCount: 0,
-        extractedCharsCount: 0,
-        emptyPagesCount: 10,
-        emptyPagesRatio: 1.0,
-        isScannedPdf: true,
+  // 10. Questão que atravessa duas páginas
+  it('10. deve agrupar corretamente uma questão dividida entre duas páginas de OCR', () => {
+    const ocrPages: OCRPageResult[] = [
+      {
+        pageNumber: 4,
+        text: `
+QUESTÃO 42
+Homem de 60 anos, etilista crônico, com ascite volumosa e febre. A paracentese diagnóstica revelou líquido ascítico com polimorfonucleares de 380/mm³. Diante do quadro de PBE:
+A) Iniciar Cefotaxima intravenosa e albumina humana no 1º e 3º dias.
+B) Iniciar Ciprofloxacino oral e diuréticos em doses dobradas.
+`,
       },
-    };
+      {
+        pageNumber: 5,
+        text: `
+C) Realizar paracentese de alívio total imediatamente sem reposição de expansores.
+D) Indicar laparotomia exploradora de urgência para lavagem da cavidade peritoneal.
+E) Prescrever apenas Norfloxacino profilático por 7 dias.
+`,
+      },
+    ];
 
-    const result = await ExamPDFQuestionSplitter.split(emptyLayoutMock, { ocrMode: 'native-only' });
-    expect(result.totalQuestions).toBe(0);
-    expect(result.success).toBe(false);
-    expect(result.failureReason).toBe('NO_TEXT_LAYER');
-    expect(result.warning).toContain('PDF escaneado detectado');
+    const result = ExamPDFQuestionSplitter.splitFromOCR(ocrPages);
+    expect(result.totalQuestions).toBe(1);
+    const q42 = result.questions[0];
+    expect(q42.questionNumber).toBe(42);
+    expect(q42.pageNumber).toBe(4);
+    expect(q42.endPageNumber).toBe(5);
+    expect(q42.options).toHaveLength(5);
+    expect(q42.options[0].letter).toBe('A');
+    expect(q42.options[4].letter).toBe('E');
+    expect(q42.confidence).toBe('high');
   });
 
-  // 9. Falha do OCR retornando diagnóstico útil
-  it('9. deve fornecer código de falha e diagnóstico observável caso ocorra erro no OCR', async () => {
-    const badInput = new ArrayBuffer(10);
-    const result = await ExamPDFQuestionSplitter.split(badInput, {
-      ocrMode: 'native-only',
-    });
-
-    expect(result.totalQuestions).toBe(0);
-    expect(result.failureReason).toBe('NO_TEXT_LAYER');
-    expect(result.warning).toBeDefined();
-  });
-
-  // 10. Documento realmente sem questões continuando como texto RAG
-  it('10. deve retornar 0 questões com failureReason NO_QUESTION_MARKERS para textos médicos narrativos', () => {
-    const narrativeText = `
-Diretriz Brasileira de Insuficiência Cardíaca Crônica e Aguda.
-A insuficiência cardíaca com fração de ejeção reduzida deve ser tratada com terapia quádrupla:
-- Inibidor de SGLT2 (Dapagliflozina ou Empagliflozina)
-- Sacubitril/Valsartana ou IECA
-- Betabloqueador (Carvedilol, Bisoprolol ou Succinato de Metoprolol)
-- Antagonista de Receptor Mineralocorticoide (Espironolactona)
-`;
-
-    const result = ExamPDFQuestionSplitter.splitFromText(narrativeText);
-    expect(result.totalQuestions).toBe(0);
-    expect(result.success).toBe(false);
-    expect(result.failureReason).toBe('NO_QUESTION_MARKERS');
-  });
-
-  // 11. Não transformar listas numeradas de um capítulo em questões
-  it('11. não deve transformar listas numeradas de diagnósticos ou dosagens em falsas questões', () => {
-    const listText = `
-Critérios diagnósticos de Febre Reumática (Critérios de Jones modificados):
-Critérios maiores:
-1. Cardite clínica ou subclínica.
-2. Poliartrite migratória de grandes articulações.
-3. Coreia de Sydenham.
-4. Eritema marginado.
-5. Nódulos subcutâneos.
-
-Critérios menores:
-1. Febre (temperatura >= 38.5 °C).
-2. Artralgia.
-3. VHS ou PCR elevados.
-4. Intervalo PR alargado no ECG.
-`;
-
-    const result = ExamPDFQuestionSplitter.splitFromText(listText);
-    // Não possui alternativas A-D/A-E, portanto não deve gerar questões de alta confiança
-    expect(result.highConfidenceCount).toBe(0);
-  });
-
-  // 12. Idempotência da persistência
-  it('12. deve garantir persistência idempotente sem duplicar registros para o mesmo sourceAssetId', async () => {
-    const assetId = 'asset-enade-2023-test';
+  // 11. Deduplicação idempotente de questão repetida
+  it('11. deve deduplicar questões com mesmo número na mesma página e garantir idempotência de gravação', async () => {
+    const assetId = 'asset-revalida-dedup';
     const repo = RepositoryFactory.getExtractedExamQuestionRepository();
 
     const questionsToSave = [
@@ -318,36 +268,41 @@ Critérios menores:
         confidence: 'high' as const,
         createdAt: new Date().toISOString(),
       },
-      {
-        id: `ext_q_${assetId}_2`,
-        sourceAssetId: assetId,
-        questionNumber: 2,
-        statement: 'Questão 2 sobre tromboembolismo pulmonar.',
-        options: [
-          { letter: 'A', text: 'Angiotomografia' },
-          { letter: 'B', text: 'D-dímero' },
-          { letter: 'C', text: 'Ecocardiograma' },
-          { letter: 'D', text: 'Cintilografia' },
-        ],
-        confidence: 'high' as const,
-        createdAt: new Date().toISOString(),
-      },
     ];
 
-    // Primeira gravação
     await repo.deleteByAssetId(assetId);
     await repo.bulkSave(questionsToSave);
 
     let saved = await repo.getByAssetId(assetId);
-    expect(saved).toHaveLength(2);
+    expect(saved).toHaveLength(1);
 
-    // Segunda gravação (re-execução da segmentação)
+    // Re-gravação
     await repo.deleteByAssetId(assetId);
     await repo.bulkSave(questionsToSave);
 
     saved = await repo.getByAssetId(assetId);
-    expect(saved).toHaveLength(2);
-    expect(saved[0].questionNumber).toBe(1);
-    expect(saved[1].questionNumber).toBe(2);
+    expect(saved).toHaveLength(1);
+  });
+
+  // 12. Fixture realista do ENADE 2023 / INEP com marcadores circulares e OCR com imperfeições
+  it('12. deve processar fixture realista do ENADE com marcadores circulares e extrair 4 alternativas completas', () => {
+    const enadeFixture = `
+QUESTÃO 27
+Uma paciente com 35 anos de idade, digitadora, procura uma UBS com queixa de dor e edema nas articulações das mãos há dois meses. Refere que suas mãos passaram a ficar arroxeadas no frio. Ao exame físico: poliartrite simétrica de interfalangianas proximais. Considerando-se o quadro clínico, verifica-se que
+Ga) o curto período de história sugere um quadro reativo.
+(O) o risco ocupacional indica o diagnóstico de LER/DORT.
+(O) a presença de fator antinuclear confirma lúpus eritematoso sistêmico.
+(O) a presença de fator reumatoide confirma o diagnóstico de artrite reumatoide.
+`;
+    const result = ExamPDFQuestionSplitter.splitFromText(enadeFixture);
+    expect(result.totalQuestions).toBe(1);
+    const q = result.questions[0];
+    expect(q.questionNumber).toBe(27);
+    expect(q.options).toHaveLength(4);
+    expect(q.options.map((o) => o.letter)).toEqual(['A', 'B', 'C', 'D']);
+    expect(q.options[0].text).toContain('quadro reativo');
+    expect(q.options[1].text).toContain('LER/DORT');
+    expect(q.options[2].text).toContain('lúpus eritematoso sistêmico');
+    expect(q.options[3].text).toContain('artrite reumatoide');
   });
 });

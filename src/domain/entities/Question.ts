@@ -89,10 +89,21 @@ export interface ExtractedExamQuestionRecord {
   sourceAssetId?: string;
   questionNumber: number;
   statement: string;
-  options: { letter: string; text: string }[];
+  options: {
+    letter: string;
+    text: string;
+    letterConfidence?: number;
+    inferredLetter?: boolean;
+    rawMarker?: string;
+  }[];
   correctLetter?: string;
   specialty?: string;
-  confidence: 'high' | 'low';
+  confidence: 'high' | 'medium' | 'low';
+  pageNumber?: number;
+  endPageNumber?: number;
+  extractionMethod?: 'native-text' | 'local-ocr' | 'remote-ocr' | 'manual';
+  ocrConfidence?: number;
+  warning?: string;
   createdAt: string;
 }
 

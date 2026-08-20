@@ -6,11 +6,12 @@
  * 2. CapacitorLocalOCRAdapter (iOS / Android em WebView nativo)
  * 3. NodeLocalOCRAdapter (Servidor / Scripts / Testes em Node.js com CanvasFactory real)
  *
- * ⚠️ REQUISITO ARQUITETURAL FUNDAMENTAL:
+ * ⚠️ REQUISITOS ARQUITETURAIS:
  * - 100% local por padrão (zero chamadas a LLMs e zero consumo de tokens).
- * - No Node, renderiza páginas reais via CanvasFactory e executa Tesseract de verdade (não usa getTextContent).
+ * - No Node, renderiza páginas reais via CanvasFactory e executa Tesseract de verdade.
  * - No iOS/Capacitor, renderiza via HTMLCanvasElement no WKWebView e libera memória por página.
  * - Suporta cancelamento via AbortSignal e feedback detalhado de progresso.
+ * - Preserva tokens, linhas visuais agrupadas por coordenadas Y/X e bounding boxes.
  */
 
 export type OCRRuntime = 'web' | 'capacitor-ios' | 'capacitor-android' | 'node';
@@ -35,6 +36,28 @@ export class LocalOCRError extends Error {
   }
 }
 
+export interface OCRTextToken {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidence?: number;
+  lineId?: number;
+  blockId?: number;
+}
+
+export interface OCRVisualLine {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  tokens: OCRTextToken[];
+  confidence?: number;
+  pageNumber: number;
+}
+
 export interface OCRTextBlock {
   text: string;
   x?: number;
@@ -42,6 +65,7 @@ export interface OCRTextBlock {
   width?: number;
   height?: number;
   confidence?: number;
+  tokens?: OCRTextToken[];
 }
 
 export interface OCRImageRegion {
@@ -57,6 +81,8 @@ export interface OCRPageResult {
   text: string;
   confidence?: number;
   blocks?: OCRTextBlock[];
+  lines?: OCRVisualLine[];
+  tokens?: OCRTextToken[];
   imageRegions?: OCRImageRegion[];
 }
 
@@ -66,6 +92,7 @@ export interface ProcessPDFOCROptions {
   scale?: number;
   language?: string;
   fallbackLanguage?: string;
+  preprocessMode?: 'contrast' | 'binarize' | 'none';
   onProgress?: (info: { page: number; total: number; progressPct: number; stage?: string }) => void;
   signal?: AbortSignal;
 }
@@ -129,26 +156,191 @@ export function detectOCRRuntime(): OCRRuntime {
 }
 
 /**
- * Formata os resultados de linhas do Tesseract para OCRPageResult.
+ * Agrupa tokens de OCR espacialmente em linhas visuais ordenadas por Y e depois X.
+ */
+export function groupOCRTokensIntoVisualLines(
+  tokens: OCRTextToken[],
+  pageNumber = 1
+): OCRVisualLine[] {
+  if (!tokens || tokens.length === 0) return [];
+
+  const validTokens = tokens.filter((t) => t.text && t.text.trim().length > 0);
+  if (validTokens.length === 0) return [];
+
+  // Ordena prioritariamente por Y e secundariamente por X
+  const sorted = [...validTokens].sort((a, b) => {
+    if (Math.abs(a.y - b.y) <= 4) {
+      return a.x - b.x;
+    }
+    return a.y - b.y;
+  });
+
+  const lineGroups: OCRTextToken[][] = [];
+
+  for (const token of sorted) {
+    const tokenHeight = token.height || 12;
+    const tolerance = Math.max(4, Math.min(10, tokenHeight * 0.5));
+
+    let addedToGroup = false;
+    for (const group of lineGroups) {
+      const avgY = group.reduce((acc, t) => acc + t.y, 0) / group.length;
+      if (Math.abs(token.y - avgY) <= tolerance) {
+        group.push(token);
+        addedToGroup = true;
+        break;
+      }
+    }
+
+    if (!addedToGroup) {
+      lineGroups.push([token]);
+    }
+  }
+
+  // Ordena grupos de cima para baixo
+  lineGroups.sort((g1, g2) => {
+    const avgY1 = g1.reduce((acc, t) => acc + t.y, 0) / g1.length;
+    const avgY2 = g2.reduce((acc, t) => acc + t.y, 0) / g2.length;
+    return avgY1 - avgY2;
+  });
+
+  const visualLines: OCRVisualLine[] = [];
+
+  for (const group of lineGroups) {
+    group.sort((a, b) => a.x - b.x);
+
+    const minX = Math.min(...group.map((t) => t.x));
+    const minY = Math.min(...group.map((t) => t.y));
+    const maxX = Math.max(...group.map((t) => t.x + (t.width || 0)));
+    const maxY = Math.max(...group.map((t) => t.y + (t.height || 0)));
+
+    let lineText = '';
+    for (let k = 0; k < group.length; k++) {
+      const curr = group[k];
+      if (k > 0) {
+        const prev = group[k - 1];
+        const gap = curr.x - (prev.x + (prev.width || 0));
+        if (gap > 25) {
+          lineText += '   ';
+        } else {
+          lineText += ' ';
+        }
+      }
+      lineText += curr.text;
+    }
+
+    const confidences = group
+      .map((t) => t.confidence)
+      .filter((c): c is number => typeof c === 'number');
+    const avgConfidence =
+      confidences.length > 0
+        ? confidences.reduce((a, b) => a + b, 0) / confidences.length
+        : undefined;
+
+    visualLines.push({
+      text: lineText.trim(),
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      tokens: group,
+      confidence: avgConfidence,
+      pageNumber,
+    });
+  }
+
+  return visualLines;
+}
+
+/**
+ * Pré-processamento de imagem/canvas para otimização de OCR em documentos escaneados.
+ */
+export function preprocessCanvasForOCR(
+  canvas: any,
+  mode: 'contrast' | 'binarize' | 'none' = 'contrast'
+): any {
+  if (mode === 'none') return canvas;
+  try {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+    const len = data.length;
+
+    for (let i = 0; i < len; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+      if (mode === 'binarize') {
+        const val = gray > 155 ? 255 : 0;
+        data[i] = val;
+        data[i + 1] = val;
+        data[i + 2] = val;
+      } else {
+        // Realce de contraste
+        const factor = 1.35;
+        const contrasted = Math.min(255, Math.max(0, factor * (gray - 128) + 128));
+        data[i] = contrasted;
+        data[i + 1] = contrasted;
+        data[i + 2] = contrasted;
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  } catch {}
+  return canvas;
+}
+
+/**
+ * Formata os resultados do Tesseract preservando tokens espaciais, linhas e blocos.
  */
 function formatTesseractResult(ret: any, pageNumber: number): OCRPageResult {
-  const text = ret?.data?.text || '';
+  const rawText = ret?.data?.text || '';
   const confidence = typeof ret?.data?.confidence === 'number' ? ret.data.confidence : undefined;
 
-  const blocks: OCRTextBlock[] = (ret?.data?.lines || []).map((line: any) => ({
-    text: line.text?.trim() || '',
-    x: line.bbox?.x0,
-    y: line.bbox?.y0,
-    width: line.bbox ? line.bbox.x1 - line.bbox.x0 : undefined,
-    height: line.bbox ? line.bbox.y1 - line.bbox.y0 : undefined,
-    confidence: line.confidence,
+  const tokens: OCRTextToken[] = (ret?.data?.words || []).map((w: any, idx: number) => ({
+    text: w.text?.trim() || '',
+    x: w.bbox?.x0 || 0,
+    y: w.bbox?.y0 || 0,
+    width: w.bbox ? w.bbox.x1 - w.bbox.x0 : 0,
+    height: w.bbox ? w.bbox.y1 - w.bbox.y0 : 0,
+    confidence: w.confidence,
+    lineId: idx,
+  })).filter((t: OCRTextToken) => t.text.length > 0);
+
+  const visualLines = groupOCRTokensIntoVisualLines(tokens, pageNumber);
+
+  const blocks: OCRTextBlock[] = (ret?.data?.blocks || []).map((block: any) => ({
+    text: block.text?.trim() || '',
+    x: block.bbox?.x0,
+    y: block.bbox?.y0,
+    width: block.bbox ? block.bbox.x1 - block.bbox.x0 : undefined,
+    height: block.bbox ? block.bbox.y1 - block.bbox.y0 : undefined,
+    confidence: block.confidence,
   })).filter((b: OCRTextBlock) => b.text.length > 0);
+
+  // Se visualLines reconstruídas existirem, usa a ordenação espacial limpa
+  const formattedText =
+    visualLines.length > 0 ? visualLines.map((l) => l.text).join('\n') : rawText.trim();
 
   return {
     pageNumber,
-    text: text.trim(),
+    text: formattedText,
     confidence,
-    blocks,
+    blocks:
+      blocks.length > 0
+        ? blocks
+        : visualLines.map((l) => ({
+            text: l.text,
+            x: l.x,
+            y: l.y,
+            width: l.width,
+            height: l.height,
+            confidence: l.confidence,
+          })),
+    lines: visualLines,
+    tokens,
   };
 }
 
@@ -231,7 +423,7 @@ export class BrowserLocalOCRAdapter implements LocalOCRAdapter {
     input: unknown,
     options: ProcessPDFOCROptions = {}
   ): Promise<OCRPageResult[]> {
-    const scale = options.scale || 1.5;
+    const scale = options.scale || 2.0;
     let pdf: any;
 
     if (input && typeof (input as any).getPage === 'function') {
@@ -277,11 +469,11 @@ export class BrowserLocalOCRAdapter implements LocalOCRAdapter {
 
         if (ctx) {
           await page.render({ canvasContext: ctx, viewport }).promise;
+          preprocessCanvasForOCR(canvas, options.preprocessMode || 'contrast');
           const inputForProcess = typeof canvas.toBuffer === 'function' ? canvas.toBuffer('image/png') : canvas;
           pageResult = await this.processImage(inputForProcess, p, options.signal);
         }
 
-        // Limpeza imediata de memória
         if (canvas) {
           canvas.width = 0;
           canvas.height = 0;
@@ -348,7 +540,6 @@ export class CapacitorLocalOCRAdapter implements LocalOCRAdapter {
     this.isInitializing = true;
     try {
       const { createWorker } = await import('tesseract.js');
-      // No WKWebView do iOS, IndexedDB armazena o modelo treinado localmente
       this.worker = await createWorker(lang, 1, {
         cacheMethod: 'indexedDB',
         logger: () => {},
@@ -407,7 +598,7 @@ export class CapacitorLocalOCRAdapter implements LocalOCRAdapter {
     input: unknown,
     options: ProcessPDFOCROptions = {}
   ): Promise<OCRPageResult[]> {
-    const scale = options.scale || 1.5;
+    const scale = options.scale || 2.0;
     let pdf: any;
 
     if (input && typeof (input as any).getPage === 'function') {
@@ -453,11 +644,11 @@ export class CapacitorLocalOCRAdapter implements LocalOCRAdapter {
 
         if (ctx) {
           await page.render({ canvasContext: ctx, viewport }).promise;
+          preprocessCanvasForOCR(canvas, options.preprocessMode || 'contrast');
           const inputForProcess = typeof canvas.toBuffer === 'function' ? canvas.toBuffer('image/png') : canvas;
           pageResult = await this.processImage(inputForProcess, p, options.signal);
         }
 
-        // Liberação agressiva de memória no iOS (evita Jetsam memory kill no WKWebView)
         if (canvas) {
           canvas.width = 0;
           canvas.height = 0;
@@ -593,7 +784,7 @@ export class NodeLocalOCRAdapter implements LocalOCRAdapter {
     input: unknown,
     options: ProcessPDFOCROptions = {}
   ): Promise<OCRPageResult[]> {
-    const scale = options.scale || 1.5;
+    const scale = options.scale || 2.0;
     const { createCanvas } = await this.getCanvasFactory();
 
     let pdf: any;
@@ -626,6 +817,7 @@ export class NodeLocalOCRAdapter implements LocalOCRAdapter {
 
         if (canvasContext) {
           await page.render({ canvasContext, viewport }).promise;
+          preprocessCanvasForOCR(canvas, options.preprocessMode || 'contrast');
           const imageBuffer = canvas.toBuffer('image/png');
           pageResult = await this.processImage(imageBuffer, p, options.signal);
         }
@@ -676,9 +868,6 @@ export class LocalOCRService implements LocalOCRAdapter {
     return detectOCRRuntime();
   }
 
-  /**
-   * Obtém ou inicializa o adaptador específico para a plataforma atual.
-   */
   public getAdapter(): LocalOCRAdapter {
     if (this.activeAdapter && this.activeAdapter.runtime === this.runtime) {
       return this.activeAdapter;
@@ -702,9 +891,6 @@ export class LocalOCRService implements LocalOCRAdapter {
     return this.activeAdapter;
   }
 
-  /**
-   * Define um adaptador customizado (útil para injeção de dependência e testes unitários).
-   */
   public setAdapter(adapter: LocalOCRAdapter): void {
     this.activeAdapter = adapter;
   }

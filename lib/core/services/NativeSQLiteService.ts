@@ -55,7 +55,7 @@ export interface CachedExtractedExamQuestionRow {
   options_json: string;
   correct_letter?: string | null;
   specialty?: string | null;
-  confidence: 'high' | 'low';
+  confidence: 'high' | 'medium' | 'low';
   created_at: string;
 }
 

@@ -1,24 +1,29 @@
 /**
  * ExamPDFQuestionSplitter
  *
- * Segmentador mecânico/determinístico de provas em formato PDF para extração de questões
- * individuais (número, enunciado, alternativas A-E e gabarito quando presente).
+ * Segmentador determinístico e extrator de questões para provas médicas em PDF (camada nativa ou OCR).
  *
  * ⚠️ REQUISITOS ARQUITETURAIS:
  * - Padrão 100% local (layout nativo ou OCR local via Tesseract.js / WASM).
- * - Zero chamadas de IA / LLM por padrão (sem consumo de tokens).
- * - Fallback remoto explícito via /api/ocr apenas sob consentimento do usuário ('remote-consent').
- * - Preserva rastreabilidade de páginas, tabelas e alternativas A-D ou A-E.
+ * - ZERO chamadas de IA / LLM por padrão (sem consumo de tokens).
+ * - Suporta marcadores circulares OCR (ex: (O), oO, Ga) com inferência espacial controlada A-D/A-E.
+ * - Desconcatena múltiplas alternativas e questões embutidas na mesma linha.
+ * - Filtra páginas de instruções e listas numeradas não relacionadas a questões.
+ * - Preserva rastreabilidade de páginas (pageNumber, endPageNumber) e tabelas.
  */
 
 import { PDFLayoutItem, PDFLayoutResult, PDFInspectionResult, DocumentReaderService } from '../../import_engine/services/DocumentReaderService';
-import { OCRPageResult, OCRMode, localOCRService } from './LocalOCRService';
+import { OCRPageResult, OCRVisualLine, OCRMode, localOCRService } from './LocalOCRService';
 import { db } from '../../../data/db/database';
 import { OCRService } from '../../../data/services/OCRService';
 
 export interface ExtractedOption {
   letter: string; // 'A', 'B', 'C', 'D', 'E'
   text: string;
+  letterConfidence?: number;
+  inferredLetter?: boolean;
+  rawMarker?: string;
+  sourceY?: number;
 }
 
 export interface ExtractedExamQuestion {
@@ -28,7 +33,7 @@ export interface ExtractedExamQuestion {
   correctLetter?: string;
   pageNumber: number;
   endPageNumber?: number;
-  confidence: 'high' | 'low';
+  confidence: 'high' | 'medium' | 'low';
   warning?: string;
   topicTags?: string[];
   extractionMethod?: 'native-text' | 'local-ocr' | 'remote-ocr' | 'manual';
@@ -47,6 +52,7 @@ export interface ExamSplitterResult {
   success: boolean;
   totalQuestions: number;
   highConfidenceCount: number;
+  mediumConfidenceCount?: number;
   lowConfidenceCount: number;
   lowConfidenceRatio: number;
   warning?: string;
@@ -88,39 +94,13 @@ export class ExamPDFQuestionSplitter {
    * - 27. Enunciado..., 01) Enunciado..., 27 - Enunciado...
    */
   private static readonly QUESTION_START_REGEX =
-    /^(?:QUEST[ÃA]O|QUESTAO|QUEST[ÃA]O\s*N[º°\.]|Q\.?)\s*(\d{1,3})\b[.:\-–—)]*\s*(.*)$/i;
+    /^(?:QUEST[ÃA]O|QUESTAO|QUEST[ÃA]O\s*N[º°\.]|Q\.?)\s*(\d{1,3}|[Oo]\d{1,2}|l[áa4]|I[0-9]|l[0-9])(?:\s+|$|[.:\-–—)])\s*(.*)$/i;
 
   private static readonly NUMBERED_START_REGEX =
     /^(\d{1,3})[.\)-–—]\s+(.*)$/;
 
   private static readonly ISOLATED_NUMBER_REGEX =
     /^(\d{1,3})$/;
-
-  /**
-   * Padrão de alternativa com delimitador explícito:
-   * A) texto, a) texto, (A) texto, (a) texto, [A] texto, A. texto, a. texto, A: texto, A - texto, Ⓐ texto
-   */
-  private static readonly OPTION_DELIM_REGEX =
-    /^(?:\(([A-Ea-e])\)|\[([A-Ea-e])\]|([A-Ea-e])[.\:\-–—\)]|([Ⓐ-Ⓔ]))(?:\s+|$)(.*)$/;
-
-  /**
-   * Padrão de alternativa estilo checkbox: ( ) texto, [ ] texto, ◯ texto, ○ texto
-   */
-  private static readonly OPTION_CHECKBOX_REGEX =
-    /^(?:\(\s*\)|\[\s*\]|[◯○])\s+(.*)$/;
-
-  /**
-   * Padrão de alternativa sem delimitador (apenas letra maiúscula isolada A-E seguida de espaço):
-   * A     texto, B     texto
-   */
-  private static readonly OPTION_NO_DELIM_REGEX =
-    /^([A-Ea-e])\s+(.*)$/;
-
-  /**
-   * Padrão inline com múltiplas alternativas na mesma linha
-   */
-  private static readonly INLINE_OPTIONS_REGEX =
-    /\(?([A-Ea-e])\)?[.\:\-–—\)]\s+([^A-Ea-e\(\)]+)/g;
 
   /**
    * Padrões de Gabarito
@@ -135,7 +115,7 @@ export class ExamPDFQuestionSplitter {
     /\b(?:GABARITO|RESPOSTA(?:\s+CORRETA)?)\s*[:\-–=]\s*([A-Ea-e])\b/i;
 
   /**
-   * Limpa caracteres invisíveis, form feeds e espaços múltiplos em uma única passagem
+   * Limpa caracteres invisíveis, form feeds e espaços múltiplos em uma única passagem.
    */
   public static cleanText(text: string): string {
     if (!text) return '';
@@ -143,6 +123,186 @@ export class ExamPDFQuestionSplitter {
       .replace(/[\u200B-\u200D\uFEFF\f]/g, ' ')
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ')
       .trim();
+  }
+
+  /**
+   * Divide marcadores QUESTÃO N embutidos no meio de blocos de texto OCR.
+   */
+  public static splitInlineQuestionMarkers(text: string): string[] {
+    if (!text) return [];
+    const normalized = text.replace(/\r\n/g, '\n');
+    const inlineMarkerRegex =
+      /(?=(?:[\.\;\:\n]|\s+|^)(?:QUEST[ÃA]O|QUESTAO|Q\.)\s*(?:\d{1,3}|[Oo]\d{1,2}|l[áa4]|I[0-9]|l[0-9])(?:[\s.:\-–—)]|$))/gi;
+
+    const parts = normalized.split(inlineMarkerRegex);
+    return parts.map((p) => p.trim()).filter((p) => p.length > 0);
+  }
+
+  /**
+   * Normaliza números de questões mesmo quando corrompidos pelo OCR (ex: O5 -> 5, lá -> 14).
+   */
+  public static normalizeQuestionNumber(rawStr: string, expectedNextNumber = 1): number | null {
+    const clean = rawStr.trim();
+    const directNum = parseInt(clean, 10);
+    if (!isNaN(directNum) && directNum > 0 && directNum <= 300) {
+      return directNum;
+    }
+
+    if (/^[Oo]\d{1,2}$/.test(clean)) {
+      return parseInt(clean.slice(1), 10);
+    }
+
+    const mapped = clean
+      .replace(/^[lI]/, '1')
+      .replace(/[áa]/, '4')
+      .replace(/[oO]/, '0');
+    const mappedNum = parseInt(mapped, 10);
+    if (!isNaN(mappedNum) && mappedNum > 0 && mappedNum <= 300) {
+      return mappedNum;
+    }
+
+    if (expectedNextNumber > 0 && expectedNextNumber <= 300) {
+      return expectedNextNumber;
+    }
+
+    return null;
+  }
+
+  /**
+   * Extrai e desconcatena alternativas de uma questão, identificando marcadores circulares OCR ((O), Ga, etc.).
+   */
+  public static parseQuestionOptions(rawText: string): {
+    statement: string;
+    options: ExtractedOption[];
+  } {
+    const optSplitRegex =
+      /(?=(?:^|\s+)(?:\([A-Ea-eO0o\?]\)|\[[A-Ea-e]\]|[A-Ea-e][\)\.\:\-–—]|[Ⓐ-Ⓔ]|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|G[ab]\))\s+)/gi;
+
+    const isStartOfOption = (line: string): boolean =>
+      /^(?:\(([A-Ea-eO0o\?])\)|\[([A-Ea-e])\]|([A-Ea-e])[.\:\-–—\)]|([Ⓐ-Ⓔ])|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|G[ab]\))/i.test(
+        line.trim()
+      );
+
+    const cleanMarkerRegex =
+      /^(?:\(([A-Ea-eO0o\?])\)|\[([A-Ea-e])\]|([A-Ea-e])[.\:\-–—\)]|([Ⓐ-Ⓔ])|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|G[ab]\))\s*(.*)$/si;
+
+    const lines = rawText.split(/\r?\n/).map((l) => this.cleanText(l)).filter(Boolean);
+    const statementLines: string[] = [];
+    const rawOptionChunks: string[] = [];
+    let isParsingOptions = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const startsOption = isStartOfOption(line);
+
+      if (startsOption) {
+        isParsingOptions = true;
+        const subChunks = line.split(optSplitRegex).map((c) => c.trim()).filter(Boolean);
+        for (const sc of subChunks) {
+          rawOptionChunks.push(sc);
+        }
+      } else if (isParsingOptions) {
+        // Continuação de linha da alternativa atual
+        if (rawOptionChunks.length > 0) {
+          rawOptionChunks[rawOptionChunks.length - 1] += ' ' + line;
+        } else {
+          statementLines.push(line);
+        }
+      } else {
+        statementLines.push(line);
+      }
+    }
+
+    // Se nenhuma alternativa foi separada pelas linhas mas o enunciado contém marcadores no meio:
+    if (rawOptionChunks.length === 0 && statementLines.length > 0) {
+      const fullStmt = statementLines.join(' ');
+      const splitChunks = fullStmt.split(optSplitRegex).map((c) => c.trim()).filter(Boolean);
+      if (splitChunks.length >= 3) {
+        statementLines.length = 0;
+        statementLines.push(splitChunks[0]);
+        for (let k = 1; k < splitChunks.length; k++) {
+          rawOptionChunks.push(splitChunks[k]);
+        }
+      }
+    }
+
+    const options: ExtractedOption[] = [];
+    const letters = ['A', 'B', 'C', 'D', 'E'];
+
+    for (let idx = 0; idx < rawOptionChunks.length; idx++) {
+      const chunk = rawOptionChunks[idx];
+      const match = chunk.match(cleanMarkerRegex);
+      let rawLetter = '';
+      let optText = chunk;
+
+      if (match) {
+        rawLetter = (match[1] || match[2] || match[3] || match[4] || '').toUpperCase();
+        optText = match[5]?.trim() || '';
+      }
+
+      // Normaliza Unicode circulado Ⓐ-Ⓔ
+      if (rawLetter.charCodeAt(0) >= 0x24b6 && rawLetter.charCodeAt(0) <= 0x24ba) {
+        rawLetter = String.fromCharCode('A'.charCodeAt(0) + (rawLetter.charCodeAt(0) - 0x24b6));
+      }
+
+      let letter = '';
+      let inferred = false;
+
+      const expectedLetter = letters[options.length];
+      if (['A', 'B', 'C', 'D', 'E'].includes(rawLetter) && (rawLetter === expectedLetter || rawOptionChunks.length !== 4)) {
+        letter = rawLetter;
+      } else {
+        letter = expectedLetter || 'D';
+        inferred = true;
+      }
+
+      if (optText.length > 0) {
+        options.push({
+          letter,
+          text: optText,
+          inferredLetter: inferred,
+          rawMarker: match ? match[0].slice(0, 6).trim() : undefined,
+        });
+      }
+    }
+
+    // Re-sequencia se houver 4 ou 5 opções fora de ordem
+    if (options.length === 4 || options.length === 5) {
+      const lettersPresent = options.map((o) => o.letter).join('');
+      if (lettersPresent !== 'ABCD' && lettersPresent !== 'ABCDE') {
+        for (let k = 0; k < options.length; k++) {
+          if (options[k].letter !== letters[k]) {
+            options[k].letter = letters[k];
+            options[k].inferredLetter = true;
+          }
+        }
+      }
+    }
+
+    return {
+      statement: statementLines.join(' ').replace(/\s+/g, ' ').trim(),
+      options,
+    };
+  }
+
+  /**
+   * Filtra falsos positivos de páginas de instruções e listas de critérios.
+   */
+  public static isInstructionOrFalsePositive(text: string): boolean {
+    if (!text) return true;
+    const lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return (
+      lower.includes('instrucoes') ||
+      lower.includes('verifique se este caderno') ||
+      lower.includes('folha de resposta') ||
+      lower.includes('marcacao da resposta') ||
+      lower.includes('aparelhos eletronicos') ||
+      lower.includes('duracao total da prova') ||
+      lower.includes('consultas externas') ||
+      lower.includes('preencher seu rascunho') ||
+      lower.includes('boa prova') ||
+      lower.includes('leia atentamente')
+    );
   }
 
   /**
@@ -179,16 +339,37 @@ export class ExamPDFQuestionSplitter {
 
     for (const page of ocrPages) {
       fullRawText += page.text + '\n\n';
-      if (page.blocks && page.blocks.length > 0) {
+
+      // 1. Se linhas visuais reconstruídas espacialmente estiverem presentes, usa com prioridade
+      if (page.lines && page.lines.length > 0) {
+        for (const vLine of page.lines) {
+          const cleaned = this.cleanText(vLine.text);
+          if (cleaned) {
+            // Divide marcadores de questão embutidos na mesma linha
+            const splitSubLines = this.splitInlineQuestionMarkers(cleaned);
+            for (let idx = 0; idx < splitSubLines.length; idx++) {
+              lines.push({
+                text: splitSubLines[idx],
+                x: vLine.x ?? 0,
+                y: vLine.y ?? 0,
+                pageNumber: page.pageNumber,
+              });
+            }
+          }
+        }
+      } else if (page.blocks && page.blocks.length > 0) {
         for (const block of page.blocks) {
           const cleaned = this.cleanText(block.text);
           if (cleaned) {
-            lines.push({
-              text: cleaned,
-              x: block.x ?? 0,
-              y: block.y ?? 0,
-              pageNumber: page.pageNumber,
-            });
+            const splitSubLines = this.splitInlineQuestionMarkers(cleaned);
+            for (let idx = 0; idx < splitSubLines.length; idx++) {
+              lines.push({
+                text: splitSubLines[idx],
+                x: block.x ?? 0,
+                y: block.y ?? 0,
+                pageNumber: page.pageNumber,
+              });
+            }
           }
         }
       } else {
@@ -196,12 +377,15 @@ export class ExamPDFQuestionSplitter {
         for (let idx = 0; idx < rawLines.length; idx++) {
           const cleaned = this.cleanText(rawLines[idx]);
           if (cleaned) {
-            lines.push({
-              text: cleaned,
-              x: 0,
-              y: idx,
-              pageNumber: page.pageNumber,
-            });
+            const splitSubLines = this.splitInlineQuestionMarkers(cleaned);
+            for (const sub of splitSubLines) {
+              lines.push({
+                text: sub,
+                x: 0,
+                y: idx,
+                pageNumber: page.pageNumber,
+              });
+            }
           }
         }
       }
@@ -212,7 +396,6 @@ export class ExamPDFQuestionSplitter {
     res.processedPages = ocrPages.length;
     res.extractionMethod = options?.extractionMethod || 'local-ocr';
 
-    // Anexa confiança média de OCR às questões se disponível
     const avgConfidence =
       ocrPages.reduce((acc, p) => acc + (p.confidence || 85), 0) / Math.max(1, ocrPages.length);
 
@@ -229,22 +412,26 @@ export class ExamPDFQuestionSplitter {
    */
   public static splitFromText(rawText: string): ExamSplitterResult {
     const cleanedRaw = this.cleanText(rawText);
-    const rawLines = rawText.split(/\r?\n/).map((line, idx) => ({
-      text: this.cleanText(line),
-      x: 0,
-      y: idx,
-      pageNumber: 1,
-    })).filter((l) => l.text.length > 0);
+    const splitMarkers = this.splitInlineQuestionMarkers(cleanedRaw);
+    const rawLines: ReconstitutedLine[] = [];
+
+    for (let idx = 0; idx < splitMarkers.length; idx++) {
+      const lineChunks = splitMarkers[idx].split(/\r?\n/).map((l) => this.cleanText(l)).filter(Boolean);
+      for (const chunk of lineChunks) {
+        rawLines.push({
+          text: chunk,
+          x: 0,
+          y: idx,
+          pageNumber: 1,
+        });
+      }
+    }
 
     return this.parseLines(rawLines, cleanedRaw);
   }
 
   /**
-   * Ponto de entrada universal que suporta:
-   * 1. PDFLayoutResult (camada nativa)
-   * 2. OCRPageResult[] (resultado OCR prévio)
-   * 3. string (texto plano)
-   * 4. Buffer / Blob / File com detecção de PDF escaneado e fallback para OCR local/remoto.
+   * Ponto de entrada universal com amostragem antecipada (evita passadas duplicadas em 390 páginas).
    */
   public static async split(
     input: PDFLayoutResult | OCRPageResult[] | string | ArrayBuffer | Uint8Array | File | Blob,
@@ -267,7 +454,7 @@ export class ExamPDFQuestionSplitter {
     const ocrMode: OCRMode = options.ocrMode || 'local';
     const reader = new DocumentReaderService();
 
-    // 1. Inspeciona uma amostra rápida (até 10 páginas) para detectar o tipo de PDF sem percorrer o arquivo inteiro
+    // 1. Amostragem rápida (até 10 páginas) para detectar tipo de PDF sem extrair tudo
     if (options.onProgress) {
       options.onProgress({ stage: 'Inspecionando estrutura do PDF...', current: 0, total: 100, progressPct: 5 });
     }
@@ -275,7 +462,7 @@ export class ExamPDFQuestionSplitter {
     const inspection = await reader.inspectPDF(input as any, 10);
     const isScanned = inspection.isScannedPdf;
 
-    // 2. Se tiver camada de texto nativa, extrai o layout geométrico completo e processa determinísticamente
+    // 2. Se for texto nativo, extrai layout completo
     if (!isScanned) {
       const layout = await reader.extractPDFWithLayout(input as any, {
         maxPages: options.maxPages,
@@ -294,7 +481,7 @@ export class ExamPDFQuestionSplitter {
       }
     }
 
-    // 3. Se for escaneado (ou sem texto nativo):
+    // 3. Se for escaneado:
     if (isScanned) {
       if (ocrMode === 'native-only') {
         return {
@@ -314,7 +501,6 @@ export class ExamPDFQuestionSplitter {
         };
       }
 
-      // Modo Local OCR (Padrão: 100% local, 0 tokens)
       if (ocrMode === 'local') {
         if (options.onProgress) {
           options.onProgress({ stage: 'Iniciando OCR local...', current: 0, total: 100, progressPct: 10 });
@@ -371,7 +557,6 @@ export class ExamPDFQuestionSplitter {
         }
       }
 
-      // Modo Remoto com Consentimento Explícito
       if (ocrMode === 'remote-consent') {
         if (options.onConsentRequest) {
           const userConsented = await options.onConsentRequest();
@@ -463,11 +648,9 @@ export class ExamPDFQuestionSplitter {
       const pageItems = itemsByPage.get(pageNumber)!;
       if (pageItems.length === 0) continue;
 
-      // Detecta se a página possui 2 colunas reais separadas por margem X
       const isTwoColumns = this.detectTwoColumns(pageItems);
 
       const processColumnItems = (colItems: PDFLayoutItem[]) => {
-        // Ordena de cima para baixo (em PDF, Y maior costuma ser mais alto na página)
         const sortedY = [...colItems].sort((a, b) => b.y - a.y);
         const yGroups: PDFLayoutItem[][] = [];
 
@@ -487,7 +670,6 @@ export class ExamPDFQuestionSplitter {
         }
 
         for (const group of yGroups) {
-          // Ordena itens da mesma linha da esquerda para a direita (X crescente)
           group.sort((a, b) => a.x - b.x);
           let lineStr = '';
           for (let k = 0; k < group.length; k++) {
@@ -536,7 +718,7 @@ export class ExamPDFQuestionSplitter {
     const maxX = xCoords[xCoords.length - 1];
     const width = maxX - minX;
 
-    if (width < 300) return null; // Página estreita / coluna única
+    if (width < 300) return null;
 
     const midX = minX + width / 2;
     const leftItems = items.filter((i) => i.x < midX - 30);
@@ -564,11 +746,9 @@ export class ExamPDFQuestionSplitter {
     const answerKeyMap: Record<number, string> = {};
     let answerKeyFound = false;
 
-    // Combine rawText and reconstituted lines
     const cleanedRawText = this.cleanText(rawText);
     const fullContent = (cleanedRawText + '\n' + lines.map((l) => l.text).join('\n')).trim();
 
-    // 1. Procura por bloco de gabarito explícito
     const gabaritoMatch = fullContent.match(this.GABARITO_HEADER_REGEX);
     if (gabaritoMatch && gabaritoMatch.index !== undefined) {
       const gabaritoText = fullContent.slice(gabaritoMatch.index);
@@ -584,7 +764,6 @@ export class ExamPDFQuestionSplitter {
       }
     }
 
-    // 2. Scan lines for GABARITO: 1-A, 2-B...
     for (const line of lines) {
       if (this.GABARITO_HEADER_REGEX.test(line.text)) {
         let match: RegExpExecArray | null;
@@ -611,13 +790,12 @@ export class ExamPDFQuestionSplitter {
 
     interface DraftQuestion {
       questionNumber: number;
-      statementParts: string[];
+      rawLines: string[];
       topicTags?: string[];
-      options: ExtractedOption[];
       correctLetter?: string;
       pageNumber: number;
       endPageNumber?: number;
-      currentOptionLetter: string | null;
+      isExplicit?: boolean;
     }
 
     const questions: ExtractedExamQuestion[] = [];
@@ -630,11 +808,28 @@ export class ExamPDFQuestionSplitter {
     const finalizeCurrentQuestion = () => {
       if (!currentQ) return;
 
-      const statement = currentQ.statementParts.join(' ').replace(/\s+/g, ' ').trim();
-      const options = currentQ.options.map((opt) => ({
-        letter: opt.letter.toUpperCase(),
-        text: opt.text.replace(/\s+/g, ' ').trim(),
-      }));
+      const rawCombined = currentQ.rawLines.join('\n').trim();
+
+      // Ignora instruções e falsos positivos
+      if (this.isInstructionOrFalsePositive(rawCombined)) {
+        currentQ = null;
+        return;
+      }
+
+      // Extrai enunciado e alternativas de forma estruturada
+      const { statement, options } = this.parseQuestionOptions(rawCombined);
+
+      // Para marcadores não explícitos (ex: "1.", "2."), exige alternativas estruturadas
+      if (!currentQ.isExplicit && options.length === 0) {
+        currentQ = null;
+        return;
+      }
+
+      // Se o enunciado for minúsculo ou sem conteúdo real, descarta
+      if (statement.length < 15 && options.length === 0) {
+        currentQ = null;
+        return;
+      }
 
       const correctLetter = currentQ.correctLetter || answerKeyMap[currentQ.questionNumber];
 
@@ -667,16 +862,14 @@ export class ExamPDFQuestionSplitter {
       const text = this.cleanText(lineObj.text);
       if (!text) continue;
 
-      // Ignora rodapés / cabeçalhos repetitivos conhecidos
       if (this.isHeaderFooterLine(text)) continue;
 
       // 1. Testa se é início de uma nova questão
-      const qStart = this.matchQuestionStart(text, expectedNextNumber, currentQ?.options.length || 0);
+      const qStart = this.matchQuestionStart(text, expectedNextNumber, currentQ?.rawLines.length || 0);
       if (qStart) {
         finalizeCurrentQuestion();
         expectedNextNumber = qStart.questionNumber + 1;
 
-        // Detecção de tags de assunto no cabeçalho
         let topicTags: string[] | undefined = undefined;
         let statementStart = '';
         if (qStart.statementRemainder) {
@@ -692,16 +885,14 @@ export class ExamPDFQuestionSplitter {
 
         currentQ = {
           questionNumber: qStart.questionNumber,
-          statementParts: statementStart ? [statementStart] : [],
+          rawLines: statementStart ? [statementStart] : [],
           topicTags,
-          options: [],
           correctLetter: undefined,
           pageNumber: lineObj.pageNumber,
           endPageNumber: lineObj.pageNumber,
-          currentOptionLetter: null,
+          isExplicit: qStart.isExplicit,
         };
 
-        // Verifica se na mesma linha de início já há gabarito embutido
         const inlineAns = text.match(this.INLINE_ANSWER_REGEX);
         if (inlineAns) {
           currentQ.correctLetter = inlineAns[1].toUpperCase();
@@ -712,94 +903,52 @@ export class ExamPDFQuestionSplitter {
 
       if (!currentQ) continue;
 
-      // Atualiza a página final da questão ativa
       currentQ.endPageNumber = lineObj.pageNumber;
 
-      // 2. Verifica se a linha é um gabarito / resposta pontual da questão ativa
       const inlineAns = text.match(this.INLINE_ANSWER_REGEX);
       if (inlineAns) {
         currentQ.correctLetter = inlineAns[1].toUpperCase();
         continue;
       }
 
-      // Se for uma seção de gabarito final consolidada (ex: GABARITO OFICIAL / 1-A 2-B), finaliza a questão atual
-      if (this.GABARITO_HEADER_REGEX.test(text) && currentQ.options.length >= 2) {
+      if (this.GABARITO_HEADER_REGEX.test(text) && currentQ.rawLines.length >= 2) {
         finalizeCurrentQuestion();
         continue;
       }
 
-      // 3. Testa se a linha possui múltiplas alternativas inline (A)... (B)...
-      const inlineOptions = this.extractInlineOptions(text);
-      if (inlineOptions && inlineOptions.length >= 2) {
-        for (const inOpt of inlineOptions) {
-          currentQ.options.push(inOpt);
-        }
-        currentQ.currentOptionLetter = inlineOptions[inlineOptions.length - 1].letter;
-        continue;
-      }
+      currentQ.rawLines.push(text);
+    }
 
-      // 4. Testa alternativa com delimitador explícito: a), A), (A), [A], A., A-, A:, Ⓐ, etc.
-      const optDelimMatch = text.match(this.OPTION_DELIM_REGEX);
-      if (optDelimMatch) {
-        let rawLetter = optDelimMatch[1] || optDelimMatch[2] || optDelimMatch[3] || optDelimMatch[4] || '';
-        // Normaliza caracteres Unicode circulados Ⓐ-Ⓔ
-        if (rawLetter.charCodeAt(0) >= 0x24b6 && rawLetter.charCodeAt(0) <= 0x24ba) {
-          rawLetter = String.fromCharCode('A'.charCodeAt(0) + (rawLetter.charCodeAt(0) - 0x24b6));
-        }
+    finalizeCurrentQuestion();
 
-        const letter = rawLetter.toUpperCase();
-        const optText = (optDelimMatch[5] || '').trim();
-        const expectedLetter = String.fromCharCode('A'.charCodeAt(0) + currentQ.options.length);
+    // Deduplicação inteligente de questões repetidas na mesma página
+    const deduplicatedQuestions: ExtractedExamQuestion[] = [];
+    const seenMap = new Map<string, ExtractedExamQuestion>();
 
-        if (letter === expectedLetter || (currentQ.options.length === 0 && letter === 'A') || currentQ.options.length > 0) {
-          currentQ.options.push({ letter, text: optText });
-          currentQ.currentOptionLetter = letter;
-          continue;
-        }
-      }
-
-      // 5. Testa alternativa estilo checkbox: ( ) ..., [ ] ..., ◯ ..., ○ ...
-      const optCheckboxMatch = text.match(this.OPTION_CHECKBOX_REGEX);
-      if (optCheckboxMatch && currentQ.options.length < 5) {
-        const letter = String.fromCharCode('A'.charCodeAt(0) + currentQ.options.length);
-        const optText = optCheckboxMatch[1].trim();
-        currentQ.options.push({ letter, text: optText });
-        currentQ.currentOptionLetter = letter;
-        continue;
-      }
-
-      // 6. Testa alternativa sem delimitador: A ..., B ..., C ... (letras A-E isoladas no início)
-      const optNoDelimMatch = text.match(this.OPTION_NO_DELIM_REGEX);
-      if (optNoDelimMatch) {
-        const letter = optNoDelimMatch[1].toUpperCase();
-        const optText = optNoDelimMatch[2].trim();
-        const expectedLetter = String.fromCharCode('A'.charCodeAt(0) + currentQ.options.length);
-
-        if (letter === expectedLetter && (currentQ.statementParts.length > 0 || currentQ.options.length > 0)) {
-          currentQ.options.push({ letter, text: optText });
-          currentQ.currentOptionLetter = letter;
-          continue;
-        }
-      }
-
-      // 7. Se já estamos dentro das opções, concatena na última opção ativa (continuação multiline)
-      if (currentQ.currentOptionLetter && currentQ.options.length > 0) {
-        const lastOpt = currentQ.options[currentQ.options.length - 1];
-        lastOpt.text += ' ' + text;
+    for (const q of questions) {
+      const key = `${q.pageNumber}_${q.questionNumber}`;
+      if (!seenMap.has(key)) {
+        seenMap.set(key, q);
+        deduplicatedQuestions.push(q);
       } else {
-        // Senão, ainda estamos no enunciado
-        currentQ.statementParts.push(text);
+        const existing = seenMap.get(key)!;
+        // Se a nova versão tiver mais alternativas, substitui
+        if (q.options.length > existing.options.length) {
+          const idx = deduplicatedQuestions.indexOf(existing);
+          if (idx !== -1) {
+            deduplicatedQuestions[idx] = q;
+            seenMap.set(key, q);
+          }
+        }
       }
     }
 
-    // Finaliza a última questão
-    finalizeCurrentQuestion();
-
-    // Contabiliza métricas gerais
-    const totalQuestions = questions.length;
-    const highConfidenceQuestions = questions.filter((q) => q.confidence === 'high');
-    const lowConfidenceQuestions = questions.filter((q) => q.confidence === 'low');
+    const totalQuestions = deduplicatedQuestions.length;
+    const highConfidenceQuestions = deduplicatedQuestions.filter((q) => q.confidence === 'high');
+    const mediumConfidenceQuestions = deduplicatedQuestions.filter((q) => q.confidence === 'medium');
+    const lowConfidenceQuestions = deduplicatedQuestions.filter((q) => q.confidence === 'low');
     const highConfidenceCount = highConfidenceQuestions.length;
+    const mediumConfidenceCount = mediumConfidenceQuestions.length;
     const lowConfidenceCount = lowConfidenceQuestions.length;
     const lowConfidenceRatio = totalQuestions > 0 ? lowConfidenceCount / totalQuestions : 1.0;
 
@@ -808,21 +957,25 @@ export class ExamPDFQuestionSplitter {
 
     if (totalQuestions === 0) {
       failureReason = 'NO_QUESTION_MARKERS';
-      generalWarning = 'Nenhuma questão estruturada encontrada. Este arquivo não possui marcadores numéricos convencionais (ex: QUESTÃO 1, 1., Q. 1) ou alternativas A-D/A-E identificáveis.';
+      generalWarning =
+        'Nenhuma questão estruturada encontrada. Este arquivo não possui marcadores numéricos convencionais (ex: QUESTÃO 1, 1., Q. 1) ou alternativas A-D/A-E identificáveis.';
     } else if (lowConfidenceRatio > 0.40) {
-      generalWarning = `Segmentação automática realizada com baixa confiança para ${Math.round(lowConfidenceRatio * 100)}% das questões. Revise os enunciados e alternativas antes de salvar.`;
+      generalWarning = `Segmentação automática realizada com baixa confiança para ${Math.round(
+        lowConfidenceRatio * 100
+      )}% das questões. Revise os enunciados e alternativas antes de salvar.`;
     }
 
     return {
       success: totalQuestions > 0,
       totalQuestions,
       highConfidenceCount,
+      mediumConfidenceCount,
       lowConfidenceCount,
       lowConfidenceRatio: Math.round(lowConfidenceRatio * 100) / 100,
       warning: generalWarning,
       failureReason,
-      questions,
-      detectedQuestions: questions,
+      questions: deduplicatedQuestions,
+      detectedQuestions: deduplicatedQuestions,
       lowConfidenceQuestions,
       unparsedQuestionCandidates,
       processingWarnings,
@@ -832,19 +985,22 @@ export class ExamPDFQuestionSplitter {
   }
 
   /**
-   * Avalia a confiança da questão extraída.
+   * Avalia a qualidade e confiança da questão extraída.
    */
   private static evaluateConfidence(
     statement: string,
     options: ExtractedOption[],
     correctLetter?: string
-  ): { confidence: 'high' | 'low'; warning?: string } {
+  ): { confidence: 'high' | 'medium' | 'low'; warning?: string } {
     if (!statement || statement.length < 15) {
       return { confidence: 'low', warning: 'Enunciado muito curto ou vazio.' };
     }
 
-    // Provas com 4 alternativas (A, B, C, D) ou 5 alternativas (A, B, C, D, E) são válidas
-    if (options.length < 3) {
+    if (options.length === 0) {
+      return { confidence: 'low', warning: 'Nenhuma alternativa identificada no bloco.' };
+    }
+
+    if (options.length === 1 || options.length === 2) {
       return { confidence: 'low', warning: `Apenas ${options.length} alternativa(s) identificada(s).` };
     }
 
@@ -852,21 +1008,23 @@ export class ExamPDFQuestionSplitter {
       return { confidence: 'low', warning: `Número excessivo de alternativas (${options.length}).` };
     }
 
-    // Verifica se as letras formam uma sequência válida (ex: A, B, C, D ou A, B, C, D, E)
-    const expectedLetters = ['A', 'B', 'C', 'D', 'E'].slice(0, options.length);
-    const actualLetters = options.map((o) => o.letter);
-    const isSequential = expectedLetters.every((l, idx) => actualLetters[idx] === l);
-
-    if (!isSequential) {
-      return { confidence: 'low', warning: `Sequência de alternativas irregular (${actualLetters.join(', ')}).` };
-    }
-
     const hasEmptyOption = options.some((o) => o.text.trim().length === 0);
     if (hasEmptyOption) {
       return { confidence: 'low', warning: 'Uma ou mais alternativas sem texto.' };
     }
 
-    return { confidence: 'high' };
+    const hasInferred = options.some((o) => o.inferredLetter);
+    if (options.length === 4 || options.length === 5) {
+      if (hasInferred) {
+        return {
+          confidence: 'medium',
+          warning: `${options.length} alternativas detectadas; letras inferidas pela ordem visual.`,
+        };
+      }
+      return { confidence: 'high' };
+    }
+
+    return { confidence: 'medium', warning: `${options.length} alternativas identificadas.` };
   }
 
   /**
@@ -875,13 +1033,13 @@ export class ExamPDFQuestionSplitter {
   private static matchQuestionStart(
     text: string,
     expectedNumber: number,
-    currentOptionsCount: number
+    currentLinesCount: number
   ): { questionNumber: number; statementRemainder: string; isExplicit: boolean } | null {
-    // 1. Padrão explícito: QUESTÃO 27, QUESTÃO Nº 27, Q. 27, etc.
+    // 1. Padrão explícito: QUESTÃO 27, QUESTÃO Nº 27, QUESTÃO O5, QUESTÃO lá, Q. 27, etc.
     const qMatch = text.match(this.QUESTION_START_REGEX);
     if (qMatch) {
-      const qNum = parseInt(qMatch[1], 10);
-      if (qNum > 0 && qNum <= 300) {
+      const qNum = this.normalizeQuestionNumber(qMatch[1], expectedNumber);
+      if (qNum && qNum > 0 && qNum <= 300) {
         return { questionNumber: qNum, statementRemainder: qMatch[2] || '', isExplicit: true };
       }
     }
@@ -891,14 +1049,17 @@ export class ExamPDFQuestionSplitter {
     if (numMatch) {
       const qNum = parseInt(numMatch[1], 10);
       const remainder = numMatch[2] || '';
-      const isDosageOrUnit = /^(?:mg|ml|mcg|anos|meses|dias|horas|minutos|mmHg|%|bpm|ipm|cm|kg|g)\b/i.test(remainder.trim());
+      const isDosageOrUnit =
+        /^(?:mg|ml|mcg|anos|meses|dias|horas|minutos|mmHg|%|bpm|ipm|cm|kg|g)\b/i.test(remainder.trim());
 
-      if (!isDosageOrUnit && qNum > 0 && qNum <= 300) {
-        // Aceita se for o próximo número esperado, ou se a questão anterior já possui 3+ alternativas, ou no início
+      const isInstruction =
+        /^(?:Leia atentamente|Verifique|Preencha|Observe|Assinale no cartão|Boa prova)/i.test(remainder.trim());
+
+      if (!isDosageOrUnit && !isInstruction && qNum > 0 && qNum <= 300) {
         if (
           qNum === expectedNumber ||
           qNum === expectedNumber + 1 ||
-          currentOptionsCount >= 3 ||
+          currentLinesCount >= 3 ||
           expectedNumber === 1
         ) {
           return { questionNumber: qNum, statementRemainder: remainder, isExplicit: false };
@@ -911,44 +1072,10 @@ export class ExamPDFQuestionSplitter {
     if (isoMatch) {
       const qNum = parseInt(isoMatch[1], 10);
       if (qNum > 0 && qNum <= 300) {
-        if (qNum === expectedNumber || qNum === expectedNumber + 1 || currentOptionsCount >= 3 || expectedNumber === 1) {
+        if (qNum === expectedNumber || qNum === expectedNumber + 1 || currentLinesCount >= 3 || expectedNumber === 1) {
           return { questionNumber: qNum, statementRemainder: '', isExplicit: false };
         }
       }
-    }
-
-    return null;
-  }
-
-  /**
-   * Extrai múltiplas alternativas alinhadas na mesma linha horizontal.
-   */
-  private static extractInlineOptions(text: string): ExtractedOption[] | null {
-    const markerRegex = /(?:^|\s+)(?:\(([A-Ea-e])\)|\b([A-Ea-e])\))\s+/g;
-    const markers: { letter: string; startIndex: number; endIndex: number }[] = [];
-    let match: RegExpExecArray | null;
-
-    while ((match = markerRegex.exec(text)) !== null) {
-      const letter = (match[1] || match[2]).toUpperCase();
-      markers.push({
-        letter,
-        startIndex: match.index + match[0].length,
-        endIndex: match.index,
-      });
-    }
-
-    if (markers.length >= 2 && markers[0].letter === 'A' && markers[1].letter === 'B') {
-      const options: ExtractedOption[] = [];
-      for (let i = 0; i < markers.length; i++) {
-        const curr = markers[i];
-        const nextStart = i + 1 < markers.length ? markers[i + 1].endIndex : text.length;
-        const optText = text.slice(curr.startIndex, nextStart).trim();
-        options.push({
-          letter: curr.letter,
-          text: optText,
-        });
-      }
-      return options;
     }
 
     return null;
@@ -993,8 +1120,7 @@ export class ExamPDFQuestionSplitter {
   }
 
   /**
-   * Segmenta diretamente a partir do ID de um asset cadastrado,
-   * recuperando o PDF original armazenado na tabela knowledgeAssetFiles.
+   * Segmenta diretamente a partir do ID de um asset cadastrado.
    */
   public static async splitFromAssetId(
     assetId: string,
@@ -1009,7 +1135,8 @@ export class ExamPDFQuestionSplitter {
         lowConfidenceCount: 0,
         lowConfidenceRatio: 0,
         failureReason: 'PAGES_NOT_PROCESSED',
-        warning: 'PDF original não disponível — Esta prova foi cadastrada sem o arquivo binário. Reenvie o arquivo PDF para habilitar a segmentação.',
+        warning:
+          'PDF original não disponível — Esta prova foi cadastrada sem o arquivo binário. Reenvie o arquivo PDF para habilitar a segmentação.',
         questions: [],
         detectedQuestions: [],
         lowConfidenceQuestions: [],

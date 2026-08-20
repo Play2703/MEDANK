@@ -5,7 +5,8 @@
  * Suporta:
  * 1. Camada de texto nativa (100% local determinístico).
  * 2. OCR Local via Tesseract.js / WASM com suporte multiplataforma (Web, iOS/Capacitor, Node).
- * 3. Fallback para OCR Remoto (Gemini) mediante consentimento explícito.
+ * 3. Reconstrução espacial A-D / A-E para marcadores circulares OCR ((O), Ga, etc.).
+ * 4. Fallback para OCR Remoto (Gemini) mediante consentimento explícito.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -33,10 +34,13 @@ import {
   StopCircle,
   Smartphone,
   Sliders,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import {
   ExamPDFQuestionSplitter,
   ExtractedExamQuestion,
+  ExtractedOption,
   ExamSplitterResult,
   SplitterFailureReason,
 } from '../../core/exam_bank/services/ExamPDFQuestionSplitter';
@@ -69,7 +73,7 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
   const [progressPct, setProgressPct] = useState<number>(0);
   const [result, setResult] = useState<ExamSplitterResult | null>(null);
   const [questions, setQuestions] = useState<ExtractedExamQuestion[]>([]);
-  const [filterConfidence, setFilterConfidence] = useState<'all' | 'high' | 'low'>('all');
+  const [filterConfidence, setFilterConfidence] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState<boolean>(false);
@@ -224,6 +228,34 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
         if (q.questionNumber === qNum) {
           const newOpts = [...q.options];
           newOpts[optIdx] = { ...newOpts[optIdx], text: newText };
+          return { ...q, options: newOpts };
+        }
+        return q;
+      })
+    );
+  };
+
+  const handleAddOption = (qNum: number) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.questionNumber === qNum) {
+          const letters = ['A', 'B', 'C', 'D', 'E'];
+          const nextLetter = letters[q.options.length] || 'E';
+          return {
+            ...q,
+            options: [...q.options, { letter: nextLetter, text: '' }],
+          };
+        }
+        return q;
+      })
+    );
+  };
+
+  const handleRemoveOption = (qNum: number, optIdx: number) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.questionNumber === qNum) {
+          const newOpts = q.options.filter((_, idx) => idx !== optIdx);
           return { ...q, options: newOpts };
         }
         return q;
@@ -585,16 +617,16 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-1">
-                  <span className="text-[11px] font-semibold text-slate-400">Baixa Confiança</span>
-                  <div className={`text-2xl font-bold tracking-tight flex items-center gap-1.5 ${result.lowConfidenceCount > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
-                    <AlertTriangle className="w-5 h-5" />
-                    <span>{result.lowConfidenceCount}</span>
+                  <span className="text-[11px] font-semibold text-slate-400">Média Confiança</span>
+                  <div className="text-2xl font-bold text-indigo-400 tracking-tight flex items-center gap-1.5">
+                    <Layers className="w-5 h-5" />
+                    <span>{result.mediumConfidenceCount || 0}</span>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800/80 space-y-1">
                   <span className="text-[11px] font-semibold text-slate-400">Gabarito Mapeado</span>
-                  <div className="text-2xl font-bold text-indigo-400 tracking-tight">
+                  <div className="text-2xl font-bold text-emerald-400 tracking-tight">
                     {result.answerKeyFound ? 'Sim (Oficial)' : 'Parcial'}
                   </div>
                 </div>
@@ -624,7 +656,7 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
                   />
                 </div>
 
-                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 self-end sm:self-auto">
+                <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 self-end sm:self-auto flex-wrap">
                   <button
                     onClick={() => setFilterConfidence('all')}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
@@ -646,6 +678,16 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
                     Alta ({result.highConfidenceCount})
                   </button>
                   <button
+                    onClick={() => setFilterConfidence('medium')}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      filterConfidence === 'medium'
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                        : 'text-slate-400 hover:text-indigo-300'
+                    }`}
+                  >
+                    Média ({result.mediumConfidenceCount || 0})
+                  </button>
+                  <button
                     onClick={() => setFilterConfidence('low')}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                       filterConfidence === 'low'
@@ -665,10 +707,12 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
 
                   return (
                     <div
-                      key={q.questionNumber}
+                      key={`${q.pageNumber}_${q.questionNumber}`}
                       className={`p-5 rounded-2xl bg-slate-950/70 border transition-all space-y-4 ${
                         q.confidence === 'high'
                           ? 'border-slate-800 hover:border-slate-700'
+                          : q.confidence === 'medium'
+                          ? 'border-indigo-500/30 bg-indigo-500/[0.02]'
                           : 'border-amber-500/30 bg-amber-500/[0.02]'
                       }`}
                     >
@@ -684,6 +728,11 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               Alta Confiança
                             </span>
+                          ) : q.confidence === 'medium' ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-lg border border-indigo-500/20" title={q.warning}>
+                              <Layers className="w-3.5 h-3.5" />
+                              Média Confiança
+                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20" title={q.warning}>
                               <AlertTriangle className="w-3.5 h-3.5" />
@@ -695,6 +744,10 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
                             {q.endPageNumber && q.endPageNumber !== q.pageNumber
                               ? `Págs. ${q.pageNumber}-${q.endPageNumber}`
                               : `Pág. ${q.pageNumber}`}
+                          </span>
+
+                          <span className="text-[11px] text-slate-400 font-mono bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                            {q.options.length} alternativas
                           </span>
                         </div>
 
@@ -748,7 +801,7 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
 
                           return (
                             <div
-                              key={opt.letter}
+                              key={`${q.questionNumber}_opt_${opt.letter}_${optIdx}`}
                               className={`p-3 rounded-xl border flex items-start gap-3 text-xs transition-all ${
                                 isCorrect
                                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
@@ -767,18 +820,44 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
                               </button>
 
                               {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={opt.text}
-                                  onChange={(e) => handleUpdateOption(q.questionNumber, optIdx, e.target.value)}
-                                  className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none"
-                                />
+                                <div className="flex-1 flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    value={opt.text}
+                                    onChange={(e) => handleUpdateOption(q.questionNumber, optIdx, e.target.value)}
+                                    className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none"
+                                  />
+                                  <button
+                                    onClick={() => handleRemoveOption(q.questionNumber, optIdx)}
+                                    className="p-1 text-rose-400 hover:text-rose-300"
+                                    title="Remover Alternativa"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               ) : (
-                                <span className="flex-1 leading-relaxed">{opt.text}</span>
+                                <div className="flex-1 flex items-center justify-between gap-2">
+                                  <span className="leading-relaxed">{opt.text}</span>
+                                  {opt.inferredLetter && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shrink-0" title={`Marcador original: ${opt.rawMarker || 'espaço'}`}>
+                                      Ordem visual
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
                           );
                         })}
+
+                        {isEditing && q.options.length < 5 && (
+                          <button
+                            onClick={() => handleAddOption(q.questionNumber)}
+                            className="w-full py-1.5 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-indigo-300 rounded-xl text-xs flex items-center justify-center gap-1 transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Adicionar Alternativa</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
