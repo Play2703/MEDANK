@@ -1,7 +1,40 @@
 import { describe, it, expect } from 'vitest';
-import { isValidGeneratedQuestion, isValidGeneratedCard } from './contentValidation';
+import { isValidGeneratedQuestion, isValidGeneratedCard, isValidOptionText } from './contentValidation';
 
 describe('contentValidation', () => {
+  describe('isValidOptionText', () => {
+    it('deve rejeitar alternativas com strings sem sentido ou códigos vazados (p030, erbB, dCb, umP)', () => {
+      expect(isValidOptionText('p030')).toBe(false);
+      expect(isValidOptionText('erbB')).toBe(false);
+      expect(isValidOptionText('dCb')).toBe(false);
+      expect(isValidOptionText('umP')).toBe(false);
+      expect(isValidOptionText('q-1234')).toBe(false);
+      expect(isValidOptionText('abc')).toBe(false);
+      expect(isValidOptionText('')).toBe(false);
+      expect(isValidOptionText(null)).toBe(false);
+    });
+
+    it('deve aceitar respostas curtas legítimas da whitelist (CERTO, ERRADO, Bulbo., Ponte, Mesencéfalo)', () => {
+      expect(isValidOptionText('CERTO')).toBe(true);
+      expect(isValidOptionText('ERRADO')).toBe(true);
+      expect(isValidOptionText('VERDADEIRO')).toBe(true);
+      expect(isValidOptionText('FALSO')).toBe(true);
+      expect(isValidOptionText('Bulbo.')).toBe(true);
+      expect(isValidOptionText('Bulbo')).toBe(true);
+      expect(isValidOptionText('Ponte')).toBe(true);
+      expect(isValidOptionText('Mesencéfalo')).toBe(true);
+      expect(isValidOptionText('Fígado')).toBe(true);
+    });
+
+    it('deve aceitar alternativas normais com frases clínicas e valores numéricos médicos válidos', () => {
+      expect(isValidOptionText('Realizar ECG imediatamente')).toBe(true);
+      expect(isValidOptionText('Prescrever analgésico comum')).toBe(true);
+      expect(isValidOptionText('10 mg/dia')).toBe(true);
+      expect(isValidOptionText('120/80 mmHg')).toBe(true);
+      expect(isValidOptionText('Apendicectomia videolaparoscópica')).toBe(true);
+    });
+  });
+
   describe('isValidGeneratedQuestion', () => {
     const validQuestion = {
       statement: 'Paciente de 60 anos com dor precordial intensa.',
@@ -16,6 +49,48 @@ describe('contentValidation', () => {
 
     it('deve retornar true para uma questão válida', () => {
       expect(isValidGeneratedQuestion(validQuestion)).toBe(true);
+    });
+
+    it('deve retornar false se qualquer alternativa contiver string sem sentido (p030, erbB, dCb, umP)', () => {
+      const qWithP030 = {
+        ...validQuestion,
+        options: [
+          { letter: 'A', text: 'p030', isCorrect: false },
+          { letter: 'B', text: 'Prescrever analgésico comum', isCorrect: false },
+          { letter: 'C', text: 'Realizar ECG imediatamente', isCorrect: true },
+          { letter: 'D', text: 'dCb', isCorrect: false },
+        ],
+      };
+      expect(isValidGeneratedQuestion(qWithP030)).toBe(false);
+
+      const qWithErbB = {
+        ...validQuestion,
+        options: [
+          { letter: 'A', text: 'Realizar ECG imediatamente', isCorrect: true },
+          { letter: 'B', text: 'erbB', isCorrect: false },
+          { letter: 'C', text: 'Dar alta com orientação', isCorrect: false },
+          { letter: 'D', text: 'umP', isCorrect: false },
+        ],
+      };
+      expect(isValidGeneratedQuestion(qWithErbB)).toBe(false);
+    });
+
+    it('deve retornar false se correctAnswerText for um código inválido', () => {
+      const qWithBadAnswer = {
+        statement: 'Qual estrutura localiza-se no tronco encefálico?',
+        correctAnswerText: 'p030',
+        commentary: 'Explicação.',
+      };
+      expect(isValidGeneratedQuestion(qWithBadAnswer)).toBe(false);
+    });
+
+    it('deve retornar true se correctAnswerText for um termo válido da whitelist ou frase', () => {
+      const qWithBulbo = {
+        statement: 'Qual estrutura localiza-se no tronco encefálico caudal?',
+        correctAnswerText: 'Bulbo.',
+        commentary: 'O bulbo é a porção caudal do tronco encefálico.',
+      };
+      expect(isValidGeneratedQuestion(qWithBulbo)).toBe(true);
     });
 
     it('deve retornar false se o statement estiver vazio ou ausente', () => {

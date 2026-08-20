@@ -844,6 +844,159 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
     expect(result.similarityRegenStats?.count).toBe(1);
     expect(result.similarityRegenStats?.estimatedTokens).toBeGreaterThan(0);
   });
+
+  it('deve descartar alternativas sem sentido (p030, dCb, erbB) e repor via deficit replacement', async () => {
+    let callCount = 0;
+
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('/api/generate-questions')) {
+        callCount++;
+        if (callCount === 1) {
+          // Primeira chamada retorna questão com distratores sem sentido ('p030', 'dCb')
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              questions: [
+                {
+                  id: 'q-bad-1',
+                  statement: 'Qual das estruturas abaixo compõe o tronco encefálico?',
+                  options: [
+                    { id: 'opt-a', letter: 'A', text: 'p030', isCorrect: false },
+                    { id: 'opt-b', letter: 'B', text: 'Bulbo', isCorrect: true },
+                    { id: 'opt-c', letter: 'C', text: 'dCb', isCorrect: false },
+                    { id: 'opt-d', letter: 'D', text: 'erbB', isCorrect: false },
+                  ],
+                  correctOptionLetter: 'B',
+                  commentary: 'O bulbo é a porção caudal do tronco.',
+                  specialty: 'Neurologia',
+                  topic: 'Tronco Encefálico',
+                },
+              ],
+            }),
+          } as Response;
+        } else {
+          // Chamada de reposição (deficit replacement) retorna questão válida com alternativas limpas
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              questions: [
+                {
+                  id: 'q-good-1',
+                  statement: 'Qual estrutura localiza-se caudalmente à ponte no tronco encefálico?',
+                  options: [
+                    { id: 'opt-a', letter: 'A', text: 'Mesencéfalo', isCorrect: false },
+                    { id: 'opt-b', letter: 'B', text: 'Bulbo', isCorrect: true },
+                    { id: 'opt-c', letter: 'C', text: 'Cerebelo', isCorrect: false },
+                    { id: 'opt-d', letter: 'D', text: 'Diencéfalo', isCorrect: false },
+                  ],
+                  correctOptionLetter: 'B',
+                  commentary: 'O bulbo situa-se caudalmente à ponte.',
+                  specialty: 'Neurologia',
+                  topic: 'Tronco Encefálico',
+                },
+              ],
+            }),
+          } as Response;
+        }
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    const request: QuestionGenerationRequest = {
+      id: 'req-test-nonsense-filter',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Neurologia',
+        topics: ['Tronco Encefálico'],
+        quantity: 1,
+        distributionMode: 'interdisciplinar',
+        difficulty: 'media',
+        questionType: 'multipla_escolha',
+        includeCommentary: true,
+        showReferences: false,
+        autoGenerateFlashcards: false,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await service.generateQuestions(request, true);
+
+    expect(result.questionSet).toBeDefined();
+    expect(result.questionSet?.questions).toHaveLength(1);
+    const finalQ = result.questionSet?.questions[0];
+    // Garante que a questão final não contém 'p030', 'dCb' ou 'erbB'
+    for (const opt of finalQ!.options) {
+      expect(['p030', 'dCb', 'erbB']).not.toContain(opt.text);
+    }
+    expect(finalQ?.statement).toContain('caudalmente à ponte');
+    expect(callCount).toBe(2); // 1 chamada inicial falha + 1 reposição com sucesso
+  });
+
+  it('deve desativar RAG geral quando strictCustomContextOnly for true', async () => {
+    let capturedPayload: any = null;
+
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('/api/generate-questions')) {
+        capturedPayload = JSON.parse(init?.body as string);
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            questions: [
+              {
+                id: 'q-strict-1',
+                statement: 'Segundo as notas fornecidas, o tronco encefálico é formado por bulbo, ponte e mesencéfalo.',
+                options: [
+                  { id: 'opt-a', letter: 'A', text: 'Bulbo, ponte e mesencéfalo', isCorrect: true },
+                  { id: 'opt-b', letter: 'B', text: 'Tálamo, hipotálamo e epítalamo', isCorrect: false },
+                  { id: 'opt-c', letter: 'C', text: 'Córtex frontal, parietal e occipital', isCorrect: false },
+                  { id: 'opt-d', letter: 'D', text: 'Cerebelo, medula e gânglios', isCorrect: false },
+                ],
+                correctOptionLetter: 'A',
+                commentary: 'Conforme texto-fonte.',
+                specialty: 'Neurologia',
+                topic: 'Tronco Encefálico',
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    const notesContext = 'Notas de aula: O tronco encefálico divide-se em bulbo (medula oblonga), ponte e mesencéfalo.';
+
+    const request: QuestionGenerationRequest = {
+      id: 'req-test-strict-custom-context',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Neurologia',
+        topics: ['Tronco Encefálico'],
+        quantity: 1,
+        distributionMode: 'interdisciplinar',
+        difficulty: 'facil',
+        questionType: 'conceitual',
+        includeCommentary: true,
+        showReferences: false,
+        autoGenerateFlashcards: false,
+        customContext: notesContext,
+        strictCustomContextOnly: true,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await service.generateQuestions(request, true);
+
+    expect(result.questionSet).toBeDefined();
+    expect(capturedPayload).toBeDefined();
+    expect(capturedPayload.strictCustomContextOnly).toBe(true);
+    expect(capturedPayload.retrievedChunks).toEqual([]);
+    expect(capturedPayload.customContext).toContain(notesContext);
+  });
 });
 
 

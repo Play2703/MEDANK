@@ -27,6 +27,7 @@ export interface QuestionConfiguration {
   autoGenerateFlashcards: boolean;   // Gerar flashcards automaticamente ao finalizar
   prioritizeLocalQuestions?: boolean;// Priorizar questões do meu banco local (economia máxima)
   customContext?: string;            // Contexto livre / Texto-fonte prioritário (ex: notas de estudo)
+  strictCustomContextOnly?: boolean; // Restringir estritamente ao texto-fonte (desativa RAG geral)
 }
 
 export interface QuestionGenerationRequest {

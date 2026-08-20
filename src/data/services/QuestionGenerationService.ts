@@ -7,7 +7,7 @@ import {
 import { ragEngine } from './RAGEngine';
 import { knowledgeGraphService } from './KnowledgeGraphService';
 import { distractorEngine } from './distractorEngine/DistractorEngine';
-import { isValidGeneratedQuestion } from '../../core/utils/contentValidation';
+import { isValidGeneratedQuestion, isValidOptionText } from '../../core/utils/contentValidation';
 import { mapWithConcurrency } from '../../core/utils/asyncUtils';
 import { formatCompactAntiDuplicationList } from '../../core/utils/termExtractor';
 import { balanceAndShuffleQuestionOptions } from '../../core/utils/optionBalancer';
@@ -399,7 +399,9 @@ async function replaceInvalidQuestionsDeficit(
               __needsReview: matchedValidation?.status === 'low_anchoring',
             };
           });
-          let replacementValid = repWithReview.filter(isValidGeneratedQuestion);
+          let replacementValid = repWithReview.filter(
+            (q: any) => isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, postPayload.customContext)
+          );
           if (replacementValid.length > 0) {
             replacementValid = await processRawQuestionsWithSimilarityCheck(
               replacementValid,
@@ -410,7 +412,9 @@ async function replaceInvalidQuestionsDeficit(
               contentLimitedTopics,
               regenStatsTracker
             );
-            replacementValid = replacementValid.filter(isValidGeneratedQuestion);
+            replacementValid = replacementValid.filter(
+              (q: any) => isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, postPayload.customContext)
+            );
           }
           console.warn(
             `[QuestionGenerationService] Replacement attempt ${attempt} added ${replacementValid.length} valid questions.`
@@ -497,6 +501,67 @@ export function findLongestConsecutiveWordOverlap(text1: string, text2: string):
   };
 }
 
+/**
+ * Validação de ancoragem estrita no texto-fonte / customContext (Grounding Check pós-geração)
+ */
+export function isQuestionGroundedInCustomContext(q: any, customContext?: string): boolean {
+  if (!customContext || typeof customContext !== 'string' || customContext.trim().length < 30) {
+    return true; // Sem customContext relevante, não aplica restrição
+  }
+
+  const normContext = customContext
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  const statement = q.statement || '';
+  const correctText =
+    q.correctAnswerText ||
+    (Array.isArray(q.options) ? q.options.find((o: any) => o.isCorrect)?.text : '') ||
+    '';
+
+  const combinedText = (statement + ' ' + correctText)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  const PT_STOPWORDS_GROUNDING = new Set([
+    'para', 'com', 'por', 'sobre', 'entre', 'como', 'mais', 'qual', 'quais',
+    'quando', 'onde', 'porque', 'caso', 'clinico', 'paciente', 'apresenta',
+    'apresentando', 'quadro', 'anos', 'idade', 'sexo', 'feminino', 'masculino',
+    'assinale', 'alternativa', 'correta', 'incorreta', 'resposta', 'diagnostico',
+    'conduta', 'exame', 'exames', 'durante', 'apos', 'antes', 'segundo', 'diretriz',
+    'seguinte', 'seguintes', 'abaixo', 'acima', 'relacao', 'pacientes', 'quadros',
+    'apenas', 'exceto', 'sendo', 'sobretudo', 'principal', 'principais'
+  ]);
+
+  const words = combinedText
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !PT_STOPWORDS_GROUNDING.has(w));
+
+  if (words.length === 0) return true;
+
+  let matchedWords = 0;
+  for (const w of words) {
+    if (normContext.includes(w)) {
+      matchedWords++;
+    }
+  }
+
+  const matchRatio = matchedWords / words.length;
+  const overlap = findLongestConsecutiveWordOverlap(statement, customContext);
+
+  if (matchedWords < 2 && overlap.maxOverlapLength < 2 && matchRatio < 0.15) {
+    console.warn(
+      `[QuestionGenerationService] Questão rejeitada no grounding check: conteúdo gerado não ancorado no texto-fonte fornecido (matchRatio: ${(matchRatio * 100).toFixed(1)}%, overlap: ${overlap.maxOverlapLength} palavras).`
+    );
+    return false;
+  }
+
+  return true;
+}
+
 async function assemblePrescriptiveQuestionOptions(
   q: any,
   qId: string,
@@ -506,13 +571,15 @@ async function assemblePrescriptiveQuestionOptions(
 ): Promise<QuestionOption[]> {
   // Se a IA já retornou um array options estruturado (com pelo menos 2 opções), mantém compatibilidade
   if (Array.isArray(q.options) && q.options.length >= 2) {
-    return q.options.map((opt: any, oIdx: number) => ({
-      id: `opt-${qId}-${opt.letter || String.fromCharCode(65 + oIdx)}`,
-      letter: opt.letter || String.fromCharCode(65 + oIdx),
-      text: opt.text || '',
-      isCorrect: opt.isCorrect ?? (opt.letter === q.correctOptionLetter),
-      explanation: opt.explanation || '',
-    }));
+    return q.options
+      .filter((opt: any) => opt && isValidOptionText(opt.text))
+      .map((opt: any, oIdx: number) => ({
+        id: `opt-${qId}-${opt.letter || String.fromCharCode(65 + oIdx)}`,
+        letter: opt.letter || String.fromCharCode(65 + oIdx),
+        text: (opt.text || '').trim(),
+        isCorrect: opt.isCorrect ?? (opt.letter === q.correctOptionLetter),
+        explanation: opt.explanation || '',
+      }));
   }
 
   const correctAnswerText = (q.correctAnswerText || q.correctAnswer || '').trim();
@@ -523,7 +590,7 @@ async function assemblePrescriptiveQuestionOptions(
 
   // 1. Busca distratores específicos via DistractorEngine
   let candidates: any[] = [];
-  if (correctAnswerText) {
+  if (correctAnswerText && isValidOptionText(correctAnswerText)) {
     try {
       candidates = await distractorEngine.getCandidates({
         correctAnswerText,
@@ -548,6 +615,7 @@ async function assemblePrescriptiveQuestionOptions(
 
   for (const c of candidates) {
     const cText = (c.text || c.label || '').trim();
+    if (!isValidOptionText(cText)) continue;
     const normC = cText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     if (!normC || normC === normCorrect || seenCandidateTexts.has(normC)) continue;
     seenCandidateTexts.add(normC);
@@ -558,6 +626,7 @@ async function assemblePrescriptiveQuestionOptions(
   if (uniqueCandidates.length < 3 && Array.isArray(fallbackDistractorHints)) {
     for (const h of fallbackDistractorHints) {
       const hText = (h.text || h.label || (typeof h === 'string' ? h : '')).trim();
+      if (!isValidOptionText(hText)) continue;
       const normH = hText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
       if (!normH || normH === normCorrect || seenCandidateTexts.has(normH)) continue;
       seenCandidateTexts.add(normH);
@@ -715,7 +784,7 @@ export class QuestionGenerationService {
       topK,
     });
 
-    if (retrievedChunks.length < 3 && !ignoreLowChunkWarning) {
+    if (retrievedChunks.length < 3 && !ignoreLowChunkWarning && !config.strictCustomContextOnly) {
       return {
         warning: {
           lowChunks: true,
@@ -835,8 +904,8 @@ export class QuestionGenerationService {
       }
 
       const rawPayload = {
-        retrievedChunks: chunksForThisBatch,
-        examReferenceChunks: examReferenceChunks.length > 0 ? examReferenceChunks : undefined,
+        retrievedChunks: config.strictCustomContextOnly ? [] : chunksForThisBatch,
+        examReferenceChunks: (config.strictCustomContextOnly || examReferenceChunks.length === 0) ? undefined : examReferenceChunks,
         specialty: specialtyStr,
         topics: config.topics,
         quantity: batchQty,
@@ -849,6 +918,7 @@ export class QuestionGenerationService {
         mode: request.mode || 'geral',
         distractorHints,
         customContext: [config.customContext, adaptationPromptBlockForThisBatch].filter(Boolean).join('\n\n'),
+        strictCustomContextOnly: config.strictCustomContextOnly,
         existingQuestionsSummary:
           batchIdx > 0 && allRawQuestions.length > 0
             ? formatCompactAntiDuplicationList(allRawQuestions.map((q) => q.statement), 30)
@@ -988,13 +1058,15 @@ export class QuestionGenerationService {
     let overallMaxWordOverlap = finalOverlap.maxLen;
     let overallMatchingSeq = finalOverlap.seq;
 
-    let validRawQuestions = allRawQuestions.filter(isValidGeneratedQuestion);
+    let validRawQuestions = allRawQuestions.filter((q) =>
+      isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, config.customContext)
+    );
     if (validRawQuestions.length < quantity) {
       console.warn(
         `[QuestionGenerationService] Filtered out ${allRawQuestions.length - validRawQuestions.length} invalid questions from output. Attempting deficit replacement...`
       );
       const postPayloadForInterdisciplinary = {
-        retrievedChunks,
+        retrievedChunks: config.strictCustomContextOnly ? [] : retrievedChunks,
         specialty: specialtyStr,
         topics: config.topics,
         difficulty: config.difficulty,
@@ -1006,6 +1078,7 @@ export class QuestionGenerationService {
         mode: request.mode || 'geral',
         distractorHints,
         customContext: config.customContext,
+        strictCustomContextOnly: config.strictCustomContextOnly,
       };
       validRawQuestions = await replaceInvalidQuestionsDeficit(
         validRawQuestions,
@@ -1354,8 +1427,8 @@ export class QuestionGenerationService {
         } = condenseProfessorProfileForDistribution(professorStyleAnalysis, examDNA);
 
         const rawPayload = {
-          retrievedChunks,
-          examReferenceChunks: examReferenceChunks.length > 0 ? examReferenceChunks : undefined,
+          retrievedChunks: config.strictCustomContextOnly ? [] : retrievedChunks,
+          examReferenceChunks: (config.strictCustomContextOnly || examReferenceChunks.length === 0) ? undefined : examReferenceChunks,
           specialty: originSpecialty,
           topics: [singleTopic],
           subtopics: topicSpecificSubtopics.length > 0 ? topicSpecificSubtopics : undefined,
@@ -1369,6 +1442,7 @@ export class QuestionGenerationService {
           mode: request.mode || 'geral',
           distractorHints,
           customContext: topicContext || undefined,
+          strictCustomContextOnly: config.strictCustomContextOnly,
         };
 
         const postPayload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
@@ -1467,7 +1541,9 @@ export class QuestionGenerationService {
           regenStatsTracker
         );
 
-        let validRawQuestions = rawQuestions.filter(isValidGeneratedQuestion);
+        let validRawQuestions = rawQuestions.filter((q) =>
+          isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, topicContext || config.customContext)
+        );
         if (validRawQuestions.length < countForThisTopic) {
           console.warn(
             `[QuestionGenerationService] Filtered out ${rawQuestions.length - validRawQuestions.length} invalid questions for topic "${singleTopic}". Attempting deficit replacement...`

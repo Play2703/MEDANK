@@ -516,16 +516,32 @@ const USE_LIGHT_MODEL_FOR_SIMILARITY_REGENERATION = true;
         distractorHints = [],
         existingQuestionsSummary,
         customContext,
+        strictCustomContextOnly = false,
         avoidTopics = [],
         useLightModel = false,
       } = req.body;
 
       let customContextSection = "";
       if (customContext && typeof customContext === "string" && customContext.trim()) {
-        customContextSection = `\n=== CONTEXTO ADICIONAL / TEXTO-FONTE FORNECIDO PELO USUÁRIO ===\n${customContext.trim()}\n=== FIM DO CONTEXTO ADICIONAL ===\nPriorize a inclusão e cobrança direta dos conceitos, condutas e definições presentes neste contexto adicional para formular os enunciados e alternativas das questões.\n`;
+        customContextSection = `
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  TEXTO-FONTE PRINCIPAL E OBRIGATÓRIO (RESTRIÇÃO ESTRITA DE CONTEÚDO)         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+${customContext.trim()}
+════════════════════════════════════════════════════════════════════════════════
+DIRETRIZES ESTRITAS DE ANCORAGEM NO TEXTO-FONTE:
+- Use EXCLUSIVAMENTE as informações, termos, anatomia, fisiopatologia e condutas contidos no texto-fonte acima para o enunciado e a conduta/resposta correta.
+- NÃO introduza fatos, doenças, exames, valores ou condutas que não estejam no texto-fonte fornecido, mesmo que sejam clinicamente plausíveis na prática médica geral.
+- Todas as alternativas incorretas (distratores) devem relacionar-se diretamente aos conceitos e estruturas citados no texto-fonte.
+════════════════════════════════════════════════════════════════════════════════
+`;
       }
 
       function buildContextMaterial(chunks: any[]): string {
+        if (strictCustomContextOnly && customContext && customContext.trim()) {
+          return "MODO RESTRITO AO TEXTO-FONTE: Base de conhecimento geral desativada. As questões devem ser elaboradas exclusivamente a partir do TEXTO-FONTE fornecido pelo usuário.";
+        }
+
         if (!Array.isArray(chunks) || chunks.length === 0) {
           return "Base de conhecimento geral médica em conformidade com as diretrizes da Sociedade Brasileira e Ministério da Saúde.";
         }

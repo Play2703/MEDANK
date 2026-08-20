@@ -111,6 +111,7 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
 
   // Custom Context Free Text (Study Notes / Custom Source Material)
   const [customContext, setCustomContext] = useState<string>('');
+  const [strictCustomContextOnly, setStrictCustomContextOnly] = useState<boolean>(true);
 
   useEffect(() => {
     if (prefilledConfiguration) {
@@ -348,6 +349,7 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
         autoGenerateFlashcards,
         prioritizeLocalQuestions,
         customContext: customContext.trim() || undefined,
+        strictCustomContextOnly: customContext.trim() ? strictCustomContextOnly : undefined,
       };
 
 
@@ -1108,6 +1110,22 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
             placeholder="Cole aqui um resumo, anotação de estudo, diretriz ou texto médico. A IA priorizará as informações deste texto ao criar os enunciados e condutas das questões."
             className="w-full p-3.5 rounded-2xl bg-black/20 border border-white/10 text-xs font-mono outline-none resize-y transition-all focus:border-indigo-500"
           />
+          {customContext.trim().length > 0 && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs transition-all">
+              <div className="flex flex-col gap-0.5 pr-3">
+                <span className="font-semibold text-indigo-300">Restringir estritamente ao texto-fonte</span>
+                <span className="text-[11px] text-slate-400">
+                  Desativa a base de conhecimento geral/RAG e foca a geração 100% no conteúdo das anotações fornecidas.
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={strictCustomContextOnly}
+                onChange={(e) => setStrictCustomContextOnly(e.target.checked)}
+                className="w-4 h-4 rounded accent-indigo-500 cursor-pointer"
+              />
+            </div>
+          )}
         </div>
 
         {/* Quantidade e Dificuldade */}

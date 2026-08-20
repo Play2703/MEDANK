@@ -5,6 +5,7 @@ import { cosineSimilarity } from '../cosineSimilarity';
 import { localEmbeddingClient } from '../embeddings/LocalEmbeddingClient';
 import { entityEmbeddingIndexer } from './EntityEmbeddingIndexer';
 import { apiUrl } from '../../../lib/apiBaseUrl';
+import { isValidOptionText } from '../../../core/utils/contentValidation';
 
 export interface DistractorCandidate {
   text: string;
@@ -43,10 +44,9 @@ export class DistractorEngine {
    * outras entidades do MESMO tipo conectadas ao mesmo objeto/contexto por um
    * predicado clínico relevante ('trata', 'indica', 'classifica_como', 'associado_a', 'causa'),
    * via db.canonicalEntityIndex pra filtrar por type e pegar o displayText.
-   * Excluir a própria correctEntityCanonicalKey.
    */
   async getGraphCandidates(
-    correctEntityCanonicalKey: string,
+    correctEntityCanonicalKey?: string,
     correctEntityType?: MedicalEntityType,
     relevantPredicates: RelationType[] = ['trata', 'indica', 'classifica_como', 'associado_a', 'causa']
   ): Promise<DistractorCandidate[]> {
@@ -99,22 +99,16 @@ export class DistractorEngine {
 
       for (const key of candidateSubjectKeys) {
         const indexRecord = await db.canonicalEntityIndex.get(key);
-        if (indexRecord) {
-          if (!correctEntityType || indexRecord.type === correctEntityType) {
+        const displayText = indexRecord?.displayText;
+        if (displayText && isValidOptionText(displayText)) {
+          if (!correctEntityType || indexRecord?.type === correctEntityType) {
             candidates.push({
-              text: indexRecord.displayText || key,
-              entityType: indexRecord.type,
+              text: displayText,
+              entityType: indexRecord?.type,
               source: 'grafo',
               rationale: 'Relacionado no grafo de conhecimento via contexto comum',
             });
           }
-        } else {
-          candidates.push({
-            text: key,
-            entityType: correctEntityType,
-            source: 'grafo',
-            rationale: 'Relacionado no grafo de conhecimento',
-          });
         }
       }
 
@@ -561,7 +555,7 @@ export class DistractorEngine {
       }
     }
 
-    const resultList = Array.from(resultMap.values());
+    const resultList = Array.from(resultMap.values()).filter((c) => isValidOptionText(c.text));
 
     return resultList.slice(0, limit);
   }
