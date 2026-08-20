@@ -57,6 +57,7 @@ export interface ExamSplitterResult {
   lowConfidenceRatio: number;
   warning?: string;
   failureReason?: SplitterFailureReason;
+  pageFailureReasons?: Array<{ pageNumber: number; reason: string }>;
   questions: ExtractedExamQuestion[];
   detectedQuestions?: ExtractedExamQuestion[];
   lowConfidenceQuestions?: ExtractedExamQuestion[];
@@ -649,6 +650,29 @@ export class ExamPDFQuestionSplitter {
     for (const q of res.questions) {
       q.extractionMethod = res.extractionMethod;
       q.ocrConfidence = Math.round(avgConfidence);
+    }
+
+    const pageFailureReasons: Array<{ pageNumber: number; reason: string }> = [];
+    for (const p of ocrPages) {
+      if (p.failureReason) {
+        pageFailureReasons.push({ pageNumber: p.pageNumber, reason: p.failureReason });
+      }
+    }
+    if (pageFailureReasons.length > 0) {
+      res.pageFailureReasons = pageFailureReasons;
+    }
+
+    if (res.totalQuestions === 0) {
+      if (pageFailureReasons.length === ocrPages.length && ocrPages.length > 0) {
+        res.failureReason = 'OCR_FAILED';
+        res.warning = `Todas as ${ocrPages.length} páginas falharam durante o OCR. Motivo: ${pageFailureReasons[0]?.reason || 'Erro de renderização'}`;
+      } else if (pageFailureReasons.length > 0) {
+        res.failureReason = 'OCR_FAILED';
+        res.warning = `${pageFailureReasons.length} de ${ocrPages.length} páginas falharam no OCR. Exemplo: ${pageFailureReasons[0]?.reason}`;
+      } else {
+        res.failureReason = 'NO_QUESTION_MARKERS';
+        res.warning = 'O OCR processou o documento, mas não encontrou marcadores de questão (ex: QUESTÃO 1, A-D).';
+      }
     }
 
     return res;

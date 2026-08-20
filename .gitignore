@@ -24,5 +24,7 @@ medicalTerminologyPt.json
 
 # Tesseract OCR trained data cache
 *.traineddata
+!public/tesseract/*.traineddata
+!public/tesseract/*.traineddata.gz
 
 

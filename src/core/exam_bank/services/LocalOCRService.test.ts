@@ -7,6 +7,8 @@ import {
   LocalOCRError,
   detectOCRRuntime,
   toArrayBuffer,
+  calculateSafeCanvasViewport,
+  getLocalTesseractOptions,
 } from './LocalOCRService';
 import { ExamPDFQuestionSplitter } from './ExamPDFQuestionSplitter';
 
@@ -288,5 +290,110 @@ D) Sinusite aguda.
     expect(ocrResult.text).toContain('QUESTÃO');
     expect(ocrResult.text).toContain('27');
     await nodeAdapter.terminate();
+  });
+
+  // 13. Simulação de falha ao inicializar Worker (Promise rejeitada)
+  it('13. deve propagar LocalOCRError(OCR_WORKER_LOAD_FAILED) quando createWorker falha', async () => {
+    const adapter = new CapacitorLocalOCRAdapter('capacitor-ios');
+    // Força getWorker a falhar simulando indisponibilidade de worker
+    (adapter as any).getWorker = vi.fn().mockRejectedValue(
+      new LocalOCRError('OCR_WORKER_LOAD_FAILED', 'Falha ao inicializar Tesseract no dispositivo')
+    );
+
+    await expect(adapter.processImage(new Uint8Array([1, 2, 3]))).rejects.toThrow(
+      /Falha ao inicializar Tesseract/
+    );
+  });
+
+  // 14. Simulação de ctx = null no canvas (limite de memória WebView)
+  it('14. deve registrar failureReason e lançar erro quando canvas.getContext("2d") retorna null', async () => {
+    const adapter = new CapacitorLocalOCRAdapter('capacitor-android');
+
+    const mockPdf = {
+      numPages: 1,
+      getPage: vi.fn().mockResolvedValue({
+        getViewport: () => ({ width: 1000, height: 1500 }),
+        render: vi.fn().mockReturnValue({ promise: Promise.resolve() }),
+        cleanup: vi.fn(),
+      }),
+    };
+
+    const originalDoc = (global as any).document;
+    const mockCanvasNullCtx: any = {
+      width: 1000,
+      height: 1500,
+      getContext: () => null,
+    };
+    (global as any).document = {
+      createElement: vi.fn().mockReturnValue(mockCanvasNullCtx),
+    };
+
+    try {
+      const results = await adapter.processPDF(mockPdf);
+      expect(results).toHaveLength(1);
+      expect(results[0].text).toBe('');
+      expect(results[0].failureReason).toContain('Falha ao criar contexto 2D de canvas');
+      expect(results[0].failureReason).toContain('possível limite de memória');
+    } finally {
+      (global as any).document = originalDoc;
+    }
+  });
+
+  // 15. Proteção de canvas: downscaling dinâmico em imagens gigantes no mobile
+  it('15. deve reduzir o scale de rasterização se a dimensão calculada exceder limites de WebView', () => {
+    const mockPage = {
+      getViewport: ({ scale }: { scale: number }) => ({
+        width: 3000 * scale,
+        height: 4000 * scale,
+      }),
+    };
+
+    // Sem proteção, 3000*2 x 4000*2 = 6000 x 8000 = 48 Megapixels (estoura qualquer WebView móvel)
+    const { viewport, scale, isDownscaled } = calculateSafeCanvasViewport(mockPage as any, 2.0, 'capacitor-ios');
+
+    expect(isDownscaled).toBe(true);
+    expect(scale).toBeLessThan(2.0);
+    // Dimensão resultante não pode exceder 4096 no eixo e 12.5MP no total
+    expect(viewport.width).toBeLessThanOrEqual(4096);
+    expect(viewport.height).toBeLessThanOrEqual(4096);
+    expect(viewport.width * viewport.height).toBeLessThanOrEqual(13_000_000);
+  });
+
+  // 16. Configuração offline: getLocalTesseractOptions aponta para /tesseract local
+  it('16. deve retornar opções com caminhos locais bundlados para Web, Capacitor e Node', () => {
+    const webOpts = getLocalTesseractOptions('web');
+    expect(webOpts.workerPath).toContain('/tesseract/worker.min.js');
+    expect(webOpts.corePath).toContain('/tesseract');
+    expect(webOpts.langPath).toContain('/tesseract');
+    expect(webOpts.gzip).toBe(true);
+    expect(webOpts.cacheMethod).toBe('none');
+
+    const nodeOpts = getLocalTesseractOptions('node');
+    expect(nodeOpts.langPath).toContain('public/tesseract');
+    expect(nodeOpts.gzip).toBe(true);
+  });
+
+  // 17. Splitter deve propagar falhas de página e marcar failureReason OCR_FAILED quando páginas falham
+  it('17. ExamPDFQuestionSplitter deve propagar pageFailureReasons no resultado final', () => {
+    const ocrPagesWithFailures = [
+      {
+        pageNumber: 1,
+        text: '',
+        failureReason: 'Falha ao criar contexto 2D de canvas para renderizar a página 1 — possível limite de memória do dispositivo.',
+      },
+      {
+        pageNumber: 2,
+        text: '',
+        failureReason: 'Falha ao criar contexto 2D de canvas para renderizar a página 2 — possível limite de memória do dispositivo.',
+      },
+    ];
+
+    const res = ExamPDFQuestionSplitter.splitFromOCR(ocrPagesWithFailures);
+    expect(res.totalQuestions).toBe(0);
+    expect(res.failureReason).toBe('OCR_FAILED');
+    expect(res.pageFailureReasons).toBeDefined();
+    expect(res.pageFailureReasons).toHaveLength(2);
+    expect(res.pageFailureReasons![0].pageNumber).toBe(1);
+    expect(res.warning).toContain('Todas as 2 páginas falharam durante o OCR');
   });
 });

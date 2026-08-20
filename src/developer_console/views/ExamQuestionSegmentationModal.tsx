@@ -60,6 +60,14 @@ interface ExamQuestionSegmentationModalProps {
   onSaveQuestions?: (questions: ExtractedExamQuestion[]) => void;
 }
 
+interface OCRErrorState {
+  type: 'worker_load' | 'canvas_memory' | 'empty_ocr' | 'cancelled' | 'generic';
+  title: string;
+  message: string;
+  actionHint?: string;
+  failureReasons?: string[];
+}
+
 export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationModalProps> = ({
   isOpen,
   onClose,
@@ -79,6 +87,7 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [missingPdfWarning, setMissingPdfWarning] = useState<string | null>(null);
+  const [ocrError, setOcrError] = useState<OCRErrorState | null>(null);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [activeOcrMode, setActiveOcrMode] = useState<OCRMode>('local');
   const [showConsentModal, setShowConsentModal] = useState<boolean>(false);
@@ -93,6 +102,7 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
 
   useEffect(() => {
     if (isOpen) {
+      setOcrError(null);
       handleSegment(undefined, 'local');
     } else {
       if (abortControllerRef.current) {
@@ -103,6 +113,7 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
       setEditingQuestionId(null);
       setIsSaved(false);
       setMissingPdfWarning(null);
+      setOcrError(null);
       setAttachedFile(null);
       setProgressPct(0);
       setShowConsentModal(false);
@@ -181,10 +192,48 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
       setResult(res);
       setQuestions(res.questions);
     } catch (err: any) {
-      if (err?.message?.includes('cancelado')) {
+      if (err?.code === 'OCR_CANCELLED' || err?.message?.includes('cancelado')) {
         console.info('[ExamQuestionSegmentationModal] Processamento cancelado.');
+        setProgressStage('Processamento cancelado pelo usuário.');
       } else {
         console.error('[ExamQuestionSegmentationModal] Erro ao segmentar prova:', err);
+        const errCode = err?.code;
+        const errMsg = err?.message || String(err);
+        const isWorker =
+          errCode === 'OCR_WORKER_LOAD_FAILED' ||
+          errCode === 'OCR_MODEL_NOT_FOUND' ||
+          errMsg.includes('worker') ||
+          errMsg.includes('TesseractCore') ||
+          errMsg.includes('traineddata');
+        const isCanvas =
+          errMsg.includes('canvas') ||
+          errMsg.includes('memória') ||
+          errMsg.includes('contexto') ||
+          errMsg.includes('dimensão') ||
+          errMsg.includes('dimensões');
+
+        if (isWorker) {
+          setOcrError({
+            type: 'worker_load',
+            title: 'Falha ao Carregar Motor de OCR Local',
+            message: errMsg,
+            actionHint: 'Não foi possível carregar os arquivos WASM ou modelos de linguagem locais do Tesseract. Verifique se os arquivos locais estão acessíveis ou tente novamente.',
+          });
+        } else if (isCanvas) {
+          setOcrError({
+            type: 'canvas_memory',
+            title: 'Limite de Memória / Renderização do Canvas',
+            message: errMsg,
+            actionHint: 'O dispositivo atingiu o limite de memória ou resolução gráfica para rasterizar as páginas do PDF. Tente processar um intervalo menor de páginas (ex: 1 a 10).',
+          });
+        } else {
+          setOcrError({
+            type: 'generic',
+            title: 'Erro no Processamento do Documento',
+            message: errMsg,
+            actionHint: 'Ocorreu uma falha durante o processamento. Você pode tentar novamente ou utilizar o OCR na Nuvem.',
+          });
+        }
       }
     } finally {
       setIsProcessing(false);
@@ -526,6 +575,51 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
                 <span>Cancelar Processamento</span>
               </button>
             </div>
+          ) : ocrError ? (
+            <div className="py-12 text-center space-y-4 max-w-lg mx-auto">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shadow-lg shadow-rose-950/20">
+                <ShieldAlert className="w-7 h-7" />
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-base font-bold text-white">{ocrError.title}</h4>
+                <p className="text-xs text-rose-300/90 leading-relaxed font-mono bg-rose-950/40 p-3.5 rounded-xl border border-rose-800/40 text-left">
+                  {ocrError.message}
+                </p>
+                {ocrError.actionHint && (
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    💡 {ocrError.actionHint}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => handleSegment(undefined, 'local')}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-900/30 flex items-center justify-center gap-2 transition-all"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Tentar Novamente (OCR Local)</span>
+                </button>
+
+                <button
+                  onClick={() => handleSegment(undefined, 'remote-consent')}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Cloud className="w-4 h-4 text-amber-400" />
+                  <span>Tentar OCR na Nuvem (Gemini)</span>
+                </button>
+              </div>
+
+              <div className="pt-1 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => setShowRangeOptions(true)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 inline-flex items-center gap-1.5"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Configurar Intervalo de Páginas</span>
+                </button>
+              </div>
+            </div>
           ) : missingPdfWarning ? (
             <div className="py-16 text-center space-y-4 max-w-md mx-auto">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -565,6 +659,16 @@ export const ExamQuestionSegmentationModal: React.FC<ExamQuestionSegmentationMod
                   {result?.warning ||
                     'Este arquivo não possui marcadores numéricos convencionais na camada de texto. O documento continua utilizável para estudo e RAG como texto corrido.'}
                 </p>
+                {result?.pageFailureReasons && result.pageFailureReasons.length > 0 && (
+                  <div className="p-3 bg-rose-950/40 border border-rose-800/50 rounded-xl text-[11px] text-rose-300 text-left space-y-1 mt-2">
+                    <strong className="block text-rose-200">Falhas detectadas durante o processamento de páginas:</strong>
+                    {result.pageFailureReasons.slice(0, 5).map((pf, idx) => (
+                      <div key={idx} className="font-mono text-[10px]">
+                        • Página {pf.pageNumber}: {pf.reason}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {result?.inspection && (
                   <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-400 flex justify-around">
                     <span>Páginas: <strong>{result.inspection.totalPages}</strong></span>

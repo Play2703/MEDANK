@@ -84,6 +84,83 @@ export interface OCRPageResult {
   lines?: OCRVisualLine[];
   tokens?: OCRTextToken[];
   imageRegions?: OCRImageRegion[];
+  failureReason?: string;
+  isDownscaled?: boolean;
+  renderedDimensions?: { width: number; height: number };
+}
+
+export const MAX_SAFE_MOBILE_CANVAS_PIXELS = 12_500_000; // ~12.5 MP limite seguro de pixels para WKWebView / Android WebView
+export const MAX_SAFE_MOBILE_CANVAS_DIMENSION = 4096; // 4096px limite por eixo
+
+/**
+ * Retorna as opções de caminhos de arquivos locais do Tesseract (100% offline, zero dependência de CDN em runtime).
+ */
+export function getLocalTesseractOptions(runtime: OCRRuntime) {
+  if (runtime === 'node') {
+    const tesseractDir =
+      typeof process !== 'undefined' && process.cwd
+        ? `${process.cwd()}/public/tesseract`
+        : './public/tesseract';
+    return {
+      langPath: tesseractDir,
+      gzip: true,
+      cacheMethod: 'none' as const,
+    };
+  }
+
+  // Web e Capacitor (iOS / Android):
+  // Em Capacitor/Web, os assets bundlados residem em /tesseract/
+  let basePath = '/tesseract';
+  if (typeof window !== 'undefined' && window.location) {
+    const origin = window.location.origin;
+    if (origin && origin !== 'null' && !origin.startsWith('file://')) {
+      basePath = `${origin}/tesseract`;
+    } else {
+      basePath = './tesseract';
+    }
+  }
+
+  return {
+    workerPath: `${basePath}/worker.min.js`,
+    corePath: basePath,
+    langPath: basePath,
+    gzip: true,
+    cacheMethod: 'none' as const,
+  };
+}
+
+/**
+ * Calcula um viewport seguro para o canvas evitando estouro de memória em WebViews móveis.
+ */
+export function calculateSafeCanvasViewport(
+  page: any,
+  requestedScale = 2.0,
+  runtime: OCRRuntime = 'web'
+): { viewport: any; scale: number; isDownscaled: boolean } {
+  const isMobile = runtime === 'capacitor-ios' || runtime === 'capacitor-android';
+  const unscaled = page.getViewport({ scale: 1.0 });
+  let effectiveScale = requestedScale;
+  let isDownscaled = false;
+
+  const targetWidth = unscaled.width * effectiveScale;
+  const targetHeight = unscaled.height * effectiveScale;
+  const targetPixels = targetWidth * targetHeight;
+
+  const maxPixels = isMobile ? MAX_SAFE_MOBILE_CANVAS_PIXELS : 25_000_000;
+  const maxDim = isMobile ? MAX_SAFE_MOBILE_CANVAS_DIMENSION : 8192;
+
+  if (targetPixels > maxPixels || targetWidth > maxDim || targetHeight > maxDim) {
+    const pixelScaleRatio = Math.sqrt(maxPixels / (unscaled.width * unscaled.height));
+    const dimScaleRatio = Math.min(maxDim / unscaled.width, maxDim / unscaled.height);
+    effectiveScale = Math.max(1.0, Math.min(pixelScaleRatio, dimScaleRatio, effectiveScale * 0.9));
+    isDownscaled = true;
+    console.warn(
+      `[LocalOCRService] Reduzindo scale de ${requestedScale} para ${effectiveScale.toFixed(2)} para prevenir estouro de memória no canvas (dimensão original calculada: ${Math.round(targetWidth)}x${Math.round(targetHeight)}, ajustada: ${Math.round(unscaled.width * effectiveScale)}x${Math.round(unscaled.height * effectiveScale)}).`
+    );
+  }
+
+  const viewport = page.getViewport({ scale: effectiveScale });
+  return { viewport, scale: effectiveScale, isDownscaled };
 }
 
 export interface ProcessPDFOCROptions {
@@ -414,8 +491,9 @@ export class BrowserLocalOCRAdapter implements LocalOCRAdapter {
     this.isInitializing = true;
     try {
       const { createWorker } = await import('tesseract.js');
+      const localOpts = getLocalTesseractOptions('web');
       this.worker = await createWorker(lang, 1, {
-        cacheMethod: 'indexedDB',
+        ...localOpts,
         logger: () => {},
       });
       return this.worker;
@@ -423,8 +501,9 @@ export class BrowserLocalOCRAdapter implements LocalOCRAdapter {
       console.warn(`[BrowserLocalOCRAdapter] Falha ao carregar idioma ${lang}, tentando fallback ${fallbackLang}:`, err);
       try {
         const { createWorker } = await import('tesseract.js');
+        const localOpts = getLocalTesseractOptions('web');
         this.worker = await createWorker(fallbackLang, 1, {
-          cacheMethod: 'indexedDB',
+          ...localOpts,
           logger: () => {},
         });
         return this.worker;
@@ -501,18 +580,18 @@ export class BrowserLocalOCRAdapter implements LocalOCRAdapter {
 
       try {
         page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale });
+        const { viewport, isDownscaled } = calculateSafeCanvasViewport(page, scale, 'web');
         let canvas: any = null;
         let ctx: any = null;
 
         if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
           canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+          canvas.width = Math.round(viewport.width);
+          canvas.height = Math.round(viewport.height);
           ctx = canvas.getContext('2d');
         } else {
           const { createCanvas } = await import('@napi-rs/canvas');
-          canvas = createCanvas(viewport.width, viewport.height);
+          canvas = createCanvas(Math.round(viewport.width), Math.round(viewport.height));
           ctx = canvas.getContext('2d');
         }
 
@@ -521,6 +600,16 @@ export class BrowserLocalOCRAdapter implements LocalOCRAdapter {
           preprocessCanvasForOCR(canvas, options.preprocessMode || 'contrast');
           const inputForProcess = typeof canvas.toBuffer === 'function' ? canvas.toBuffer('image/png') : canvas;
           pageResult = await this.processImage(inputForProcess, p, options.signal);
+          pageResult.isDownscaled = isDownscaled;
+          pageResult.renderedDimensions = {
+            width: Math.round(viewport.width),
+            height: Math.round(viewport.height),
+          };
+        } else {
+          const errMsg = `Falha ao criar contexto 2D de canvas para renderizar a página ${p} (dimensões: ${Math.round(viewport.width)}x${Math.round(viewport.height)}) — possível limite de memória do navegador.`;
+          console.error(`[BrowserLocalOCRAdapter] ${errMsg}`);
+          pageResult.failureReason = errMsg;
+          throw new LocalOCRError('OCR_PROCESSING_FAILED', errMsg);
         }
 
         if (canvas) {
@@ -530,6 +619,9 @@ export class BrowserLocalOCRAdapter implements LocalOCRAdapter {
       } catch (err: any) {
         if (options.signal?.aborted) throw err;
         console.warn(`[BrowserLocalOCRAdapter] Falha na página ${p}:`, err);
+        if (!pageResult.failureReason) {
+          pageResult.failureReason = err?.message || `Erro ao processar página ${p}`;
+        }
       } finally {
         if (page?.cleanup) {
           page.cleanup();
@@ -589,8 +681,9 @@ export class CapacitorLocalOCRAdapter implements LocalOCRAdapter {
     this.isInitializing = true;
     try {
       const { createWorker } = await import('tesseract.js');
+      const localOpts = getLocalTesseractOptions(this.runtime);
       this.worker = await createWorker(lang, 1, {
-        cacheMethod: 'indexedDB',
+        ...localOpts,
         logger: () => {},
       });
       return this.worker;
@@ -598,8 +691,9 @@ export class CapacitorLocalOCRAdapter implements LocalOCRAdapter {
       console.warn(`[CapacitorLocalOCRAdapter] Falha ao inicializar idioma ${lang}:`, err);
       try {
         const { createWorker } = await import('tesseract.js');
+        const localOpts = getLocalTesseractOptions(this.runtime);
         this.worker = await createWorker(fallbackLang, 1, {
-          cacheMethod: 'indexedDB',
+          ...localOpts,
           logger: () => {},
         });
         return this.worker;
@@ -676,18 +770,18 @@ export class CapacitorLocalOCRAdapter implements LocalOCRAdapter {
 
       try {
         page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale });
+        const { viewport, isDownscaled } = calculateSafeCanvasViewport(page, scale, this.runtime);
         let canvas: any = null;
         let ctx: any = null;
 
         if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
           canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
+          canvas.width = Math.round(viewport.width);
+          canvas.height = Math.round(viewport.height);
           ctx = canvas.getContext('2d');
         } else {
           const { createCanvas } = await import('@napi-rs/canvas');
-          canvas = createCanvas(viewport.width, viewport.height);
+          canvas = createCanvas(Math.round(viewport.width), Math.round(viewport.height));
           ctx = canvas.getContext('2d');
         }
 
@@ -696,6 +790,16 @@ export class CapacitorLocalOCRAdapter implements LocalOCRAdapter {
           preprocessCanvasForOCR(canvas, options.preprocessMode || 'contrast');
           const inputForProcess = typeof canvas.toBuffer === 'function' ? canvas.toBuffer('image/png') : canvas;
           pageResult = await this.processImage(inputForProcess, p, options.signal);
+          pageResult.isDownscaled = isDownscaled;
+          pageResult.renderedDimensions = {
+            width: Math.round(viewport.width),
+            height: Math.round(viewport.height),
+          };
+        } else {
+          const errMsg = `Falha ao criar contexto 2D de canvas para renderizar a página ${p} (dimensões: ${Math.round(viewport.width)}x${Math.round(viewport.height)}) — possível limite de memória do dispositivo.`;
+          console.error(`[CapacitorLocalOCRAdapter] ${errMsg}`);
+          pageResult.failureReason = errMsg;
+          throw new LocalOCRError('OCR_PROCESSING_FAILED', errMsg);
         }
 
         if (canvas) {
@@ -705,6 +809,9 @@ export class CapacitorLocalOCRAdapter implements LocalOCRAdapter {
       } catch (err: any) {
         if (options.signal?.aborted) throw err;
         console.warn(`[CapacitorLocalOCRAdapter] Falha na página ${p}:`, err);
+        if (!pageResult.failureReason) {
+          pageResult.failureReason = err?.message || `Erro ao processar página ${p}`;
+        }
       } finally {
         if (page?.cleanup) {
           page.cleanup();
@@ -776,7 +883,9 @@ export class NodeLocalOCRAdapter implements LocalOCRAdapter {
     this.isInitializing = true;
     try {
       const { createWorker } = await import('tesseract.js');
+      const localOpts = getLocalTesseractOptions('node');
       this.worker = await createWorker(lang, 1, {
+        ...localOpts,
         logger: () => {},
       });
       return this.worker;
@@ -784,7 +893,9 @@ export class NodeLocalOCRAdapter implements LocalOCRAdapter {
       console.warn(`[NodeLocalOCRAdapter] Falha ao carregar idioma ${lang}, tentando fallback ${fallbackLang}:`, err);
       try {
         const { createWorker } = await import('tesseract.js');
+        const localOpts = getLocalTesseractOptions('node');
         this.worker = await createWorker(fallbackLang, 1, {
+          ...localOpts,
           logger: () => {},
         });
         return this.worker;
@@ -860,8 +971,8 @@ export class NodeLocalOCRAdapter implements LocalOCRAdapter {
 
       try {
         page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale });
-        const canvas = createCanvas(viewport.width, viewport.height);
+        const { viewport, isDownscaled } = calculateSafeCanvasViewport(page, scale, 'node');
+        const canvas = createCanvas(Math.round(viewport.width), Math.round(viewport.height));
         const canvasContext = canvas.getContext('2d');
 
         if (canvasContext) {
@@ -869,10 +980,23 @@ export class NodeLocalOCRAdapter implements LocalOCRAdapter {
           preprocessCanvasForOCR(canvas, options.preprocessMode || 'contrast');
           const imageBuffer = canvas.toBuffer('image/png');
           pageResult = await this.processImage(imageBuffer, p, options.signal);
+          pageResult.isDownscaled = isDownscaled;
+          pageResult.renderedDimensions = {
+            width: Math.round(viewport.width),
+            height: Math.round(viewport.height),
+          };
+        } else {
+          const errMsg = `Falha ao criar contexto 2D de canvas em Node.js para a página ${p}.`;
+          console.error(`[NodeLocalOCRAdapter] ${errMsg}`);
+          pageResult.failureReason = errMsg;
+          throw new LocalOCRError('OCR_PROCESSING_FAILED', errMsg);
         }
       } catch (err: any) {
         if (options.signal?.aborted) throw err;
         console.warn(`[NodeLocalOCRAdapter] Falha na página ${p}:`, err);
+        if (!pageResult.failureReason) {
+          pageResult.failureReason = err?.message || `Erro ao processar página ${p}`;
+        }
       } finally {
         if (page?.cleanup) {
           page.cleanup();
