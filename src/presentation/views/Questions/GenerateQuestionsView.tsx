@@ -14,6 +14,7 @@ import {
   getSubtopicsForTopic,
 } from '../../../data/curriculumTopics';
 import { calculateAutoTopicDistribution } from '../../../data/services/QuestionGenerationService';
+import { segmentContextIntoCoverageUnits } from '../../../data/services/contextSegmentation';
 import {
   GenerationMode,
   DistributionMode,
@@ -21,6 +22,7 @@ import {
   QuestionType,
   QuestionConfiguration,
   ImportedDocument,
+  CoverageUnit,
 } from '../../../domain/entities/Question';
 import {
   Sparkles,
@@ -112,6 +114,20 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
   // Custom Context Free Text (Study Notes / Custom Source Material)
   const [customContext, setCustomContext] = useState<string>('');
   const [strictCustomContextOnly, setStrictCustomContextOnly] = useState<boolean>(true);
+  const [detectedCoverageUnits, setDetectedCoverageUnits] = useState<CoverageUnit[]>([]);
+
+  useEffect(() => {
+    if (!customContext.trim()) {
+      setDetectedCoverageUnits([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      segmentContextIntoCoverageUnits(customContext)
+        .then((units) => setDetectedCoverageUnits(units))
+        .catch(() => setDetectedCoverageUnits([]));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [customContext]);
 
   useEffect(() => {
     if (prefilledConfiguration) {
@@ -1124,6 +1140,47 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
                 onChange={(e) => setStrictCustomContextOnly(e.target.checked)}
                 className="w-4 h-4 rounded accent-indigo-500 cursor-pointer"
               />
+            </div>
+          )}
+
+          {/* PASSO 4: Preview e feedback de cobertura ao usuário */}
+          {customContext.trim().length > 0 && detectedCoverageUnits.length > 0 && (
+            <div className="p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/30 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-indigo-300">
+                  <Layers className="w-4 h-4 text-indigo-400" />
+                  <span>Cobertura de Tópicos do Texto-Fonte</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-semibold">
+                  {detectedCoverageUnits.length} {detectedCoverageUnits.length === 1 ? 'tópico detectado' : 'tópicos detectados'}
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-300">
+                {quantity >= detectedCoverageUnits.length ? (
+                  <>
+                    Detectamos <strong>{detectedCoverageUnits.length} tópicos</strong> neste texto — o simulado vai distribuir as <strong>{quantity} questões</strong> proporcionalmente entre eles.
+                  </>
+                ) : (
+                  <>
+                    Detectamos <strong>{detectedCoverageUnits.length} tópicos</strong> neste texto — o simulado de <strong>{quantity} questões</strong> priorizará os primeiros {quantity} tópicos. (Para cobrir todos, aumente a quantidade para pelo menos {detectedCoverageUnits.length}).
+                  </>
+                )}
+              </p>
+
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {detectedCoverageUnits.map((unit, i) => (
+                  <span
+                    key={unit.id || i}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-900/40 border border-indigo-400/20 text-[11px] text-indigo-200"
+                    title={unit.content}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                    <strong className="font-semibold">{unit.label}</strong>
+                    <span className="text-[10px] text-slate-400">({unit.wordCount} palavras)</span>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>

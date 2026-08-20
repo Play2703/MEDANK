@@ -187,6 +187,15 @@ export interface QuestionOption {
   explanation?: string;
 }
 
+export interface CoverageUnit {
+  id: string;                         // Ex: "unit-1"
+  label: string;                      // Rótulo curto descritivo
+  content: string;                    // Conteúdo textual da unidade
+  charCount: number;
+  wordCount: number;
+  sourceType: 'heading' | 'bullet' | 'numbered' | 'paragraph_semantic' | 'raw';
+}
+
 export interface Question {
   id: string;
   setId: string;
@@ -204,6 +213,9 @@ export interface Question {
   questionType: QuestionType;
   originSource?: string;             // Ex: 'Banca ENARE' ou 'Prof. Dr. Silva'
   needsReview?: boolean;             // true quando o dicionário local não reconheceu termos médicos suficientes (baixa ancoragem)
+  sourceContextExcerpt?: string;     // Trecho do customContext de onde a questão se originou
+  coverageUnitId?: string;           // ID da unidade de cobertura
+  coverageUnitLabel?: string;        // Rótulo da unidade de cobertura
   userAnswerId?: string;
   isAnswered: boolean;
   isCorrect?: boolean;

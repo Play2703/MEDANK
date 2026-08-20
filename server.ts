@@ -516,13 +516,42 @@ const USE_LIGHT_MODEL_FOR_SIMILARITY_REGENERATION = true;
         distractorHints = [],
         existingQuestionsSummary,
         customContext,
+        coverageAssignments = [],
         strictCustomContextOnly = false,
         avoidTopics = [],
         useLightModel = false,
       } = req.body;
 
       let customContextSection = "";
-      if (customContext && typeof customContext === "string" && customContext.trim()) {
+      if (Array.isArray(coverageAssignments) && coverageAssignments.length > 0) {
+        const assignmentBlocks = coverageAssignments
+          .map((a: any, i: number) => {
+            const label = a.unitLabel || a.unitId || `Tópico ${i + 1}`;
+            return `--- QUESTÃO ${i + 1} (Índice ${i}): FOCO OBRIGATÓRIO NA UNIDADE "${label}" ---
+A Questão ${i + 1} DEVE ser elaborada baseando-se EXCLUSIVAMENTE nas informações contidas neste trecho. Extraia o enunciado, a alternativa correta e os distratores usando apenas os conceitos abaixo:
+
+${a.unitContent}
+--- FIM DO TRECHO DA QUESTÃO ${i + 1} ---`;
+          })
+          .join("\n\n");
+
+        customContextSection = `
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  DISTRIBUIÇÃO MANDATÓRIA DE COBERTURA POR QUESTÃO (TEXTO-FONTE DIRECIONADO)  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+O usuário forneceu um texto-fonte com tópicos/unidades de estudo específicas. Cada questão no array de saída DEVE cobrir rigorosamente o seu trecho correspondente:
+
+${assignmentBlocks}
+════════════════════════════════════════════════════════════════════════════════
+DIRETRIZES ESTRITAS DE ANCORAGEM POR QUESTÃO:
+1. Para cada questão no índice i do JSON:
+   - Extraia o enunciado e a conduta/resposta correta EXCLUSIVAMENTE do "TRECHO DA QUESTÃO i+1" acima.
+   - NÃO introduza fatos, doenças, exames, valores ou condutas que não estejam presentes no respectivo trecho, mesmo que sejam clinicamente plausíveis na prática geral.
+   - Preencha o campo "sourceContextExcerpt" com uma citação direta ou frase do trecho que serviu de base.
+   - Preencha o campo "coverageUnitId" com o identificador da unidade correspondente (ex: "${coverageAssignments[0]?.unitId || 'unit-1'}").
+════════════════════════════════════════════════════════════════════════════════
+`;
+      } else if (customContext && typeof customContext === "string" && customContext.trim()) {
         customContextSection = `
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  TEXTO-FONTE PRINCIPAL E OBRIGATÓRIO (RESTRIÇÃO ESTRITA DE CONTEÚDO)         ║
@@ -726,6 +755,8 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
       "correta": "Justificativa da alternativa correta embasada nas diretrizes médicas...",
       "correlacaoClinica": "Síntese da correlação clínica e conceito fundamental."
     },
+    "sourceContextExcerpt": "Citação direta ou resumo do trecho do material de estudo que originou esta questão",
+    "coverageUnitId": "unit-1",
     "references": ["Diretriz de referência médica oficial"],
     "tags": ["${specialty}", "CID10_Opcional"],
     "specialty": "${specialty}",

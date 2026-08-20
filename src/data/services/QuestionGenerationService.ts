@@ -28,6 +28,12 @@ import {
   MAX_TOTAL_PAYLOAD_TOKENS,
   SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL,
 } from './tokenBudget';
+import {
+  segmentContextIntoCoverageUnits,
+  assignCoverageUnitsToQuestions,
+  CoverageUnit,
+  CoverageAssignment,
+} from './contextSegmentation';
 
 const questionRepo = RepositoryFactory.getQuestionRepository();
 
@@ -390,12 +396,16 @@ async function replaceInvalidQuestionsDeficit(
         const data = await res.json();
         if (data.success && Array.isArray(data.questions)) {
           const repValidationItems = data.localValidation?.items || [];
-          const repWithReview = data.questions.map((q: any) => {
+          const repWithReview = data.questions.map((q: any, qIdx: number) => {
             const matchedValidation = repValidationItems.find(
               (v: any) => v.itemType === 'question' && data.questions.indexOf(q) === v.index
             );
+            const assigned = (postPayload.coverageAssignments && postPayload.coverageAssignments[qIdx]) || undefined;
             return {
               ...q,
+              sourceContextExcerpt: q.sourceContextExcerpt || (assigned ? assigned.unitContent.slice(0, 300) : undefined),
+              coverageUnitId: q.coverageUnitId || assigned?.unitId,
+              coverageUnitLabel: q.coverageUnitLabel || assigned?.unitLabel,
               __needsReview: matchedValidation?.status === 'low_anchoring',
             };
           });
@@ -857,6 +867,16 @@ export class QuestionGenerationService {
     const contentLimitedTopics = new Set<string>();
     const regenStatsTracker: SimilarityRegenStatsTracker = { count: 0, estimatedTokens: 0 };
 
+    // Segmentação de customContext em Coverage Units se fornecido
+    let coverageUnits: CoverageUnit[] = [];
+    if (config.customContext && config.customContext.trim()) {
+      try {
+        coverageUnits = await segmentContextIntoCoverageUnits(config.customContext);
+      } catch (err) {
+        console.warn('[QuestionGenerationService] Error segmenting customContext into coverage units:', err);
+      }
+    }
+
     // Retrieve saved professor style analysis if available
     let professorStyleAnalysis: any = undefined;
     let examDNA: any = undefined;
@@ -903,6 +923,12 @@ export class QuestionGenerationService {
         adaptationPromptBlockForThisBatch = formatAdaptationPromptBlock(adaptationCandidates[candidateIdx]);
       }
 
+      let batchCoverageAssignments: CoverageAssignment[] = [];
+      if (coverageUnits.length > 0) {
+        const { assignments } = assignCoverageUnitsToQuestions(coverageUnits, batchQty);
+        batchCoverageAssignments = assignments;
+      }
+
       const rawPayload = {
         retrievedChunks: config.strictCustomContextOnly ? [] : chunksForThisBatch,
         examReferenceChunks: (config.strictCustomContextOnly || examReferenceChunks.length === 0) ? undefined : examReferenceChunks,
@@ -918,6 +944,7 @@ export class QuestionGenerationService {
         mode: request.mode || 'geral',
         distractorHints,
         customContext: [config.customContext, adaptationPromptBlockForThisBatch].filter(Boolean).join('\n\n'),
+        coverageAssignments: batchCoverageAssignments.length > 0 ? batchCoverageAssignments : undefined,
         strictCustomContextOnly: config.strictCustomContextOnly,
         existingQuestionsSummary:
           batchIdx > 0 && allRawQuestions.length > 0
@@ -946,12 +973,16 @@ export class QuestionGenerationService {
       }
 
       const batchValidationItems = data.localValidation?.items || [];
-      let batchRawQuestions: any[] = data.questions.map((q: any) => {
+      let batchRawQuestions: any[] = data.questions.map((q: any, qIdx: number) => {
         const matchedValidation = batchValidationItems.find(
           (v: any) => v.itemType === 'question' && data.questions.indexOf(q) === v.index
         );
+        const assigned = batchCoverageAssignments[qIdx] || batchCoverageAssignments.find((a) => a.unitId === q.coverageUnitId);
         return {
           ...q,
+          sourceContextExcerpt: q.sourceContextExcerpt || (assigned ? assigned.unitContent.slice(0, 300) : undefined),
+          coverageUnitId: q.coverageUnitId || assigned?.unitId,
+          coverageUnitLabel: assigned?.unitLabel,
           __needsReview: matchedValidation?.status === 'low_anchoring',
         };
       });
@@ -1132,6 +1163,9 @@ export class QuestionGenerationService {
           questionType: (q.questionType || config.questionType) as any,
           originSource: originSourceLabel,
           needsReview: Boolean(q.__needsReview),
+          sourceContextExcerpt: q.sourceContextExcerpt || undefined,
+          coverageUnitId: q.coverageUnitId || undefined,
+          coverageUnitLabel: q.coverageUnitLabel || undefined,
           isAnswered: false,
           createdAt: now,
         };
@@ -1426,6 +1460,22 @@ export class QuestionGenerationService {
           examDNA: condensedDNA,
         } = condenseProfessorProfileForDistribution(professorStyleAnalysis, examDNA);
 
+        let topicCoverageUnits: CoverageUnit[] = [];
+        const sourceForUnits = topicContext || config.customContext;
+        if (sourceForUnits && sourceForUnits.trim()) {
+          try {
+            topicCoverageUnits = await segmentContextIntoCoverageUnits(sourceForUnits);
+          } catch (err) {
+            console.warn('[QuestionGenerationService] Error segmenting topicContext into coverage units:', err);
+          }
+        }
+
+        let topicCoverageAssignments: CoverageAssignment[] = [];
+        if (topicCoverageUnits.length > 0) {
+          const { assignments } = assignCoverageUnitsToQuestions(topicCoverageUnits, aiCountForThisTopic);
+          topicCoverageAssignments = assignments;
+        }
+
         const rawPayload = {
           retrievedChunks: config.strictCustomContextOnly ? [] : retrievedChunks,
           examReferenceChunks: (config.strictCustomContextOnly || examReferenceChunks.length === 0) ? undefined : examReferenceChunks,
@@ -1442,6 +1492,7 @@ export class QuestionGenerationService {
           mode: request.mode || 'geral',
           distractorHints,
           customContext: topicContext || undefined,
+          coverageAssignments: topicCoverageAssignments.length > 0 ? topicCoverageAssignments : undefined,
           strictCustomContextOnly: config.strictCustomContextOnly,
         };
 
@@ -1465,12 +1516,16 @@ export class QuestionGenerationService {
         }
 
         const batchValidationItems = data.localValidation?.items || [];
-        let rawQuestions: any[] = data.questions.map((q: any) => {
+        let rawQuestions: any[] = data.questions.map((q: any, qIdx: number) => {
           const matchedValidation = batchValidationItems.find(
             (v: any) => v.itemType === 'question' && data.questions.indexOf(q) === v.index
           );
+          const assigned = topicCoverageAssignments[qIdx] || topicCoverageAssignments.find((a) => a.unitId === q.coverageUnitId);
           return {
             ...q,
+            sourceContextExcerpt: q.sourceContextExcerpt || (assigned ? assigned.unitContent.slice(0, 300) : undefined),
+            coverageUnitId: q.coverageUnitId || assigned?.unitId,
+            coverageUnitLabel: assigned?.unitLabel,
             __needsReview: matchedValidation?.status === 'low_anchoring',
           };
         });
@@ -1642,6 +1697,9 @@ export class QuestionGenerationService {
           questionType: (q.questionType || config.questionType) as any,
           originSource: originSourceLabel,
           needsReview: Boolean(q.__needsReview),
+          sourceContextExcerpt: q.sourceContextExcerpt || undefined,
+          coverageUnitId: q.coverageUnitId || undefined,
+          coverageUnitLabel: q.coverageUnitLabel || undefined,
           isAnswered: false,
           createdAt: now,
         });

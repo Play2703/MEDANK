@@ -338,6 +338,21 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
               </p>
             )}
 
+            {currentQuestion.sourceContextExcerpt && (
+              <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-indigo-300">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>
+                    Trecho de Origem no Material de Estudo
+                    {currentQuestion.coverageUnitLabel ? ` (${currentQuestion.coverageUnitLabel})` : ''}:
+                  </span>
+                </div>
+                <p className="italic text-slate-300 leading-relaxed">
+                  "{currentQuestion.sourceContextExcerpt}"
+                </p>
+              </div>
+            )}
+
             {currentQuestion.references && currentQuestion.references.length > 0 && (
               <div className="pt-2 border-t border-white/10 text-xs opacity-75 space-y-1">
                 <span className="font-bold text-indigo-300">Referências Bibliográficas:</span>

@@ -5,6 +5,7 @@ import {
   extractKeywords,
   normalizeKeyword,
   clearCustomContextEmbeddingCache,
+  segmentContextIntoCoverageUnits,
 } from './contextSegmentation';
 import { estimateTokenCount } from './tokenBudget';
 import { localEmbeddingClient } from './embeddings/LocalEmbeddingClient';
@@ -212,6 +213,91 @@ describe('contextSegmentation - Segmentação Semântica por Embeddings Locais e
 
       expect(totalTokensAfter).toBeLessThan(totalTokensBefore);
       expect(tokenSavingsRatio).toBeGreaterThan(0.75);
+    });
+  });
+
+  describe('segmentContextIntoCoverageUnits - Segmentação em Unidades de Cobertura', () => {
+    it('deve segmentar notas com numeração explícita (1., 2., 3.) em unidades de cobertura distintas', async () => {
+      const notes = `
+NOTAS DE TRONCO ENCEFÁLICO
+1. Mesencéfalo: contém colículos superiores e substância negra.
+2. Ponte: fibras transversais e origem do V par craniano.
+3. Bulbo: pirâmides bulbares e centros vitais respiratórios.
+      `.trim();
+
+      const units = await segmentContextIntoCoverageUnits(notes);
+      expect(units).toHaveLength(3);
+      expect(units[0].sourceType).toBe('numbered');
+      expect(units[0].label).toContain('Mesencéfalo');
+      expect(units[0].content).toContain('substância negra');
+
+      expect(units[1].label).toContain('Ponte');
+      expect(units[1].content).toContain('V par');
+
+      expect(units[2].label).toContain('Bulbo');
+      expect(units[2].content).toContain('centros vitais');
+    });
+
+    it('deve segmentar notas com títulos em Markdown (# ou ##) respeitando as seções', async () => {
+      const markdownNotes = `
+# Cetoacidose Diabética (CAD)
+Tríade de hiperglicemia (> 250 mg/dL), acidose metabólica e cetonemia positiva. Tratamento com SF 0.9% e insulina.
+
+# Estado Hiperosmolar Hiperglicêmico (EHH)
+Glicemia > 600 mg/dL, osmolaridade efetiva > 320 mOsm/kg, sem acidose importante. Hidratação vigorosa.
+      `.trim();
+
+      const units = await segmentContextIntoCoverageUnits(markdownNotes);
+      expect(units).toHaveLength(2);
+      expect(units[0].sourceType).toBe('heading');
+      expect(units[0].label).toContain('Cetoacidose');
+      expect(units[1].label).toContain('Estado Hiperosmolar');
+    });
+
+    it('deve segmentar marcadores de tópicos com dois-pontos ou MAIÚSCULAS', async () => {
+      const colonNotes = `
+MESENCÉFALO:
+Porção cranial do tronco encefálico com os pedúnculos cerebrais.
+
+PONTE DE VARÓLIO:
+Porção média com os núcleos dos pares cranianos V, VI e VII.
+
+BULBO RAQUÍDEO:
+Porção caudal onde ocorre a decussação motora piramidal.
+      `.trim();
+
+      const units = await segmentContextIntoCoverageUnits(colonNotes);
+      expect(units.length).toBeGreaterThanOrEqual(3);
+      expect(units[0].label).toContain('MESENCÉFALO');
+      expect(units[1].label).toContain('PONTE');
+      expect(units[2].label).toContain('BULBO');
+    });
+
+    it('deve segmentar marcadores bullet (• ou -)', async () => {
+      const bulletNotes = `
+• Síndrome Nefrítica: hematúria dismórfica, hipertensão arterial sistêmica, edema periorbital e oligúria.
+
+• Síndrome Nefrótica: proteinúria nefrótica (> 3,5 g/24h), hipoalbuminemia importante, edema anasarca e dislipidemia.
+      `.trim();
+
+      const units = await segmentContextIntoCoverageUnits(bulletNotes);
+      expect(units).toHaveLength(2);
+      expect(units[0].sourceType).toBe('bullet');
+      expect(units[0].label).toContain('Síndrome Nefrítica');
+      expect(units[1].label).toContain('Síndrome Nefrótica');
+    });
+
+    it('deve retornar 1 unidade única para textos curtos ou bloco único', async () => {
+      const shortText = 'Breve anotação sobre anatomia da traqueia.';
+      const units = await segmentContextIntoCoverageUnits(shortText);
+      expect(units).toHaveLength(1);
+      expect(units[0].content).toBe(shortText);
+    });
+
+    it('deve retornar array vazio para texto nulo ou vazio', async () => {
+      expect(await segmentContextIntoCoverageUnits('')).toEqual([]);
+      // @ts-ignore
+      expect(await segmentContextIntoCoverageUnits(null)).toEqual([]);
     });
   });
 });
