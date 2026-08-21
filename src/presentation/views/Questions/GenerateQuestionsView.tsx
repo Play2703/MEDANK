@@ -13,7 +13,10 @@ import {
   SUBTOPICS_BY_TOPIC,
   getSubtopicsForTopic,
 } from '../../../data/curriculumTopics';
-import { calculateAutoTopicDistribution } from '../../../data/services/QuestionGenerationService';
+import {
+  calculateAutoTopicDistribution,
+  estimateTopicDiversityCapacity,
+} from '../../../data/services/QuestionGenerationService';
 import { segmentContextIntoCoverageUnits } from '../../../data/services/contextSegmentation';
 import {
   GenerationMode,
@@ -21,6 +24,7 @@ import {
   QuestionDifficulty,
   QuestionType,
   QuestionConfiguration,
+  QuestionGenerationRequest,
   ImportedDocument,
   CoverageUnit,
 } from '../../../domain/entities/Question';
@@ -115,6 +119,13 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
   const [customContext, setCustomContext] = useState<string>('');
   const [strictCustomContextOnly, setStrictCustomContextOnly] = useState<boolean>(true);
   const [detectedCoverageUnits, setDetectedCoverageUnits] = useState<CoverageUnit[]>([]);
+
+  // Pre-generation Topic Diversity Capacity Advisory Modal
+  const [diversityWarningModal, setDiversityWarningModal] = useState<{
+    limitedTopics: Array<{ topic: string; capacity: number; requested: number; reason: string }>;
+    totalCapacity: number;
+    request: QuestionGenerationRequest;
+  } | null>(null);
 
   useEffect(() => {
     if (!customContext.trim()) {
@@ -371,7 +382,7 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
 
       const matchingProf = mode === 'professor' ? professorProfiles.find((p) => p.name === selectedProfName) : undefined;
 
-      const request = {
+      const request: QuestionGenerationRequest = {
         id: `req-${Date.now()}`,
         mode,
         bancaName: mode === 'banca' ? selectedBancaName : undefined,
@@ -380,6 +391,38 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
         configuration: config,
         createdAt: new Date().toISOString(),
       };
+
+      // Verificação prévia de capacidade de diversidade
+      const topicsToCheck = selectedTopics.length > 0 ? selectedTopics : ['Geral'];
+      const limitedItems: Array<{ topic: string; capacity: number; requested: number; reason: string }> = [];
+      let calculatedCapacitySum = 0;
+
+      for (const tp of topicsToCheck) {
+        const cap = estimateTopicDiversityCapacity(tp, customContext.trim() || undefined);
+        const requestedForTopic = isManualDistribution && customQuantities[tp] !== undefined
+          ? customQuantities[tp]
+          : Math.max(1, Math.round(quantity / topicsToCheck.length));
+
+        calculatedCapacitySum += cap.capacity;
+
+        if (cap.isLimited && requestedForTopic > cap.capacity) {
+          limitedItems.push({
+            topic: tp,
+            capacity: cap.capacity,
+            requested: requestedForTopic,
+            reason: cap.reason,
+          });
+        }
+      }
+
+      if (limitedItems.length > 0) {
+        setDiversityWarningModal({
+          limitedTopics: limitedItems,
+          totalCapacity: Math.max(1, calculatedCapacitySum),
+          request,
+        });
+        return;
+      }
 
       const result = await generateQuestions(request);
       if (result) {
@@ -1120,6 +1163,7 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
             )}
           </label>
           <textarea
+            id="custom-context-textarea"
             rows={4}
             value={customContext}
             onChange={(e) => setCustomContext(e.target.value)}
@@ -1343,6 +1387,126 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
               >
                 Gerar Mesmo Assim
               </M3Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Topic Diversity Capacity Warning */}
+      {diversityWarningModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="max-w-lg w-full rounded-3xl p-6 bg-slate-900 border border-amber-500/40 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-400 font-bold text-base border-b border-amber-500/20 pb-3">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <span>Material com Conteúdo Concentrado</span>
+            </div>
+
+            <div className="text-xs opacity-90 leading-relaxed text-slate-300 space-y-2">
+              <p>
+                O material fornecido para{' '}
+                <strong>"{diversityWarningModal.limitedTopics.map((t) => t.topic).join(', ')}"</strong> sustenta com boa
+                qualidade cerca de{' '}
+                <strong className="text-emerald-400">
+                  {diversityWarningModal.totalCapacity} {diversityWarningModal.totalCapacity === 1 ? 'questão distinta' : 'questões distintas'}
+                </strong>{' '}
+                — você pediu <strong>{quantity}</strong>.
+              </p>
+              <p className="text-slate-400">
+                Como o texto-fonte é conciso, gerar todas as {quantity} questões pode forçar a IA a criar enunciados
+                muito semelhantes ou consumir tokens extras de regeneração.
+              </p>
+              <p className="text-amber-300 font-medium pt-1">
+                Como prefere prosseguir?
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              {/* Opção A: Gerar só as com qualidade garantida */}
+              <button
+                type="button"
+                onClick={async () => {
+                  const cap = diversityWarningModal.totalCapacity;
+                  setQuantity(cap);
+                  const updatedReq = {
+                    ...diversityWarningModal.request,
+                    configuration: {
+                      ...diversityWarningModal.request.configuration,
+                      quantity: cap,
+                      autoCapLimitedQuantity: true,
+                    },
+                  };
+                  setDiversityWarningModal(null);
+                  const res = await generateQuestions(updatedReq);
+                  if (res) {
+                    onQuestionsGenerated();
+                  }
+                }}
+                className="w-full p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 hover:bg-emerald-500/30 text-emerald-200 text-left text-xs font-medium transition-colors flex items-start gap-2.5"
+              >
+                <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block text-emerald-300">
+                    (Recomendado) Gerar só as ~{diversityWarningModal.totalCapacity} com qualidade garantida
+                  </span>
+                  <span className="text-[11px] text-emerald-200/80">
+                    Ajusta o simulado para {diversityWarningModal.totalCapacity} questões 100% distintas e pedagogicamente ricas.
+                  </span>
+                </div>
+              </button>
+
+              {/* Opção B: Gerar mesmo assim */}
+              <button
+                type="button"
+                onClick={async () => {
+                  const updatedReq = {
+                    ...diversityWarningModal.request,
+                    configuration: {
+                      ...diversityWarningModal.request.configuration,
+                      forceQuantityDespiteLimit: true,
+                    },
+                  };
+                  setDiversityWarningModal(null);
+                  const res = await generateQuestions(updatedReq);
+                  if (res) {
+                    onQuestionsGenerated();
+                  }
+                }}
+                className="w-full p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-300 text-left text-xs font-medium transition-colors flex items-start gap-2.5"
+              >
+                <Zap className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block text-slate-200">
+                    Gerar as {quantity} mesmo assim
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Mantém a quantidade solicitada, aceitando eventual similaridade ou custo extra de regeneração.
+                  </span>
+                </div>
+              </button>
+
+              {/* Opção C: Complementar com mais fontes */}
+              <button
+                type="button"
+                onClick={() => {
+                  setDiversityWarningModal(null);
+                  const el = document.getElementById('custom-context-textarea');
+                  if (el) {
+                    el.focus();
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
+                className="w-full p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 hover:bg-indigo-500/20 text-indigo-300 text-left text-xs font-medium transition-colors flex items-start gap-2.5"
+              >
+                <Plus className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block text-indigo-200">
+                    Complementar com mais fontes
+                  </span>
+                  <span className="text-[11px] text-indigo-300/80">
+                    Volta para o campo de notas para adicionar mais trechos ou diretrizes antes de gerar.
+                  </span>
+                </div>
+              </button>
             </div>
           </div>
         </div>

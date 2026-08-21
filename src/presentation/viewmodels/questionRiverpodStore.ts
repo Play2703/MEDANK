@@ -247,7 +247,14 @@ export class QuestionNotifier extends StateNotifier<QuestionState> {
         await this.exportQuestionsToFlashcards(savedSet.id);
       }
 
-      const generationShortfall = result.shortfall
+      const generationShortfall = result.adjustedQuantity
+        ? {
+            setId: savedSet.id,
+            requested: result.adjustedQuantity.requested,
+            actual: result.adjustedQuantity.delivered,
+            reason: result.adjustedQuantity.reason,
+          }
+        : result.shortfall
         ? {
             setId: savedSet.id,
             requested: result.shortfall.requested,

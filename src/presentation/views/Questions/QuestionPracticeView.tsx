@@ -195,6 +195,14 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
                 ⚠️ Conferir
               </span>
             )}
+            {currentQuestion.flaggedSimilar && (
+              <span
+                className="badge-similar text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1"
+                title={currentQuestion.similarityWarning || "Esta questão pode ter semelhança com outra deste simulado devido ao limite de diversidade do conteúdo-fonte."}
+              >
+                ⚠️ Similaridade Possível
+              </span>
+            )}
           </div>
           <span className="text-xs font-medium opacity-60">
             Nível: {currentQuestion.difficulty.toUpperCase()}
@@ -206,6 +214,18 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
           <p className="text-sm md:text-base leading-relaxed font-medium">
             {currentQuestion.statement}
           </p>
+
+          {currentQuestion.flaggedSimilar && (
+            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-semibold text-amber-300">Aviso de Limite de Diversidade:</span>
+                <p className="text-[11px] opacity-90 leading-relaxed">
+                  {currentQuestion.similarityWarning || 'Esta questão pode apresentar proximidade temática com outra deste simulado porque o material-fonte de estudo possui diversidade limitada.'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Options List */}

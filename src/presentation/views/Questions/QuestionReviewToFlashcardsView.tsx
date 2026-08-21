@@ -364,6 +364,14 @@ export const QuestionReviewToFlashcardsView: React.FC<QuestionReviewToFlashcards
                             ⚠️ Conferir
                           </span>
                         )}
+                        {question.flaggedSimilar && (
+                          <span
+                            className="badge-similar text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1"
+                            title={question.similarityWarning || "Esta questão pode ter semelhança com outra deste simulado devido ao limite de diversidade do conteúdo-fonte."}
+                          >
+                            ⚠️ Similaridade Possível
+                          </span>
+                        )}
 
                         {isAnswered ? (
                           isCorrect ? (

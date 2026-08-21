@@ -28,6 +28,8 @@ export interface QuestionConfiguration {
   prioritizeLocalQuestions?: boolean;// Priorizar questões do meu banco local (economia máxima)
   customContext?: string;            // Contexto livre / Texto-fonte prioritário (ex: notas de estudo)
   strictCustomContextOnly?: boolean; // Restringir estritamente ao texto-fonte (desativa RAG geral)
+  autoCapLimitedQuantity?: boolean;  // Ajustar quantidade automaticamente para a capacidade estimada do conteúdo
+  forceQuantityDespiteLimit?: boolean; // Forçar quantidade solicitada mesmo se o conteúdo for limitado
 }
 
 export interface QuestionGenerationRequest {
@@ -223,6 +225,8 @@ export interface Question {
   sourceContextExcerpt?: string;     // Trecho do customContext de onde a questão se originou
   coverageUnitId?: string;           // ID da unidade de cobertura
   coverageUnitLabel?: string;        // Rótulo da unidade de cobertura
+  flaggedSimilar?: boolean;          // true quando a questão atingiu o limite de diversidade ou similaridade
+  similarityWarning?: string;        // Mensagem explicativa para o usuário
   userAnswerId?: string;
   isAnswered: boolean;
   isCorrect?: boolean;

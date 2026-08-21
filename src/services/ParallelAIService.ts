@@ -45,6 +45,12 @@ export interface ParallelResult {
   mainModel?: string;
   helperModel?: string;
   localValidation?: LocalValidationResult;
+  usage?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+    cachedContentTokenCount?: number;
+  };
   error?: string;
 }
 
@@ -128,6 +134,7 @@ export class ParallelAIService {
           mainText: geminiResult.text,
           mainData,
           mainModel: geminiResult.model,
+          usage: geminiResult.usage,
           helperText: "",
           helperData: null,
           helperModel: "local-validation",
@@ -404,7 +411,16 @@ export class ParallelAIService {
         );
       }
 
-      return { success: true, text: r.text || "", model };
+      const usage = r.usageMetadata
+        ? {
+            promptTokenCount: r.usageMetadata.promptTokenCount || 0,
+            candidatesTokenCount: r.usageMetadata.candidatesTokenCount || 0,
+            totalTokenCount: r.usageMetadata.totalTokenCount || 0,
+            cachedContentTokenCount: (r.usageMetadata as any).cachedContentTokenCount || 0,
+          }
+        : undefined;
+
+      return { success: true, text: r.text || "", model, usage };
     } catch (e: any) {
       console.warn(
         `[ParallelAI:callGemini:${context}] ⚠️ Falha persistente no Gemini após retries:`,

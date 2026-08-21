@@ -824,6 +824,7 @@ Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas 
         success: true,
         questions: questionsRaw,
         modelUsed: result.mainModel,
+        usage: result.usage,
         helperModel: result.helperModel,
         helperData: result.helperData,
         localValidation: result.localValidation,

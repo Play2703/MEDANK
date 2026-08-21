@@ -342,9 +342,9 @@ async function processRawQuestionsWithSimilarityCheck(
             };
 
             // TAREFA 5: Contabilizar regeneração e tokens extras com tracking de causa
+            const estimatedPreCall = estimateTokenCount(singlePayload) + 350;
             if (regenStatsTracker) {
               regenStatsTracker.count++;
-              regenStatsTracker.estimatedTokens += estimateTokenCount(singlePayload) + 350;
               regenStatsTracker.breakdownByCause.attempt1Duplicate++;
             }
 
@@ -356,6 +356,10 @@ async function processRawQuestionsWithSimilarityCheck(
 
             if (res.ok) {
               const data = await res.json();
+              if (regenStatsTracker) {
+                const callTokens = Number(data.usage?.totalTokenCount) || estimatedPreCall;
+                regenStatsTracker.estimatedTokens += callTokens;
+              }
               if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
                 const candidateQ = data.questions[0];
                 const candStatement = candidateQ.statement || '';
@@ -378,6 +382,10 @@ async function processRawQuestionsWithSimilarityCheck(
                   embedding = candRes.embedding;
                   break;
                 }
+              }
+            } else {
+              if (regenStatsTracker) {
+                regenStatsTracker.estimatedTokens += estimatedPreCall;
               }
             }
           } catch (retryErr) {
@@ -433,9 +441,9 @@ async function processRawQuestionsWithSimilarityCheck(
                   ),
                 };
 
+                const estimatedPreCall = estimateTokenCount(expandedPayload) + 350;
                 if (regenStatsTracker) {
                   regenStatsTracker.count++;
-                  regenStatsTracker.estimatedTokens += estimateTokenCount(expandedPayload) + 350;
                   regenStatsTracker.breakdownByCause.expandedContextRegen++;
                 }
 
@@ -446,6 +454,10 @@ async function processRawQuestionsWithSimilarityCheck(
                 });
                 if (res.ok) {
                   const data = await res.json();
+                  if (regenStatsTracker) {
+                    const callTokens = Number(data.usage?.totalTokenCount) || estimatedPreCall;
+                    regenStatsTracker.estimatedTokens += callTokens;
+                  }
                   if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
                     const candidateQ = data.questions[0];
                     const candStatement = candidateQ.statement || '';
@@ -466,6 +478,10 @@ async function processRawQuestionsWithSimilarityCheck(
                       embedding = candRes.embedding;
                     }
                   }
+                } else {
+                  if (regenStatsTracker) {
+                    regenStatsTracker.estimatedTokens += estimatedPreCall;
+                  }
                 }
               } else {
                 contentLimitedTopics.add(top);
@@ -485,6 +501,7 @@ async function processRawQuestionsWithSimilarityCheck(
             maxSimilarity = bestSim;
             embedding = bestEmb;
             currentQ.flaggedSimilar = true;
+            currentQ.similarityWarning = 'Possivelmente similar a outra questão deste simulado (limite de diversidade do conteúdo atingido).';
           }
         }
       }
@@ -618,6 +635,11 @@ async function replaceInvalidQuestionsDeficit(
 export interface QuestionGenerationResult {
   questionSet?: QuestionSet;
   contentLimitedTopics?: string[];
+  adjustedQuantity?: {
+    requested: number;
+    delivered: number;
+    reason: string;
+  };
   warning?: {
     lowChunks: boolean;
     chunkCount: number;
@@ -928,7 +950,7 @@ export class QuestionGenerationService {
     // AJUSTE 3: Exclui da lista de candidatas para adaptação qualquer questão que já foi reusada diretamente
     const adaptationCandidates = existingLocalQuestions.filter((q) => !directlyReusedIds.has(q.id));
 
-    const aiQuantityToGenerate = quantity - directlyReusedQuestions.length;
+    let aiQuantityToGenerate = quantity - directlyReusedQuestions.length;
 
     // Se 100% das questões foram supridas pelo reuso direto local
     if (aiQuantityToGenerate <= 0) {
@@ -1027,21 +1049,6 @@ export class QuestionGenerationService {
     }
 
 
-    // Split quantity into batches of up to MAX_ITEMS_PER_AI_CALL (8)
-    const batchQuantities: number[] = [];
-    let rem = aiQuantityToGenerate;
-    while (rem > 0) {
-      const current = Math.min(rem, MAX_ITEMS_PER_AI_CALL);
-      batchQuantities.push(current);
-      rem -= current;
-    }
-
-    const allRawQuestions: any[] = [];
-    const saturatedTopics = new Set<string>();
-    const contentLimitedTopics = new Set<string>();
-    const regenStatsTracker = createSimilarityRegenStatsTracker();
-    const sharedGeneratedStatements: string[] = [];
-
     // Segmentação de customContext em Coverage Units se fornecido
     let coverageUnits: CoverageUnit[] = [];
     if (config.customContext && config.customContext.trim()) {
@@ -1053,6 +1060,7 @@ export class QuestionGenerationService {
     }
 
     // TAREFA 2: Estima capacidade de diversidade do conteúdo ANTES de gastar tokens
+    const contentLimitedTopics = new Set<string>();
     const diversityEstimate = estimateTopicDiversityCapacity(
       mainTopic,
       config.customContext,
@@ -1061,13 +1069,43 @@ export class QuestionGenerationService {
     );
 
     let topicDiversityDirective = '';
+    let adjustedQuantityInfo: { requested: number; delivered: number; reason: string } | undefined = undefined;
+
     if (diversityEstimate.isLimited || aiQuantityToGenerate > diversityEstimate.capacity) {
       contentLimitedTopics.add(mainTopic);
       topicDiversityDirective = formatDiversityDirectivePrompt(mainTopic, aiQuantityToGenerate, diversityEstimate.capacity);
       console.warn(
         `[QuestionGenerationService] Tópico "${mainTopic}" possui conteúdo concentrado (${diversityEstimate.reason} - capacidade estimada: ~${diversityEstimate.capacity}, solicitadas: ${aiQuantityToGenerate}). Ativando diretriz de máxima diversidade na 1ª tentativa.`
       );
+
+      // Se autoCapLimitedQuantity estiver habilitado, ajusta para a capacidade estimada
+      if (config.autoCapLimitedQuantity && aiQuantityToGenerate > diversityEstimate.capacity) {
+        const cappedAIQuantity = Math.max(1, diversityEstimate.capacity);
+        adjustedQuantityInfo = {
+          requested: quantity,
+          delivered: cappedAIQuantity + directlyReusedQuestions.length,
+          reason: `Conteúdo-fonte com material concentrado em "${mainTopic}" (~${diversityEstimate.capacity} questões com qualidade garantida).`,
+        };
+        console.warn(
+          `[QuestionGenerationService] autoCapLimitedQuantity ativo: reduzindo quantidade de IA de ${aiQuantityToGenerate} para ${cappedAIQuantity}.`
+        );
+        aiQuantityToGenerate = cappedAIQuantity;
+      }
     }
+
+    // Split quantity into batches of up to MAX_ITEMS_PER_AI_CALL (8)
+    const batchQuantities: number[] = [];
+    let rem = aiQuantityToGenerate;
+    while (rem > 0) {
+      const current = Math.min(rem, MAX_ITEMS_PER_AI_CALL);
+      batchQuantities.push(current);
+      rem -= current;
+    }
+
+    const allRawQuestions: any[] = [];
+    const saturatedTopics = new Set<string>();
+    const regenStatsTracker = createSimilarityRegenStatsTracker();
+    const sharedGeneratedStatements: string[] = [];
 
     // Retrieve saved professor style analysis if available
     let professorStyleAnalysis: any = undefined;
@@ -1386,6 +1424,8 @@ export class QuestionGenerationService {
           sourceContextExcerpt: q.sourceContextExcerpt || undefined,
           coverageUnitId: q.coverageUnitId || undefined,
           coverageUnitLabel: q.coverageUnitLabel || undefined,
+          flaggedSimilar: Boolean(q.flaggedSimilar),
+          similarityWarning: q.similarityWarning || (q.flaggedSimilar ? 'Possivelmente similar a outra questão deste simulado devido ao limite de diversidade do conteúdo-fonte.' : undefined),
           isAnswered: false,
           createdAt: now,
         };
@@ -1444,11 +1484,12 @@ export class QuestionGenerationService {
     return {
       questionSet,
       contentLimitedTopics: contentLimitedTopics.size > 0 ? Array.from(contentLimitedTopics) : undefined,
+      adjustedQuantity: adjustedQuantityInfo,
       metrics: {
         maxWordOverlap: overallMaxWordOverlap,
         matchingSequence: overallMatchingSeq,
       },
-      shortfall,
+      shortfall: adjustedQuantityInfo ? undefined : shortfall,
       similarityRegenStats: regenStatsTracker.count > 0 ? regenStatsTracker : undefined,
     };
   }
@@ -1597,7 +1638,7 @@ export class QuestionGenerationService {
           topicAdaptationBlock = formatAdaptationPromptBlock(adaptationCandidatesForTopic[candidateIdx]);
         }
 
-        const aiCountForThisTopic = countForThisTopic - directlyReusedForTopic.length;
+        let aiCountForThisTopic = countForThisTopic - directlyReusedForTopic.length;
 
         // Se o tópico foi 100% suprido pelo banco local
         if (aiCountForThisTopic <= 0) {
@@ -1713,6 +1754,18 @@ export class QuestionGenerationService {
           console.warn(
             `[QuestionGenerationService] Tópico "${singleTopic}" possui conteúdo concentrado (${diversityEstimate.reason} - capacidade estimada: ~${diversityEstimate.capacity}, solicitadas: ${aiCountForThisTopic}). Injetando diretriz de máxima diversidade na 1ª tentativa.`
           );
+
+          if (config.autoCapLimitedQuantity && aiCountForThisTopic > diversityEstimate.capacity) {
+            const cappedTopicAI = Math.max(1, diversityEstimate.capacity);
+            console.warn(
+              `[QuestionGenerationService] autoCapLimitedQuantity ativo no tópico "${singleTopic}": reduzindo de ${aiCountForThisTopic} para ${cappedTopicAI}.`
+            );
+            aiCountForThisTopic = cappedTopicAI;
+            if (topicCoverageUnits.length > 0) {
+              const { assignments } = assignCoverageUnitsToQuestions(topicCoverageUnits, aiCountForThisTopic);
+              topicCoverageAssignments = assignments;
+            }
+          }
         }
 
         // TAREFA 4: Consulta em tempo real os enunciados já gerados por outros lotes
@@ -1971,6 +2024,8 @@ export class QuestionGenerationService {
           sourceContextExcerpt: q.sourceContextExcerpt || undefined,
           coverageUnitId: q.coverageUnitId || undefined,
           coverageUnitLabel: q.coverageUnitLabel || undefined,
+          flaggedSimilar: Boolean(q.flaggedSimilar),
+          similarityWarning: q.similarityWarning || (q.flaggedSimilar ? 'Possivelmente similar a outra questão deste simulado devido ao limite de diversidade do conteúdo-fonte.' : undefined),
           isAnswered: false,
           createdAt: now,
         });
@@ -1988,7 +2043,15 @@ export class QuestionGenerationService {
       throw new Error('Não foi possível gerar nenhuma questão válida. Tente novamente ou ajuste os tópicos selecionados.');
     }
 
-    const shortfall = balancedQuestions.length < totalQuantity ? {
+    const adjustedQuantityInfo = (config.autoCapLimitedQuantity && balancedQuestions.length < totalQuantity)
+      ? {
+          requested: totalQuantity,
+          delivered: balancedQuestions.length,
+          reason: `Conteúdo-fonte concentrado com capacidade estimada para ~${balancedQuestions.length} questões com qualidade garantida.`,
+        }
+      : undefined;
+
+    const shortfall = (!adjustedQuantityInfo && balancedQuestions.length < totalQuantity) ? {
       requested: totalQuantity,
       actual: balancedQuestions.length,
       reason: `Gerado com ${balancedQuestions.length} de ${totalQuantity} questões solicitadas — algumas questões não passaram no controle de qualidade.`,
@@ -2020,6 +2083,7 @@ export class QuestionGenerationService {
     return {
       questionSet,
       contentLimitedTopics: contentLimitedTopics.size > 0 ? Array.from(contentLimitedTopics) : undefined,
+      adjustedQuantity: adjustedQuantityInfo,
       metrics: {
         maxWordOverlap: overallMaxWordOverlap,
         matchingSequence: overallMatchingSeq,
