@@ -9,6 +9,10 @@ import { SemanticChunkResult } from './RealSemanticSearchService';
 
 export const MAX_CONTEXT_TOKENS_PER_CALL = 6000;
 export const SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL = 4500;
+export const REGEN_SINGLE_QUESTION_CONTEXT_TOKENS = 1200;
+export const REGEN_CHUNK_MAX_CHARS = 350;
+export const MAX_REGEN_CALLS_PER_REQUEST = 4;
+export const MAX_REGEN_TOKENS_PER_REQUEST = 15000;
 export const MAX_TOTAL_PAYLOAD_TOKENS = 9000;
 
 /**

@@ -33,6 +33,10 @@ import {
   condenseProfessorProfileForDistribution,
   MAX_TOTAL_PAYLOAD_TOKENS,
   SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL,
+  REGEN_SINGLE_QUESTION_CONTEXT_TOKENS,
+  REGEN_CHUNK_MAX_CHARS,
+  MAX_REGEN_CALLS_PER_REQUEST,
+  MAX_REGEN_TOKENS_PER_REQUEST,
 } from './tokenBudget';
 import {
   segmentContextIntoCoverageUnits,
@@ -116,6 +120,84 @@ DIRETRIZ DE TRANSFORMAÇÃO:
 export interface SimilarityRegenStatsTracker {
   count: number;
   estimatedTokens: number;
+  breakdownByCause: {
+    attempt1Duplicate: number;
+    expandedContextRegen: number;
+    circuitBreakerTripped: boolean;
+    saturatedTopicEarlySkips: number;
+  };
+}
+
+export function createSimilarityRegenStatsTracker(): SimilarityRegenStatsTracker {
+  return {
+    count: 0,
+    estimatedTokens: 0,
+    breakdownByCause: {
+      attempt1Duplicate: 0,
+      expandedContextRegen: 0,
+      circuitBreakerTripped: false,
+      saturatedTopicEarlySkips: 0,
+    },
+  };
+}
+
+/**
+ * TAREFA 2: Estima a capacidade de geração de questões distintas (diversity capacity) para um tópico
+ * ANTES de gastar tokens em gerações e regenerações repetidas.
+ */
+export function estimateTopicDiversityCapacity(
+  topic: string,
+  customContext?: string,
+  chunks?: any[],
+  coverageUnits?: CoverageUnit[]
+): { capacity: number; isLimited: boolean; reason: string } {
+  if (coverageUnits && coverageUnits.length > 0) {
+    const capacity = Math.max(1, Math.round(coverageUnits.length * 1.5));
+    return {
+      capacity,
+      isLimited: capacity <= 4,
+      reason: `Baseado em ${coverageUnits.length} unidades de cobertura delimitadas`,
+    };
+  }
+
+  if (customContext && typeof customContext === 'string' && customContext.trim().length > 0) {
+    const effectiveTokens = estimateTokenCount(customContext);
+    const capacity = Math.max(1, Math.floor(effectiveTokens / 200));
+    return {
+      capacity,
+      isLimited: capacity <= 4,
+      reason: `Texto-fonte com ~${effectiveTokens} tokens de conteúdo`,
+    };
+  }
+
+  if (Array.isArray(chunks) && chunks.length > 0) {
+    const effectiveTokens = estimateTokenCount(chunks);
+    const capacity = Math.max(2, Math.min(10, Math.floor(effectiveTokens / 250)));
+    return {
+      capacity,
+      isLimited: capacity <= 3,
+      reason: `RAG com ${chunks.length} chunks (~${effectiveTokens} tokens)`,
+    };
+  }
+
+  return { capacity: 5, isLimited: false, reason: 'Base de conhecimento médica geral' };
+}
+
+/**
+ * TAREFA 2: Gera diretriz de máxima diversidade para tópicos com material conciso,
+ * forçando a IA a variar ângulos clínicos já na 1ª tentativa para evitar colisões caras.
+ */
+export function formatDiversityDirectivePrompt(topic: string, requestedQty: number, capacity: number): string {
+  return `
+[DIRETRIZ OBRIGATÓRIA DE MÁXIMA DIVERSIDADE - TÓPICO COM CONTEÚDO CONCENTRADO]
+Atenção: Este tópico possui material-fonte conciso/específico para a quantidade solicitada (${requestedQty} questões / capacidade estimada ~${capacity}).
+Para evitar qualquer redundância ou colisão entre questões, você DEVE OBRIGATORIAMENTE variar os ângulos de abordagem em cada item do lote:
+- Questão 1: Caso clínico diagnóstico (identificação de síndrome/lesão a partir de sinais e sintomas).
+- Questão 2: Fisiopatologia / Mecanismo molecular ou anatomia topográfica direta.
+- Questão 3: Propedêutica armada / Interpretação de exame complementar ou conduta terapêutica imediata.
+- Questão 4+: Prognóstico, complicações agudas, diagnóstico diferencial ou asserção de exceção ("EXCETO/INCORRETA").
+NÃO elabore enunciados com a mesma estrutura clínica nem pergunte sobre a mesma estrutura anatômica/função mais de uma vez.
+`.trim();
 }
 
 async function processRawQuestionsWithSimilarityCheck(
@@ -125,7 +207,8 @@ async function processRawQuestionsWithSimilarityCheck(
   postPayload: any,
   saturatedTopics: Set<string> = new Set(),
   contentLimitedTopics: Set<string> = new Set(),
-  regenStatsTracker?: SimilarityRegenStatsTracker
+  regenStatsTracker?: SimilarityRegenStatsTracker,
+  sharedGeneratedStatements?: string[]
 ): Promise<any[]> {
   const BATCH_SIMILARITY_CONCURRENCY = 3;
 
@@ -149,6 +232,21 @@ async function processRawQuestionsWithSimilarityCheck(
       const initialStatement = currentQ.statement || '';
       const initialEmb = initialEmbeddings[idx] || [];
 
+      // TAREFA 4: Registra o statement gerado imediatamente no conjunto compartilhado
+      if (sharedGeneratedStatements && initialStatement) {
+        if (!sharedGeneratedStatements.includes(initialStatement)) {
+          sharedGeneratedStatements.push(initialStatement);
+        }
+      }
+
+      // TAREFA 2: Se o tópico já foi previamente marcado como saturado/limitado, pula regeneração cara
+      if (saturatedTopics.has(top)) {
+        if (regenStatsTracker) {
+          regenStatsTracker.breakdownByCause.saturatedTopicEarlySkips++;
+        }
+        return currentQ;
+      }
+
       let { maxSimilarity, embedding } = await questionSimilarityEngine.findMaxSimilarity(
         initialStatement,
         spec,
@@ -157,8 +255,23 @@ async function processRawQuestionsWithSimilarityCheck(
       );
 
       if (maxSimilarity > SIMILARITY_THRESHOLD) {
+        // TAREFA 3: Circuit Breaker de Orçamento Agregado de Regeneração
+        if (
+          regenStatsTracker &&
+          (regenStatsTracker.count >= MAX_REGEN_CALLS_PER_REQUEST ||
+            regenStatsTracker.estimatedTokens >= MAX_REGEN_TOKENS_PER_REQUEST)
+        ) {
+          console.warn(
+            `[QuestionGenerationService] Circuit breaker acionado: limite de regeneração atingido (${regenStatsTracker.count} chamadas / ~${regenStatsTracker.estimatedTokens} tokens). Entregando questão restante com aviso de similaridade.`
+          );
+          regenStatsTracker.breakdownByCause.circuitBreakerTripped = true;
+          currentQ.flaggedSimilar = true;
+          currentQ.similarityWarning = 'Possivelmente similar a outra questão do simulado (limite de diversidade do conteúdo atingido).';
+          return currentQ;
+        }
+
         console.warn(
-          `[QuestionGenerationService] High question similarity detected (${maxSimilarity.toFixed(3)} > ${SIMILARITY_THRESHOLD}) for topic "${top}". Initiating regeneration attempts...`
+          `[QuestionGenerationService] High question similarity detected (${maxSimilarity.toFixed(3)} > ${SIMILARITY_THRESHOLD}) for topic "${top}". Initiating single-question regeneration...`
         );
 
         let bestQ = currentQ;
@@ -166,41 +279,73 @@ async function processRawQuestionsWithSimilarityCheck(
         let bestEmb = embedding;
         const rejectedStatements = [initialStatement];
 
+        // TAREFA 1: Orçamento enxuto para regeneração de 1 única questão (REGEN_SINGLE_QUESTION_CONTEXT_TOKENS = 1200)
+        const prunedRegenChunks = pruneChunksByTokenBudget(
+          (postPayload.retrievedChunks || []).map((c: any) => ({
+            ...c,
+            content: truncateChunkText(c.content, REGEN_CHUNK_MAX_CHARS),
+          })),
+          REGEN_SINGLE_QUESTION_CONTEXT_TOKENS
+        );
+
+        // Recorta customContext para o tópico específico se disponível
+        let prunedCustomContext = postPayload.customContext;
+        if (typeof prunedCustomContext === 'string' && prunedCustomContext.length > 1500) {
+          try {
+            prunedCustomContext = await extractRelevantContextForTopic(
+              prunedCustomContext,
+              top,
+              spec,
+              1200
+            );
+          } catch {
+            prunedCustomContext = prunedCustomContext.slice(0, 1200);
+          }
+        }
+
         for (let attempt = 1; attempt <= MAX_REGENERATION_ATTEMPTS; attempt++) {
           try {
+            // TAREFA 3: Circuit breaker check dentro do loop
+            if (
+              regenStatsTracker &&
+              (regenStatsTracker.count >= MAX_REGEN_CALLS_PER_REQUEST ||
+                regenStatsTracker.estimatedTokens >= MAX_REGEN_TOKENS_PER_REQUEST)
+            ) {
+              regenStatsTracker.breakdownByCause.circuitBreakerTripped = true;
+              break;
+            }
+
             const similarityAvoidHint = rejectedStatements
               .map((s, i) => `EVITE especificamente a seguinte abordagem/enunciado rejeitado #${i + 1}: "${s}"`)
               .join('\n');
 
-            // TAREFA 1: Podar o contexto usando SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL (4500)
-            const prunedRegenChunks = pruneChunksByTokenBudget(
-              (postPayload.retrievedChunks || []).map((c: any) => ({
-                ...c,
-                content: truncateChunkText(c.content, 600),
-              })),
-              SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL
-            );
+            // TAREFA 4: Consulta os statements gerados pelos outros lotes concorrentes em tempo real
+            const sharedStatementsSnapshot = sharedGeneratedStatements || [];
+            const antiDuplicationItems = [
+              ...rejectedStatements,
+              ...sharedStatementsSnapshot.slice(-15),
+              similarityAvoidHint,
+            ];
 
-            // TAREFA 2: Usar useLightModel: true para chamar LIGHT_AI_MODEL
+            // TAREFA 1: Payload enxuto com useLightModel: true e context recortado
             const singlePayload = {
               ...postPayload,
               quantity: 1,
               topics: [top],
               retrievedChunks: prunedRegenChunks,
+              customContext: prunedCustomContext || undefined,
+              distractorHints: (postPayload.distractorHints || []).slice(0, 3),
+              professorStyleAnalysis: undefined,
+              examDNA: undefined,
               useLightModel: true,
-              existingQuestionsSummary: formatCompactAntiDuplicationList(
-                [
-                  ...(postPayload.existingQuestionsSummary ? [postPayload.existingQuestionsSummary] : []),
-                  similarityAvoidHint,
-                ],
-                30
-              ),
+              existingQuestionsSummary: formatCompactAntiDuplicationList(antiDuplicationItems, 15),
             };
 
-            // TAREFA 4: Contabilizar regeneração e tokens extras
+            // TAREFA 5: Contabilizar regeneração e tokens extras com tracking de causa
             if (regenStatsTracker) {
               regenStatsTracker.count++;
               regenStatsTracker.estimatedTokens += estimateTokenCount(singlePayload) + 350;
+              regenStatsTracker.breakdownByCause.attempt1Duplicate++;
             }
 
             const res = await fetch(apiUrl('/api/generate-questions'), {
@@ -241,91 +386,113 @@ async function processRawQuestionsWithSimilarityCheck(
         }
 
         if (maxSimilarity > SIMILARITY_THRESHOLD) {
-          // Attempt extra RAG chunk retrieval for saturated topic before accepting high similarity
-          try {
-            const extraChunks = await ragEngine.retrieveContext(top, { topK: 8 });
-            const existingChunks = postPayload.retrievedChunks || [];
-            const existingKeys = new Set(
-              existingChunks.map((c: any) => `${c.assetId || ''}-${c.chunkIndex ?? ''}`)
-            );
-            const newChunks = extraChunks.filter(
-              (c: any) => !existingKeys.has(`${c.assetId || ''}-${c.chunkIndex ?? ''}`)
-            );
+          // TAREFA 3: Checagem de circuit breaker antes de buscar chunks extras
+          const canAttemptExpanded =
+            !regenStatsTracker ||
+            (regenStatsTracker.count < MAX_REGEN_CALLS_PER_REQUEST &&
+              regenStatsTracker.estimatedTokens < MAX_REGEN_TOKENS_PER_REQUEST);
 
-            if (newChunks.length > 0) {
-              console.warn(
-                `[QuestionGenerationService] Found ${newChunks.length} additional RAG chunks for saturated topic "${top}". Attempting 1 final expanded-context regeneration...`
+          if (canAttemptExpanded) {
+            try {
+              const extraChunks = await ragEngine.retrieveContext(top, { topK: 5 });
+              const existingChunks = postPayload.retrievedChunks || [];
+              const existingKeys = new Set(
+                existingChunks.map((c: any) => `${c.assetId || ''}-${c.chunkIndex ?? ''}`)
               );
-              // TAREFA 1: Podar após concatenação mantendo orçamento de 4500 tokens
-              const combinedChunks = [...existingChunks, ...newChunks];
-              const prunedExpandedChunks = pruneChunksByTokenBudget(
-                combinedChunks.map((c: any) => ({
-                  ...c,
-                  content: truncateChunkText(c.content, 600),
-                })),
-                SECONDARY_BATCH_CONTEXT_TOKENS_PER_CALL
+              const newChunks = extraChunks.filter(
+                (c: any) => !existingKeys.has(`${c.assetId || ''}-${c.chunkIndex ?? ''}`)
               );
 
-              // TAREFA 2: Usar useLightModel: true
-              const expandedPayload = {
-                ...postPayload,
-                quantity: 1,
-                topics: [top],
-                retrievedChunks: prunedExpandedChunks,
-                useLightModel: true,
-              };
+              if (newChunks.length > 0) {
+                console.warn(
+                  `[QuestionGenerationService] Found ${newChunks.length} additional RAG chunks for topic "${top}". Attempting 1 single-question expanded-context regeneration...`
+                );
+                // TAREFA 1: Podar mantendo orçamento enxuto de 1200 tokens
+                const combinedChunks = [...existingChunks, ...newChunks];
+                const prunedExpandedChunks = pruneChunksByTokenBudget(
+                  combinedChunks.map((c: any) => ({
+                    ...c,
+                    content: truncateChunkText(c.content, REGEN_CHUNK_MAX_CHARS),
+                  })),
+                  REGEN_SINGLE_QUESTION_CONTEXT_TOKENS
+                );
 
-              // TAREFA 4: Contabilizar regeneração e tokens extras
-              if (regenStatsTracker) {
-                regenStatsTracker.count++;
-                regenStatsTracker.estimatedTokens += estimateTokenCount(expandedPayload) + 350;
-              }
+                const expandedPayload = {
+                  ...postPayload,
+                  quantity: 1,
+                  topics: [top],
+                  retrievedChunks: prunedExpandedChunks,
+                  customContext: prunedCustomContext || undefined,
+                  distractorHints: (postPayload.distractorHints || []).slice(0, 3),
+                  professorStyleAnalysis: undefined,
+                  examDNA: undefined,
+                  useLightModel: true,
+                  existingQuestionsSummary: formatCompactAntiDuplicationList(
+                    [...rejectedStatements, ...(sharedGeneratedStatements?.slice(-10) || [])],
+                    15
+                  ),
+                };
 
-              const res = await fetch(apiUrl('/api/generate-questions'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(expandedPayload),
-              });
-              if (res.ok) {
-                const data = await res.json();
-                if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
-                  const candidateQ = data.questions[0];
-                  const candStatement = candidateQ.statement || '';
-                  const candRes = await questionSimilarityEngine.findMaxSimilarity(candStatement, spec, top);
+                if (regenStatsTracker) {
+                  regenStatsTracker.count++;
+                  regenStatsTracker.estimatedTokens += estimateTokenCount(expandedPayload) + 350;
+                  regenStatsTracker.breakdownByCause.expandedContextRegen++;
+                }
 
-                  if (candRes.maxSimilarity < bestSim) {
-                    bestQ = candidateQ;
-                    bestSim = candRes.maxSimilarity;
-                    bestEmb = candRes.embedding;
-                  }
+                const res = await fetch(apiUrl('/api/generate-questions'), {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(expandedPayload),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
+                    const candidateQ = data.questions[0];
+                    const candStatement = candidateQ.statement || '';
+                    const candRes = await questionSimilarityEngine.findMaxSimilarity(candStatement, spec, top);
 
-                  if (candRes.maxSimilarity <= SIMILARITY_THRESHOLD) {
-                    console.warn(
-                      `[QuestionGenerationService] Expanded context regeneration succeeded with similarity ${candRes.maxSimilarity.toFixed(3)} <= ${SIMILARITY_THRESHOLD}.`
-                    );
-                    currentQ = candidateQ;
-                    maxSimilarity = candRes.maxSimilarity;
-                    embedding = candRes.embedding;
+                    if (candRes.maxSimilarity < bestSim) {
+                      bestQ = candidateQ;
+                      bestSim = candRes.maxSimilarity;
+                      bestEmb = candRes.embedding;
+                    }
+
+                    if (candRes.maxSimilarity <= SIMILARITY_THRESHOLD) {
+                      console.warn(
+                        `[QuestionGenerationService] Expanded context regeneration succeeded with similarity ${candRes.maxSimilarity.toFixed(3)} <= ${SIMILARITY_THRESHOLD}.`
+                      );
+                      currentQ = candidateQ;
+                      maxSimilarity = candRes.maxSimilarity;
+                      embedding = candRes.embedding;
+                    }
                   }
                 }
+              } else {
+                contentLimitedTopics.add(top);
               }
-            } else {
-              contentLimitedTopics.add(top);
+            } catch (extraErr) {
+              console.warn(`[QuestionGenerationService] Failed fetching extra chunks for topic "${top}":`, extraErr);
             }
-          } catch (extraErr) {
-            console.warn(`[QuestionGenerationService] Failed fetching extra chunks for topic "${top}":`, extraErr);
           }
 
           if (maxSimilarity > SIMILARITY_THRESHOLD) {
             console.warn(
-              `[QuestionGenerationService] Max regeneration attempts (${MAX_REGENERATION_ATTEMPTS}) reached for topic "${top}". Accepting candidate with lowest similarity (${bestSim.toFixed(3)}). Marking topic as saturated.`
+              `[QuestionGenerationService] Regeneration completed for topic "${top}". Accepting candidate with lowest similarity (${bestSim.toFixed(3)}). Marking topic as saturated.`
             );
             saturatedTopics.add(top);
             contentLimitedTopics.add(top);
             currentQ = bestQ;
             maxSimilarity = bestSim;
             embedding = bestEmb;
+            currentQ.flaggedSimilar = true;
           }
+        }
+      }
+
+      // TAREFA 4: Registra o statement final aprovado no conjunto compartilhado
+      if (sharedGeneratedStatements && currentQ.statement) {
+        if (!sharedGeneratedStatements.includes(currentQ.statement)) {
+          sharedGeneratedStatements.push(currentQ.statement);
         }
       }
 
@@ -352,7 +519,8 @@ async function replaceInvalidQuestionsDeficit(
   maxReplacementAttempts = 3,
   saturatedTopics: Set<string> = new Set(),
   contentLimitedTopics: Set<string> = new Set(),
-  regenStatsTracker?: SimilarityRegenStatsTracker
+  regenStatsTracker?: SimilarityRegenStatsTracker,
+  sharedGeneratedStatements?: string[]
 ): Promise<any[]> {
   let currentValid = [...validQuestions];
   let attempt = 0;
@@ -378,18 +546,18 @@ async function replaceInvalidQuestionsDeficit(
         replacementTopics = originalTopics;
       }
 
+      const antiDupList = [
+        ...(postPayload.existingQuestionsSummary ? [postPayload.existingQuestionsSummary] : []),
+        ...currentValid.map((q) => q.statement || ''),
+        ...(sharedGeneratedStatements || []),
+      ];
+
       const replacementPayload = {
         ...postPayload,
         quantity: deficit,
         topics: replacementTopics,
         avoidTopics: Array.from(saturatedTopics),
-        existingQuestionsSummary: formatCompactAntiDuplicationList(
-          [
-            ...(postPayload.existingQuestionsSummary ? [postPayload.existingQuestionsSummary] : []),
-            ...currentValid.map((q) => q.statement || ''),
-          ],
-          30
-        ),
+        existingQuestionsSummary: formatCompactAntiDuplicationList(antiDupList, 30),
       };
 
       const res = await fetch(apiUrl('/api/generate-questions'), {
@@ -426,7 +594,8 @@ async function replaceInvalidQuestionsDeficit(
               replacementPayload,
               saturatedTopics,
               contentLimitedTopics,
-              regenStatsTracker
+              regenStatsTracker,
+              sharedGeneratedStatements
             );
             replacementValid = replacementValid.filter(
               (q: any) => isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, postPayload.customContext)
@@ -465,10 +634,7 @@ export interface QuestionGenerationResult {
     actual: number;
     reason: string;
   };
-  similarityRegenStats?: {
-    count: number;
-    estimatedTokens: number;
-  };
+  similarityRegenStats?: SimilarityRegenStatsTracker;
 }
 
 /**
@@ -873,7 +1039,8 @@ export class QuestionGenerationService {
     const allRawQuestions: any[] = [];
     const saturatedTopics = new Set<string>();
     const contentLimitedTopics = new Set<string>();
-    const regenStatsTracker: SimilarityRegenStatsTracker = { count: 0, estimatedTokens: 0 };
+    const regenStatsTracker = createSimilarityRegenStatsTracker();
+    const sharedGeneratedStatements: string[] = [];
 
     // Segmentação de customContext em Coverage Units se fornecido
     let coverageUnits: CoverageUnit[] = [];
@@ -883,6 +1050,23 @@ export class QuestionGenerationService {
       } catch (err) {
         console.warn('[QuestionGenerationService] Error segmenting customContext into coverage units:', err);
       }
+    }
+
+    // TAREFA 2: Estima capacidade de diversidade do conteúdo ANTES de gastar tokens
+    const diversityEstimate = estimateTopicDiversityCapacity(
+      mainTopic,
+      config.customContext,
+      retrievedChunks,
+      coverageUnits
+    );
+
+    let topicDiversityDirective = '';
+    if (diversityEstimate.isLimited || aiQuantityToGenerate > diversityEstimate.capacity) {
+      contentLimitedTopics.add(mainTopic);
+      topicDiversityDirective = formatDiversityDirectivePrompt(mainTopic, aiQuantityToGenerate, diversityEstimate.capacity);
+      console.warn(
+        `[QuestionGenerationService] Tópico "${mainTopic}" possui conteúdo concentrado (${diversityEstimate.reason} - capacidade estimada: ~${diversityEstimate.capacity}, solicitadas: ${aiQuantityToGenerate}). Ativando diretriz de máxima diversidade na 1ª tentativa.`
+      );
     }
 
     // Retrieve saved professor style analysis if available
@@ -937,6 +1121,11 @@ export class QuestionGenerationService {
         batchCoverageAssignments = assignments;
       }
 
+      // TAREFA 4: Consulta em tempo real os enunciados já gerados pelos lotes paralelos
+      const liveAntiDuplication = sharedGeneratedStatements.length > 0
+        ? formatCompactAntiDuplicationList([...sharedGeneratedStatements], 30)
+        : undefined;
+
       const rawPayload = {
         retrievedChunks: config.strictCustomContextOnly ? [] : chunksForThisBatch,
         examReferenceChunks: (config.strictCustomContextOnly || examReferenceChunks.length === 0) ? undefined : examReferenceChunks,
@@ -951,13 +1140,10 @@ export class QuestionGenerationService {
         examDNA,
         mode: request.mode || 'geral',
         distractorHints,
-        customContext: [config.customContext, adaptationPromptBlockForThisBatch].filter(Boolean).join('\n\n'),
+        customContext: [config.customContext, adaptationPromptBlockForThisBatch, topicDiversityDirective].filter(Boolean).join('\n\n'),
         coverageAssignments: batchCoverageAssignments.length > 0 ? batchCoverageAssignments : undefined,
         strictCustomContextOnly: config.strictCustomContextOnly,
-        existingQuestionsSummary:
-          batchIdx > 0 && allRawQuestions.length > 0
-            ? formatCompactAntiDuplicationList(allRawQuestions.map((q) => q.statement), 30)
-            : undefined,
+        existingQuestionsSummary: liveAntiDuplication,
       };
 
       const postPayload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
@@ -1081,7 +1267,8 @@ export class QuestionGenerationService {
         postPayload,
         saturatedTopics,
         contentLimitedTopics,
-        regenStatsTracker
+        regenStatsTracker,
+        sharedGeneratedStatements
       );
 
       return batchRawQuestions;
@@ -1150,7 +1337,8 @@ export class QuestionGenerationService {
         3,
         saturatedTopics,
         contentLimitedTopics,
-        regenStatsTracker
+        regenStatsTracker,
+        sharedGeneratedStatements
       );
     }
 
@@ -1255,6 +1443,7 @@ export class QuestionGenerationService {
 
     return {
       questionSet,
+      contentLimitedTopics: contentLimitedTopics.size > 0 ? Array.from(contentLimitedTopics) : undefined,
       metrics: {
         maxWordOverlap: overallMaxWordOverlap,
         matchingSequence: overallMatchingSeq,
@@ -1329,7 +1518,8 @@ export class QuestionGenerationService {
     const QUESTION_GEN_CONCURRENCY = 3;
     const saturatedTopics = new Set<string>();
     const contentLimitedTopics = new Set<string>();
-    const regenStatsTracker: SimilarityRegenStatsTracker = { count: 0, estimatedTokens: 0 };
+    const regenStatsTracker = createSimilarityRegenStatsTracker();
+    const sharedGeneratedStatements: string[] = [];
 
     const topicResults = await mapWithConcurrency(topics, QUESTION_GEN_CONCURRENCY, async (singleTopic, topicIndex) => {
       const countForThisTopic = topicAllocation[singleTopic] || 0;
@@ -1508,6 +1698,28 @@ export class QuestionGenerationService {
           topicCoverageAssignments = assignments;
         }
 
+        // TAREFA 2: Estima capacidade de diversidade do conteúdo para este tópico específico
+        const diversityEstimate = estimateTopicDiversityCapacity(
+          singleTopic,
+          topicContext || config.customContext,
+          retrievedChunks,
+          topicCoverageUnits
+        );
+
+        let topicDiversityDirective = '';
+        if (diversityEstimate.isLimited || aiCountForThisTopic > diversityEstimate.capacity) {
+          contentLimitedTopics.add(singleTopic);
+          topicDiversityDirective = formatDiversityDirectivePrompt(singleTopic, aiCountForThisTopic, diversityEstimate.capacity);
+          console.warn(
+            `[QuestionGenerationService] Tópico "${singleTopic}" possui conteúdo concentrado (${diversityEstimate.reason} - capacidade estimada: ~${diversityEstimate.capacity}, solicitadas: ${aiCountForThisTopic}). Injetando diretriz de máxima diversidade na 1ª tentativa.`
+          );
+        }
+
+        // TAREFA 4: Consulta em tempo real os enunciados já gerados por outros lotes
+        const liveAntiDuplication = sharedGeneratedStatements.length > 0
+          ? formatCompactAntiDuplicationList([...sharedGeneratedStatements], 30)
+          : undefined;
+
         const rawPayload = {
           retrievedChunks: config.strictCustomContextOnly ? [] : retrievedChunks,
           examReferenceChunks: (config.strictCustomContextOnly || examReferenceChunks.length === 0) ? undefined : examReferenceChunks,
@@ -1523,9 +1735,10 @@ export class QuestionGenerationService {
           examDNA: condensedDNA,
           mode: request.mode || 'geral',
           distractorHints,
-          customContext: topicContext || undefined,
+          customContext: [topicContext, topicDiversityDirective].filter(Boolean).join('\n\n') || undefined,
           coverageAssignments: topicCoverageAssignments.length > 0 ? topicCoverageAssignments : undefined,
           strictCustomContextOnly: config.strictCustomContextOnly,
+          existingQuestionsSummary: liveAntiDuplication,
         };
 
         const postPayload = pruneObjectByTokenBudget(rawPayload, MAX_TOTAL_PAYLOAD_TOKENS);
@@ -1649,7 +1862,8 @@ export class QuestionGenerationService {
           postPayload,
           saturatedTopics,
           contentLimitedTopics,
-          regenStatsTracker
+          regenStatsTracker,
+          sharedGeneratedStatements
         );
 
         let validRawQuestions = rawQuestions.filter((q) =>
@@ -1666,7 +1880,8 @@ export class QuestionGenerationService {
             3,
             saturatedTopics,
             contentLimitedTopics,
-            regenStatsTracker
+            regenStatsTracker,
+            sharedGeneratedStatements
           );
         }
 

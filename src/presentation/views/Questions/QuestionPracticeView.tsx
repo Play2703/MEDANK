@@ -146,7 +146,7 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="w-4 h-4 text-indigo-400 shrink-0" />
             <span>
-              ⚠️ {similarityRegenStats.count} regeneração{similarityRegenStats.count > 1 ? 'ões' : ''} por similaridade (modelo leve) consumiu ~{similarityRegenStats.estimatedTokens} tokens extras.
+              ⚠️ {similarityRegenStats.count} regenera{similarityRegenStats.count > 1 ? 'ções' : 'ção'} por similaridade (modelo leve) consumiu ~{similarityRegenStats.estimatedTokens} tokens extras.
             </span>
           </div>
           <button

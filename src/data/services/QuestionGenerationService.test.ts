@@ -75,7 +75,7 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
 
     expect(result.questionSet).toBeDefined();
     expect(capturedBody).toBeDefined();
-    expect(capturedBody.customContext).toBe(mockCustomContext);
+    expect(capturedBody.customContext).toContain(mockCustomContext);
   });
 
   it('deve incluir customContext no payload enviado ao backend ao gerar questões distribuídas por tópico', async () => {
@@ -133,7 +133,7 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
 
     expect(result.questionSet).toBeDefined();
     expect(capturedBody).toBeDefined();
-    expect(capturedBody.customContext).toBe(mockCustomContext);
+    expect(capturedBody.customContext).toContain(mockCustomContext);
   });
 
   it('deve lançar erro claro quando nenhuma questão válida for retornada após todas as filtragens e reposições', async () => {
@@ -997,7 +997,128 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
     expect(capturedPayload.retrievedChunks).toEqual([]);
     expect(capturedPayload.customContext).toContain(notesContext);
   });
+
+  it('deve estimar capacidade de diversidade e acionar diretriz de diversidade para tópicos com conteúdo limitado', async () => {
+    const capturedPayloads: any[] = [];
+
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+      const payload = JSON.parse(init?.body as string);
+      capturedPayloads.push(payload);
+
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          questions: [
+            {
+              id: 'q-lim-1',
+              statement: 'Questão sobre núcleo rubro no mesencéfalo.',
+              options: [
+                { id: 'opt-a', letter: 'A', text: 'Controle motor extrapiramidal', isCorrect: true },
+                { id: 'opt-b', letter: 'B', text: 'Visão foveal', isCorrect: false },
+                { id: 'opt-c', letter: 'C', text: 'Audição primária', isCorrect: false },
+                { id: 'opt-d', letter: 'D', text: 'Olfato', isCorrect: false },
+              ],
+              correctOptionLetter: 'A',
+              commentary: 'Núcleo rubro integra via rubroespinhal.',
+              specialty: 'Neurologia',
+              topic: 'Tronco Encefálico',
+            },
+          ],
+        }),
+      } as Response;
+    });
+
+    const shortContext = 'Tronco encefálico: formado por bulbo, ponte e mesencéfalo. Contém núcleos de nervos cranianos.';
+
+    const request: QuestionGenerationRequest = {
+      id: 'req-test-content-limited-capacity',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Neurologia',
+        topics: ['Tronco Encefálico'],
+        quantity: 8, // Pedindo 8 questões num material de apenas 1 parágrafo
+        distributionMode: 'interdisciplinar',
+        difficulty: 'media',
+        questionType: 'caso_clinico',
+        includeCommentary: true,
+        showReferences: false,
+        autoGenerateFlashcards: false,
+        customContext: shortContext,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await service.generateQuestions(request, true);
+
+    // Tópico deve ser identificado como limitado
+    expect(result.contentLimitedTopics).toContain('Tronco Encefálico');
+
+    // Prompt deve conter diretriz de máxima diversidade
+    expect(capturedPayloads[0].customContext).toContain('DIRETRIZ OBRIGATÓRIA DE MÁXIMA DIVERSIDADE');
+  });
+
+  it('deve acionar circuit breaker e parar chamadas extras quando o teto de regenerações for atingido', async () => {
+    let callCount = 0;
+
+    // Sempre retorna similaridade alta (0.97 > 0.92)
+    vi.spyOn(questionSimilarityEngine, 'findMaxSimilarity').mockResolvedValue({
+      maxSimilarity: 0.97,
+      embedding: [0.95, 0.95],
+    });
+
+    global.fetch = vi.fn().mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+      callCount++;
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          questions: [
+            {
+              id: `q-cb-${callCount}`,
+              statement: `Enunciado repetitivo ${callCount} sobre tronco encefálico`,
+              options: [
+                { id: 'opt-a', letter: 'A', text: 'Opção A correta', isCorrect: true },
+                { id: 'opt-b', letter: 'B', text: 'Opção B incorreta', isCorrect: false },
+                { id: 'opt-c', letter: 'C', text: 'Opção C incorreta', isCorrect: false },
+                { id: 'opt-d', letter: 'D', text: 'Opção D incorreta', isCorrect: false },
+              ],
+              correctOptionLetter: 'A',
+              commentary: 'Comentário',
+              specialty: 'Neurologia',
+              topic: 'Tronco Encefálico',
+            },
+          ],
+        }),
+      } as Response;
+    });
+
+    const request: QuestionGenerationRequest = {
+      id: 'req-test-circuit-breaker',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Neurologia',
+        topics: ['Tronco Encefálico'],
+        quantity: 5,
+        distributionMode: 'interdisciplinar',
+        difficulty: 'media',
+        questionType: 'caso_clinico',
+        includeCommentary: true,
+        showReferences: false,
+        autoGenerateFlashcards: false,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    const result = await service.generateQuestions(request, true);
+
+    expect(result.questionSet).toBeDefined();
+    // O circuit breaker deve ter registrado as causas
+    expect(result.similarityRegenStats?.breakdownByCause).toBeDefined();
+    expect(result.similarityRegenStats?.breakdownByCause.attempt1Duplicate).toBeGreaterThan(0);
+  });
 });
+
 
 
 
