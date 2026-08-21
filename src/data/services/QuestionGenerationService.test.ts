@@ -842,7 +842,7 @@ describe('QuestionGenerationService customContext Unit Tests', () => {
     // Deve ter registrado estatísticas de regeneração
     expect(result.similarityRegenStats).toBeDefined();
     expect(result.similarityRegenStats?.count).toBe(1);
-    expect(result.similarityRegenStats?.estimatedTokens).toBeGreaterThan(0);
+    expect(result.similarityRegenStats?.actualTokensSpent).toBeGreaterThan(0);
   });
 
   it('deve descartar alternativas sem sentido (p030, dCb, erbB) e repor via deficit replacement', async () => {

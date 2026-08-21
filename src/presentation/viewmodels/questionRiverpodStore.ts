@@ -54,7 +54,7 @@ export interface QuestionState {
   similarityRegenStats: {
     setId: string;
     count: number;
-    estimatedTokens: number;
+    actualTokensSpent: number;
   } | null;
   error: string | null;
 }
@@ -267,7 +267,7 @@ export class QuestionNotifier extends StateNotifier<QuestionState> {
         ? {
             setId: savedSet.id,
             count: result.similarityRegenStats.count,
-            estimatedTokens: result.similarityRegenStats.estimatedTokens,
+            actualTokensSpent: result.similarityRegenStats.actualTokensSpent,
           }
         : null;
 

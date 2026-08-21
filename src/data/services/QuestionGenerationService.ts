@@ -119,7 +119,7 @@ DIRETRIZ DE TRANSFORMAÇÃO:
 
 export interface SimilarityRegenStatsTracker {
   count: number;
-  estimatedTokens: number;
+  actualTokensSpent: number;
   breakdownByCause: {
     attempt1Duplicate: number;
     expandedContextRegen: number;
@@ -131,7 +131,7 @@ export interface SimilarityRegenStatsTracker {
 export function createSimilarityRegenStatsTracker(): SimilarityRegenStatsTracker {
   return {
     count: 0,
-    estimatedTokens: 0,
+    actualTokensSpent: 0,
     breakdownByCause: {
       attempt1Duplicate: 0,
       expandedContextRegen: 0,
@@ -259,10 +259,10 @@ async function processRawQuestionsWithSimilarityCheck(
         if (
           regenStatsTracker &&
           (regenStatsTracker.count >= MAX_REGEN_CALLS_PER_REQUEST ||
-            regenStatsTracker.estimatedTokens >= MAX_REGEN_TOKENS_PER_REQUEST)
+            regenStatsTracker.actualTokensSpent >= MAX_REGEN_TOKENS_PER_REQUEST)
         ) {
           console.warn(
-            `[QuestionGenerationService] Circuit breaker acionado: limite de regeneração atingido (${regenStatsTracker.count} chamadas / ~${regenStatsTracker.estimatedTokens} tokens). Entregando questão restante com aviso de similaridade.`
+            `[QuestionGenerationService] Circuit breaker acionado: limite de regeneração atingido (${regenStatsTracker.count} chamadas / ~${regenStatsTracker.actualTokensSpent} tokens). Entregando questão restante com aviso de similaridade.`
           );
           regenStatsTracker.breakdownByCause.circuitBreakerTripped = true;
           currentQ.flaggedSimilar = true;
@@ -309,7 +309,7 @@ async function processRawQuestionsWithSimilarityCheck(
             if (
               regenStatsTracker &&
               (regenStatsTracker.count >= MAX_REGEN_CALLS_PER_REQUEST ||
-                regenStatsTracker.estimatedTokens >= MAX_REGEN_TOKENS_PER_REQUEST)
+                regenStatsTracker.actualTokensSpent >= MAX_REGEN_TOKENS_PER_REQUEST)
             ) {
               regenStatsTracker.breakdownByCause.circuitBreakerTripped = true;
               break;
@@ -358,7 +358,7 @@ async function processRawQuestionsWithSimilarityCheck(
               const data = await res.json();
               if (regenStatsTracker) {
                 const callTokens = Number(data.usage?.totalTokenCount) || estimatedPreCall;
-                regenStatsTracker.estimatedTokens += callTokens;
+                regenStatsTracker.actualTokensSpent += callTokens;
               }
               if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
                 const candidateQ = data.questions[0];
@@ -385,7 +385,7 @@ async function processRawQuestionsWithSimilarityCheck(
               }
             } else {
               if (regenStatsTracker) {
-                regenStatsTracker.estimatedTokens += estimatedPreCall;
+                regenStatsTracker.actualTokensSpent += estimatedPreCall;
               }
             }
           } catch (retryErr) {
@@ -398,7 +398,7 @@ async function processRawQuestionsWithSimilarityCheck(
           const canAttemptExpanded =
             !regenStatsTracker ||
             (regenStatsTracker.count < MAX_REGEN_CALLS_PER_REQUEST &&
-              regenStatsTracker.estimatedTokens < MAX_REGEN_TOKENS_PER_REQUEST);
+              regenStatsTracker.actualTokensSpent < MAX_REGEN_TOKENS_PER_REQUEST);
 
           if (canAttemptExpanded) {
             try {
@@ -456,7 +456,7 @@ async function processRawQuestionsWithSimilarityCheck(
                   const data = await res.json();
                   if (regenStatsTracker) {
                     const callTokens = Number(data.usage?.totalTokenCount) || estimatedPreCall;
-                    regenStatsTracker.estimatedTokens += callTokens;
+                    regenStatsTracker.actualTokensSpent += callTokens;
                   }
                   if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
                     const candidateQ = data.questions[0];
@@ -480,7 +480,7 @@ async function processRawQuestionsWithSimilarityCheck(
                   }
                 } else {
                   if (regenStatsTracker) {
-                    regenStatsTracker.estimatedTokens += estimatedPreCall;
+                    regenStatsTracker.actualTokensSpent += estimatedPreCall;
                   }
                 }
               } else {
