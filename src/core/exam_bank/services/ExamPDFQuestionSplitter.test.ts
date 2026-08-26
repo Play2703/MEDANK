@@ -370,4 +370,67 @@ c o «e 33 a e c (OQ: 6 a (cc o «e ss - Q c - 5 Q: c o «e so À: c o «e 6
     expect(result.questions[0].statement).toBe('Paciente com apendicite aguda.');
     expect(result.questions[0].options).toHaveLength(4);
   });
+
+  // 16. Regressão IPSEMG Q2: enunciado iniciando em 'A ' (artigo definido) com alternativas de letras soltas A-D sem pontuação
+  it('16. deve segmentar questão com enunciado iniciando em "A " (artigo definido) e alternativas com letras soltas A-D sem pontuação (IPSEMG Q2)', () => {
+    const q2Lines = [
+      { text: 'A Sindrome Hemolítico-Urêmica (SHU) típica é uma complicação grave de infecções', x: 39.7, y: 704.7, pageNumber: 4 },
+      { text: 'gastrointestinais, caracterizada pela tríade de anemia hemolítica microangiopática,', x: 39.7, y: 686.7, pageNumber: 4 },
+      { text: 'trombocitopenia e lesão renal aguda. O agente etiológico bacteriano mais', x: 39.7, y: 667.9, pageNumber: 4 },
+      { text: 'frequentemente associado a esta síndrome, especialmente em crianças e surtos', x: 39.7, y: 649.2, pageNumber: 4 },
+      { text: 'alimentares, é um sorotipo específico de Escherichia coli produtor de toxina Shiga', x: 39.7, y: 631.2, pageNumber: 4 },
+      { text: '(STEC).', x: 39.7, y: 612.4, pageNumber: 4 },
+      { text: 'Considerando a etiologia e a fisiopatologia da síndrome hemolítico-urêmica típica,', x: 39.7, y: 577.2, pageNumber: 4 },
+      { text: 'assinale a alternativa correta.', x: 39.7, y: 559.2, pageNumber: 4 },
+      { text: 'A Escherichia coli Enterotoxigênica (ETEC), a principal causa da diarreia do viajante,', x: 44.1, y: 534.4, pageNumber: 4 },
+      { text: 'que produz toxinas termoestáveis e termolábeis que ativam a adenilato ciclase.', x: 62.1, y: 513.4, pageNumber: 4 },
+      { text: 'B Escherichia coli Enteroinvasiva (EIEC), que mimetiza a infecção por Shigella', x: 44.3, y: 493.2, pageNumber: 4 },
+      { text: 'invadindo a mucosa colônica, mas raramente causa hemólise sistêmica.', x: 62.1, y: 472.2, pageNumber: 4 },
+      { text: 'C Escherichia coli Entero-hemorrágica (EHEC), sorotipo O157:H7, que causa colite', x: 44.2, y: 451.9, pageNumber: 4 },
+      { text: 'hemorrágica prévia à síndrome e libera verotoxinas (Shiga-like) que lesam o', x: 62.1, y: 430.2, pageNumber: 4 },
+      { text: 'endotélio glomerular.', x: 62.1, y: 412.1, pageNumber: 4 },
+      { text: 'D Escherichia coli Enteropatogênica (EPEC), que causa diarreia em lactentes por', x: 44.3, y: 391.9, pageNumber: 4 },
+      { text: 'adesão e destruição das microvilosidades, sem produção de toxinas sistêmicas.', x: 62.1, y: 370.1, pageNumber: 4 },
+    ];
+
+    const parsed = ExamPDFQuestionSplitter.parseQuestionOptions(q2Lines);
+
+    // Enunciado não pode ficar vazio
+    expect(parsed.statement.length).toBeGreaterThan(50);
+    expect(parsed.statement).toContain('A Sindrome Hemolítico-Urêmica (SHU) típica é uma complicação grave de infecções');
+    expect(parsed.statement).toContain('assinale a alternativa correta.');
+
+    // 4 alternativas perfeitamente isoladas
+    expect(parsed.options).toHaveLength(4);
+    expect(parsed.options.map((o) => o.letter)).toEqual(['A', 'B', 'C', 'D']);
+    expect(parsed.options[0].text).toContain('Escherichia coli Enterotoxigênica (ETEC)');
+    expect(parsed.options[0].text).toContain('ativam a adenilato ciclase.');
+    expect(parsed.options[1].text).toContain('Escherichia coli Enteroinvasiva (EIEC)');
+    expect(parsed.options[2].text).toContain('Escherichia coli Entero-hemorrágica (EHEC)');
+    expect(parsed.options[3].text).toContain('Escherichia coli Enteropatogênica (EPEC)');
+
+    // Teste também via splitFromText puro
+    const rawTextQ2 = `
+QUESTÃO 02
+A Sindrome Hemolítico-Urêmica (SHU) típica é uma complicação grave de infecções
+gastrointestinais, caracterizada pela tríade de anemia hemolítica microangiopática,
+trombocitopenia e lesão renal aguda. O agente etiológico bacteriano mais
+frequentemente associado a esta síndrome, especialmente em crianças e surtos
+alimentares, é um sorotipo específico de Escherichia coli produtor de toxina Shiga (STEC).
+Considerando a etiologia e a fisiopatologia da síndrome hemolítico-urêmica típica,
+assinale a alternativa correta.
+A Escherichia coli Enterotoxigênica (ETEC), a principal causa da diarreia do viajante, que produz toxinas termoestáveis e termolábeis que ativam a adenilato ciclase.
+B Escherichia coli Enteroinvasiva (EIEC), que mimetiza a infecção por Shigella invadindo a mucosa colônica, mas raramente causa hemólise sistêmica.
+C Escherichia coli Entero-hemorrágica (EHEC), sorotipo O157:H7, que causa colite hemorrágica prévia à síndrome e libera verotoxinas (Shiga-like) que lesam o endotélio glomerular.
+D Escherichia coli Enteropatogênica (EPEC), que causa diarreia em lactentes por adesão e destruição das microvilosidades, sem produção de toxinas sistêmicas.
+`;
+    const textResult = ExamPDFQuestionSplitter.splitFromText(rawTextQ2);
+    expect(textResult.totalQuestions).toBe(1);
+    expect(textResult.questions[0].questionNumber).toBe(2);
+    expect(textResult.questions[0].statement).toContain('A Sindrome Hemolítico-Urêmica');
+    expect(textResult.questions[0].options).toHaveLength(4);
+    expect(textResult.questions[0].options.map((o) => o.letter)).toEqual(['A', 'B', 'C', 'D']);
+    expect(textResult.questions[0].options[0].text).toContain('Escherichia coli Enterotoxigênica (ETEC)');
+  });
 });
+

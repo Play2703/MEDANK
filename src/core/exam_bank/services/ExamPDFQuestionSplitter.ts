@@ -95,7 +95,7 @@ export class ExamPDFQuestionSplitter {
    * - 27. Enunciado..., 01) Enunciado..., 27 - Enunciado...
    */
   private static readonly QUESTION_START_REGEX =
-    /^(?:QUEST[ÃA]O|QUESTAO|QUEST[ÃA]O\s*N[º°\.]|Q\.?)\s*(\d{1,3}|[Oo]\d{1,2}|l[áa4]|I[0-9]|l[0-9])(?:\s+|$|[.:\-–—)])\s*(.*)$/i;
+    /^(?:Q\s*U\s*E\s*S\s*T\s*[ÃA]\s*O|QUESTAO|QUEST[ÃA]O\s*N[º°\.]|Q\.?)\s*(?:N[º°\.\s]*)?(\d{1,3}|[Oo]\d{1,2}|l[áa4]|I[0-9]|l[0-9])(?:\s+|$|[.:\-–—)])\s*(.*)$/i;
 
   private static readonly NUMBERED_START_REGEX =
     /^(\d{1,3})[.\)-–—]\s+(.*)$/;
@@ -107,7 +107,7 @@ export class ExamPDFQuestionSplitter {
    * Padrões de Gabarito
    */
   private static readonly GABARITO_HEADER_REGEX =
-    /\b(?:GABARITO|FOLHA\s+DE\s+RESPOSTAS?|RESPOSTAS?\s+OFICIAIS?|CHAVE\s+DE\s+RESPOSTAS?)\b/i;
+    /\b(?:GABARITO|FOLHA\s+DE\s+RESPOSTAS?|RESPOSTAS?\s+OFICIAIS?|CHAVE\s+DE\s+RESPOSTAS?|CART[ÃA]O\s*(?:DE\s*)?RESPOSTAS?|^RESPOSTAS\b)\b/i;
 
   private static readonly GABARITO_ENTRY_REGEX =
     /(?:QUEST[ÃA]O\s*)?(\d{1,3})\s*[:\-–=.]*\s*([A-Ea-e])\b/g;
@@ -133,7 +133,7 @@ export class ExamPDFQuestionSplitter {
     if (!text) return [];
     const normalized = text.replace(/\r\n/g, '\n');
     const inlineMarkerRegex =
-      /(?=(?:[\.\;\:\n]|\s+|^)(?:QUEST[ÃA]O|QUESTAO|Q\.)\s*(?:\d{1,3}|[Oo]\d{1,2}|l[áa4]|I[0-9]|l[0-9])(?:[\s.:\-–—)]|$))/gi;
+      /(?=(?:[\.\;\:\n]|\s+|^)(?:Q\s*U\s*E\s*S\s*T\s*[ÃA]\s*O|QUESTAO|Q\.)\s*(?:\d{1,3}|[Oo]\d{1,2}|l[áa4]|I[0-9]|l[0-9])(?:[\s.:\-–—)]|$))/gi;
 
     const parts = normalized.split(inlineMarkerRegex);
     return parts.map((p) => p.trim()).filter((p) => p.length > 0);
@@ -206,7 +206,7 @@ export class ExamPDFQuestionSplitter {
       ) {
         return false;
       }
-      return /^(?:\([A-Ea-eO0o\?€2É1-6]\)|\[[A-Ea-e€1-6]\]|\[\([A-Ea-e€1-6]\)|[A-Ea-e1-6][\)\:\-–—\.]|[Ⓐ-Ⓔ]|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|[Oo0][\)\.\:\-–—\|]|G[abG]\)|OG\)|GG\)|Go\)|OG\b|Cs\b|\(CG\)|\(Co\)|\([Oo]\s+|[Oo0]\s+|[A-Ea-e]\s+)/i.test(
+      return /^(?:\([A-Ea-eO0o\?€2É1-6]\)|\[[A-Ea-e€1-6]\]|\[\([A-Ea-e€1-6]\)|[A-Ea-e1-6][\)\:\-–—\.]|[Ⓐ-Ⓔ]|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|[Oo0][\)\.\:\-–—\|]|G[abG]\)|OG\)|GG\)|Go\)|OG\b|Cs\b|\(CG\)|\(Co\)|\([Oo]\s+|[Oo0]\s+|[A-Ea-e]\s+|(?:CERTO|ERRADO)\b)/i.test(
         trimmed
       );
     };
@@ -220,14 +220,149 @@ export class ExamPDFQuestionSplitter {
       ) {
         return false;
       }
-      return /^(?:\([aA21]\)|\[[aA1]\]|\[\([aA1]\)|[aA1][\)\:\-–—\.]|[Ⓐ]|G[abG]\)|GG\)|Cs\b|Go\)|[oO]\))/i.test(trimmed);
+      return /^(?:\([aA21]\)|\[[aA1]\]|\[\([aA1]\)|[aA1][\)\:\-–—\.]|[Ⓐ]|G[abG]\)|GG\)|Cs\b|Go\)|[oO]\)|[aA1]\s+|(?:CERTO|VERDADEIRO)\b)/i.test(trimmed);
     };
 
     const cleanMarkerRegex =
       /^(?:\(([A-Ea-eO0o\?€2É1-6])\)|\[([A-Ea-e€1-6])\]|\[\(([A-Ea-e€1-6])\)|([A-Ea-e1-6])[.\:\-–—\)]|([Ⓐ-Ⓔ])|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|[Oo0][\)\.\:\-–—\|]|G[abG]\)|OG\)|GG\)|Go\)|OG\b|Cs|\(CG\)|\(Co\)|\([Oo]\s*|[Oo0]\s+|([A-Ea-e])\s+)\s*(.*)$/si;
 
+    const extractOptionMarker = (lineText: string): { letter: string; isCircle: boolean; rawMarker?: string; restText: string } | null => {
+      const trimmed = lineText.trim();
+      if (!trimmed) return null;
+
+      if (
+        /^[A-E]\.\s+(?:coli|aeruginosa|faecalis|pneumoniae|aureus|sp|spp|difficile|albicans|histolytica|cruzi|mansoni)\b/i.test(
+          trimmed
+        )
+      ) {
+        return false as any;
+      }
+
+      if (/^(?:CERTO|VERDADEIRO)\b/i.test(trimmed)) {
+        return {
+          letter: 'A',
+          isCircle: false,
+          rawMarker: trimmed.slice(0, 5),
+          restText: trimmed,
+        };
+      }
+
+      if (/^(?:ERRADO|FALSO)\b/i.test(trimmed)) {
+        return {
+          letter: 'B',
+          isCircle: false,
+          rawMarker: trimmed.slice(0, 6),
+          restText: trimmed,
+        };
+      }
+
+      const match = trimmed.match(cleanMarkerRegex);
+      if (!match) return null;
+
+      let rawLetter = (match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || '').toUpperCase();
+      const restText = match[match.length - 1]?.trim() || '';
+
+      if (rawLetter && rawLetter.charCodeAt(0) >= 0x24b6 && rawLetter.charCodeAt(0) <= 0x24ba) {
+        rawLetter = String.fromCharCode('A'.charCodeAt(0) + (rawLetter.charCodeAt(0) - 0x24b6));
+      }
+      if (rawLetter === '€') rawLetter = 'C';
+      if (rawLetter === '1') rawLetter = 'A';
+      if (rawLetter === '2' && match[1] === '2') rawLetter = 'A'; // OCR (2) -> (a)
+      else if (rawLetter === '2' || rawLetter === '6') rawLetter = 'B';
+      if (rawLetter === 'É') rawLetter = 'E';
+
+      const isCircle = /^(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●]|[Oo0][\)\.\:\-–—\|]|G[abG]\)|OG\)|GG\)|Go\)|OG\b|Cs|\(CG\)|\(Co\)|\([Oo]\s*|[Oo0]\s+)/i.test(
+        match[0]
+      );
+
+      let letter = rawLetter;
+      if (!['A', 'B', 'C', 'D', 'E'].includes(letter)) {
+        if (isCircle) {
+          letter = 'CIRCLE';
+        } else {
+          return null;
+        }
+      }
+
+      return {
+        letter,
+        isCircle,
+        rawMarker: match[0].slice(0, 6).trim(),
+        restText,
+      };
+    };
+
+    const isValidOptionASequence = (lines: ReconstitutedLine[], startIdx: number, requireGeometry = false): boolean => {
+      if (startIdx < 0 || startIdx >= lines.length) return false;
+      const startLine = lines[startIdx];
+      if (requireGeometry && startLine.x >= 75) return false;
+
+      const markerA = extractOptionMarker(startLine.text);
+      if (!markerA) return false;
+      if (markerA.letter !== 'A' && !markerA.isCircle) return false;
+
+      // Scan forward to find Option B (or subsequent sequence)
+      for (let j = startIdx + 1; j < lines.length; j++) {
+        const nextLine = lines[j];
+        const trimmedNext = nextLine.text.trim();
+        if (/^(?:ERRADO|FALSO)\b/i.test(trimmedNext)) {
+          return true;
+        }
+
+        if (requireGeometry) {
+          if (nextLine.x >= 75) continue; // continuation or other indented block
+          // Check horizontal alignment with marker A (tolerance 25pt)
+          if (Math.abs(nextLine.x - startLine.x) > 25) continue;
+        }
+
+        const markerJ = extractOptionMarker(nextLine.text);
+        if (!markerJ) {
+          // Caso de marcador B omitido pelo OCR (como linha intermediária entre A e C)
+          if (j === startIdx + 1 && j + 1 < lines.length) {
+            const markerC = extractOptionMarker(lines[j + 1].text);
+            if (markerC && (['C', 'D', 'E'].includes(markerC.letter) || markerC.isCircle)) {
+              return true;
+            }
+          }
+          continue;
+        }
+
+        if (markerA.letter === 'A') {
+          if (['B', 'C', 'D', 'E'].includes(markerJ.letter) || markerJ.isCircle) {
+            return true; // Found Option B/C/D/E in sequence!
+          }
+          if (markerJ.letter === 'A') {
+            const isExplicitA = /^(?:\([aA21]\)|\[[aA1]\]|\[\([aA1]\)|[aA1][\)\:\-–—\.]|[Ⓐ]|G[abG]\)|GG\)|Cs\b|Go\)|[oO]\))/i.test(nextLine.text.trim());
+            if (isExplicitA) {
+              // Se a linha posterior tem um marcador 'A' explícito (ex: '(a)', 'A)'),
+              // então a linha candidata anterior era apenas texto do enunciado iniciando em 'A '!
+              return false;
+            }
+            // Se linha seguinte for 'C' ou 'CIRCLE', a linha 'A' intermediária era na verdade Opção B sem marcador cujo texto inicia com 'A '
+            if (j + 1 < lines.length) {
+              const markerNextNext = extractOptionMarker(lines[j + 1].text);
+              if (markerNextNext && (['C', 'D', 'E'].includes(markerNextNext.letter) || markerNextNext.isCircle)) {
+                return true;
+              }
+            }
+            // Found another 'A' before finding 'B' -> startIdx was part of statement!
+            return false;
+          }
+        } else if (markerA.isCircle) {
+          if (markerJ.isCircle || ['B', 'C', 'D', 'E'].includes(markerJ.letter)) {
+            return true; // Found next circle/letter in sequence!
+          }
+          if (markerJ.letter === 'A') {
+            return false;
+          }
+        }
+      }
+
+      return false;
+    };
+
     const optSplitRegex =
-      /(?=(?:^|\s+)(?:\([A-Ea-eO0o\?€2É]\)|\[[A-Ea-e€]\]|\[\([A-Ea-e€]\)|[A-Ea-e][\)\:\-–—]|[A-Ea-e]\.(?!\s+(?:coli|aeruginosa|faecalis|pneumoniae|aureus|sp|spp|difficile|albicans|histolytica|cruzi|mansoni)\b)|[Ⓐ-Ⓔ]|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|[Oo0][\)\.\:\-–—]|G[abG]\))\s+)/gi;
+      /(?=(?:^|\s+)(?:\([A-Ea-eO0o\?€2É]\)|\[[A-Ea-e€]\]|\[\([A-Ea-e€]\)|[A-Ea-e][\)\:\-–—]|[A-Ea-e]\.(?!\s+(?:coli|aeruginosa|faecalis|pneumoniae|aureus|sp|spp|difficile|albicans|histolytica|cruzi|mansoni)\b)|[Ⓐ-Ⓔ]|(?:\(\s*[O0o]?\s*\)|\[\s*\]|[◯○●])|[Oo0][\)\.\:\-–—]|G[abG]\)|(?:CERTO|ERRADO)\b))\s+/gi;
 
     let inputLines: ReconstitutedLine[] = [];
     if (typeof rawInput === 'string') {
@@ -258,7 +393,9 @@ export class ExamPDFQuestionSplitter {
 
       for (let i = 0; i < inputLines.length; i++) {
         const line = inputLines[i].text;
-        const startsOption = isStartOfOption(line);
+        const startsOption = !isParsingOptions
+          ? isValidOptionASequence(inputLines, i, false)
+          : isStartOfOption(line);
 
         if (startsOption) {
           isParsingOptions = true;
@@ -300,7 +437,7 @@ export class ExamPDFQuestionSplitter {
         let optText = chunk;
 
         if (match) {
-          rawLetter = (match[1] || match[2] || match[3] || match[4] || match[5] || '').toUpperCase();
+          rawLetter = (match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || '').toUpperCase();
           optText = match[match.length - 1]?.trim() || '';
         }
 
@@ -338,29 +475,37 @@ export class ExamPDFQuestionSplitter {
 
     // 2. Processamento com geometria espacial real (OCR / Layout com coordenadas X/Y)
     let optionAIdx = -1;
-    for (let i = 0; i < inputLines.length; i++) {
-      if (isOptionAStart(inputLines[i].text) && inputLines[i].x < 75) {
-        optionAIdx = i;
-        break;
-      }
-    }
 
-    if (optionAIdx === -1) {
-      for (let i = 0; i < inputLines.length; i++) {
-        const prevLine = i > 0 ? inputLines[i - 1].text.trim() : '';
-        const prevEndsPunct = /[.:!?]\s*$/.test(prevLine);
-        if (isStartOfOption(inputLines[i].text) && inputLines[i].x < 75 && (i === 0 || prevEndsPunct || isOptionAStart(inputLines[i].text))) {
+    // Bloco 1: Procura início explícito de Opção A com validação de sequência
+    for (let i = 0; i < inputLines.length; i++) {
+      if (inputLines[i].x < 75 && isOptionAStart(inputLines[i].text)) {
+        if (isValidOptionASequence(inputLines, i, true)) {
           optionAIdx = i;
           break;
         }
       }
     }
 
+    // Bloco 2: Procura início genérico de opção com validação de sequência
     if (optionAIdx === -1) {
       for (let i = 0; i < inputLines.length; i++) {
-        if (isStartOfOption(inputLines[i].text) && inputLines[i].x < 75 && i > 0) {
-          optionAIdx = i;
-          break;
+        if (inputLines[i].x < 75 && isStartOfOption(inputLines[i].text)) {
+          if (isValidOptionASequence(inputLines, i, true)) {
+            optionAIdx = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // Bloco 3: Fallback sem restrição de pontuação anterior, mantendo validação estrita de sequência
+    if (optionAIdx === -1) {
+      for (let i = 0; i < inputLines.length; i++) {
+        if (inputLines[i].x < 75) {
+          if (isValidOptionASequence(inputLines, i, true)) {
+            optionAIdx = i;
+            break;
+          }
         }
       }
     }
@@ -374,14 +519,16 @@ export class ExamPDFQuestionSplitter {
 
     const statement = inputLines.slice(0, optionAIdx).map((l) => l.text).join(' ');
     const optionLines = inputLines.slice(optionAIdx);
+    const markerBaseX = inputLines[optionAIdx].x;
 
     const chunks: Array<{ text: string; x: number; y: number; rawMarker?: string }> = [];
 
     for (let i = 0; i < optionLines.length; i++) {
       const l = optionLines[i];
       const text = l.text;
-      const isMarker = isStartOfOption(text);
-      const isAtMarkerX = l.x < 75;
+      const markerInfo = extractOptionMarker(text);
+      const isMarker = markerInfo !== null;
+      const isAtMarkerX = l.x < 75 && Math.abs(l.x - markerBaseX) <= 25;
 
       let startsOption = false;
       let stripped = text;
@@ -389,19 +536,18 @@ export class ExamPDFQuestionSplitter {
 
       if (isMarker && isAtMarkerX) {
         startsOption = true;
-        const m = text.match(cleanMarkerRegex);
-        detectedMarker = m ? m[0].slice(0, 6).trim() : undefined;
-        stripped = m ? (m[m.length - 1] || text).trim() : text;
-      } else if (isAtMarkerX && chunks.length > 0 && chunks.length < 5) {
-        startsOption = true;
+        detectedMarker = markerInfo.rawMarker;
+        stripped = markerInfo.restText;
+      } else if (l.x < 75 && Math.abs(l.x - markerBaseX) <= 8 && chunks.length > 0 && chunks.length < 5) {
         const spaceIdx = text.indexOf(' ');
         if (spaceIdx > 0 && spaceIdx <= 5) {
+          startsOption = true;
           detectedMarker = text.slice(0, spaceIdx).trim();
           stripped = text.slice(spaceIdx + 1).trim();
         } else {
           stripped = text;
         }
-      } else if (l.x >= 75) {
+      } else if (l.x >= 75 || Math.abs(l.x - markerBaseX) > 25) {
         const isTableOptionHeader = /^(?:(?:[Oo0]|Go|OG|GG)\s*[\)\.\:\-–—\|]?\s*)?Classifica[çc][ãa]o\b/i.test(text);
         const isCertoErrado = /^(?:CERTO|ERRADO)\b/i.test(text);
         const prevChunk = chunks.length > 0 ? chunks[chunks.length - 1].text : '';
@@ -419,7 +565,7 @@ export class ExamPDFQuestionSplitter {
         } else {
           let nextMarkerIdx = -1;
           for (let j = i + 1; j < optionLines.length; j++) {
-            if (optionLines[j].x < 75) {
+            if (optionLines[j].x < 75 && Math.abs(optionLines[j].x - markerBaseX) <= 25) {
               nextMarkerIdx = j;
               break;
             }
@@ -469,16 +615,24 @@ export class ExamPDFQuestionSplitter {
 
     for (let idx = 0; idx < filteredChunks.length; idx++) {
       const chunk = filteredChunks[idx];
-      const match = chunk.text.match(cleanMarkerRegex);
       let rawLetter = '';
       let optText = chunk.text;
 
-      if (match) {
-        rawLetter = (match[1] || match[2] || match[3] || match[4] || match[5] || '').toUpperCase();
-        optText = match[match.length - 1]?.trim() || '';
-      } else if (chunk.rawMarker) {
-        const mm = chunk.rawMarker.match(/([A-Ea-e1-6])/);
-        if (mm) rawLetter = mm[1].toUpperCase();
+      if (chunk.rawMarker) {
+        const mm = chunk.rawMarker.match(cleanMarkerRegex);
+        if (mm) {
+          rawLetter = (mm[1] || mm[2] || mm[3] || mm[4] || mm[5] || mm[6] || '').toUpperCase();
+        } else {
+          const mSingle = chunk.rawMarker.match(/([A-Ea-e1-6])/);
+          if (mSingle) rawLetter = mSingle[1].toUpperCase();
+        }
+        optText = chunk.text;
+      } else {
+        const match = chunk.text.match(cleanMarkerRegex);
+        if (match) {
+          rawLetter = (match[1] || match[2] || match[3] || match[4] || match[5] || match[6] || '').toUpperCase();
+          optText = match[match.length - 1]?.trim() || '';
+        }
       }
 
       if (rawLetter.charCodeAt(0) >= 0x24b6 && rawLetter.charCodeAt(0) <= 0x24ba) {
@@ -1004,6 +1158,37 @@ export class ExamPDFQuestionSplitter {
     if (Math.min(leftCount, rightCount) / Math.max(leftCount, rightCount) < 0.35) return null;
     if (centerItems.length > total * 0.2) return null;
 
+    // Verifica se as linhas cruzam o centro da página (indicativo de layout de 1 coluna com parágrafos largos)
+    const sortedY = [...items].sort((a, b) => b.y - a.y);
+    const yGroups: PDFLayoutItem[][] = [];
+    for (const item of sortedY) {
+      if (!item.str || item.str.trim() === '') continue;
+      let placed = false;
+      for (const group of yGroups) {
+        if (Math.abs(group[0].y - item.y) <= 3.5) {
+          group.push(item);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        yGroups.push([item]);
+      }
+    }
+
+    let spanningLinesCount = 0;
+    for (const group of yGroups) {
+      const gMinX = Math.min(...group.map((it) => it.x));
+      const gMaxX = Math.max(...group.map((it) => it.x + (it.width || 0)));
+      if (gMinX < midX - 40 && gMaxX > midX + 40) {
+        spanningLinesCount++;
+      }
+    }
+
+    if (spanningLinesCount >= 3 || (yGroups.length > 0 && spanningLinesCount / yGroups.length > 0.15)) {
+      return null;
+    }
+
     return { midX };
   }
 
@@ -1452,8 +1637,14 @@ export class ExamPDFQuestionSplitter {
       if (/^(?:[Oo0]?\d{1,2}|N|NA|\d{1,2}º)\s+[A-Ea-e]\s+[A-Ea-e]/.test(text)) return true;
     }
     const lower = text.toLowerCase().trim();
+    const noSpaces = lower.replace(/\s+/g, '');
     return (
+      (noSpaces.includes('página') && /\d+(de|\/)\d+/.test(noSpaces)) ||
       (lower.includes('página') && /\d+\s*(de|\/)\s*\d+/.test(lower)) ||
+      lower.includes('cartão resposta') ||
+      lower.includes('cartao resposta') ||
+      noSpaces.includes('cartãoresposta') ||
+      noSpaces.includes('cartaoresposta') ||
       lower.startsWith('processo seletivo') ||
       lower.startsWith('concurso público') ||
       lower.startsWith('folha de prova') ||
@@ -1465,6 +1656,7 @@ export class ExamPDFQuestionSplitter {
       lower.includes('inep - revalida') ||
       lower.includes('enade - ') ||
       lower.includes('100 clinica') ||
+      /^ipsemg\s*-\s*mg/i.test(lower) ||
       /^med\s+way$/i.test(lower) ||
       lower === 'way' ||
       lower === 'med' ||

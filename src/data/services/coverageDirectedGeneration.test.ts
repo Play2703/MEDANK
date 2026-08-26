@@ -132,7 +132,10 @@ NOTAS DE ANATOMIA - TRONCO ENCEFÁLICO
     global.fetch = vi.fn(async (url: any, options: any) => {
       const urlStr = url.toString();
       if (urlStr.includes('/api/generate-questions')) {
-        capturedPayload = JSON.parse(options.body);
+        const payload = JSON.parse(options.body);
+        if (!capturedPayload) {
+          capturedPayload = payload;
+        }
         return {
           ok: true,
           status: 200,
@@ -148,7 +151,14 @@ NOTAS DE ANATOMIA - TRONCO ENCEFÁLICO
           ok: true,
           status: 200,
           json: async () => ({
-            embeddings: [[0.1, 0.2, 0.3]],
+            embeddings: [
+              [1, 0, 0],
+              [0, 1, 0],
+              [0, 0, 1],
+              [0.5, 0.5, 0],
+              [0, 0.5, 0.5],
+              [0.5, 0, 0.5],
+            ],
           }),
         } as any;
       }

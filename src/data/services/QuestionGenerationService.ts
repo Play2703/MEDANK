@@ -290,16 +290,17 @@ async function processRawQuestionsWithSimilarityCheck(
 
         // Recorta customContext para o tópico específico se disponível
         let prunedCustomContext = postPayload.customContext;
-        if (typeof prunedCustomContext === 'string' && prunedCustomContext.length > 1500) {
+        const maxContextChars = REGEN_SINGLE_QUESTION_CONTEXT_TOKENS * 4;
+        if (typeof prunedCustomContext === 'string' && prunedCustomContext.length > maxContextChars) {
           try {
             prunedCustomContext = await extractRelevantContextForTopic(
               prunedCustomContext,
               top,
               spec,
-              1200
+              maxContextChars
             );
           } catch {
-            prunedCustomContext = prunedCustomContext.slice(0, 1200);
+            prunedCustomContext = prunedCustomContext.slice(0, maxContextChars);
           }
         }
 
@@ -328,18 +329,48 @@ async function processRawQuestionsWithSimilarityCheck(
             ];
 
             // TAREFA 1: Payload enxuto com useLightModel: true e context recortado
-            const singlePayload = {
+            const singlePayload: any = {
               ...postPayload,
               quantity: 1,
               topics: [top],
+              subtopics: undefined,
               retrievedChunks: prunedRegenChunks,
+              examReferenceChunks: undefined,
+              coverageAssignments: undefined,
               customContext: prunedCustomContext || undefined,
-              distractorHints: (postPayload.distractorHints || []).slice(0, 3),
+              distractorHints: (postPayload.distractorHints || [])
+                .slice(0, 3)
+                .map((h: any) => ({ label: typeof h === 'string' ? h : h.label || h.text })),
               professorStyleAnalysis: undefined,
               examDNA: undefined,
               useLightModel: true,
               existingQuestionsSummary: formatCompactAntiDuplicationList(antiDuplicationItems, 15),
             };
+
+            // DIAGNÓSTICO: Medição em tokens de cada campo do singlePayload
+            const fieldBreakdown: Record<string, number> = {};
+            for (const key of Object.keys(singlePayload)) {
+              const val = singlePayload[key];
+              if (val !== undefined) {
+                fieldBreakdown[key] = estimateTokenCount(val);
+              }
+            }
+            const totalPayloadTokens = estimateTokenCount(singlePayload);
+            console.log(
+              `[QuestionGenerationService:DIAGNOSTIC] === SIMILARITY REGENERATION PAYLOAD BREAKDOWN (Attempt ${attempt}) ===\n` +
+              `Total singlePayload tokens: ${totalPayloadTokens}\n` +
+              Object.entries(fieldBreakdown)
+                .map(([k, v]) => `  - ${k}: ${v} tokens (${typeof singlePayload[k] === 'object' ? JSON.stringify(singlePayload[k]).length : String(singlePayload[k]).length} chars)`)
+                .join('\n')
+            );
+            if (singlePayload.distractorHints && Array.isArray(singlePayload.distractorHints)) {
+              console.log(
+                `[QuestionGenerationService:DIAGNOSTIC] distractorHints detail (${singlePayload.distractorHints.length} items):\n` +
+                singlePayload.distractorHints.map((h: any, idx: number) =>
+                  `  Hint #${idx + 1}: label="${h.label || h.text}", rationale=${h.rationale ? estimateTokenCount(h.rationale) : 0} tok, fullObj=${estimateTokenCount(h)} tok`
+                ).join('\n')
+              );
+            }
 
             // TAREFA 5: Contabilizar regeneração e tokens extras com tracking de causa
             const estimatedPreCall = estimateTokenCount(singlePayload) + 350;
@@ -363,9 +394,9 @@ async function processRawQuestionsWithSimilarityCheck(
               if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
                 const candidateQ = data.questions[0];
                 const candStatement = candidateQ.statement || '';
-                const candRes = await questionSimilarityEngine.findMaxSimilarity(candStatement, spec, top);
-
                 rejectedStatements.push(candStatement);
+
+                const candRes = await questionSimilarityEngine.findMaxSimilarity(candStatement, spec, top);
 
                 if (candRes.maxSimilarity < bestSim) {
                   bestQ = candidateQ;
@@ -425,13 +456,18 @@ async function processRawQuestionsWithSimilarityCheck(
                   REGEN_SINGLE_QUESTION_CONTEXT_TOKENS
                 );
 
-                const expandedPayload = {
+                const expandedPayload: any = {
                   ...postPayload,
                   quantity: 1,
                   topics: [top],
+                  subtopics: undefined,
                   retrievedChunks: prunedExpandedChunks,
+                  examReferenceChunks: undefined,
+                  coverageAssignments: undefined,
                   customContext: prunedCustomContext || undefined,
-                  distractorHints: (postPayload.distractorHints || []).slice(0, 3),
+                  distractorHints: (postPayload.distractorHints || [])
+                    .slice(0, 3)
+                    .map((h: any) => ({ label: typeof h === 'string' ? h : h.label || h.text })),
                   professorStyleAnalysis: undefined,
                   examDNA: undefined,
                   useLightModel: true,

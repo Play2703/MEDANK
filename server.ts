@@ -720,7 +720,50 @@ DIRETRIZ E MATRIZ DE CONTEÚDO OBRIGATÓRIA — TIPO: MISTURAR
 `;
       }
 
-      const prompt = `Você é um professor titular de Medicina especialista em elaboração de questões de alta qualidade para exames de Residência Médica (REVALIDA, ENARE, USP, UNIFESP, ENAMED).
+      let prompt = "";
+      if (useLightModel) {
+        const typeGuide = questionType === "caso_clinico"
+          ? "CASO CLÍNICO: Enunciado com vinheta clínica progressiva (dados demográficos, queixa, HDA, exame físico/complementares pertinentes e pergunta objetiva de decisão clínica)."
+          : questionType === "conceitual"
+          ? "CONCEITUAL: Pergunta direta e objetiva sobre mecanismo, anatomia ou conceito fundamental, sem vinheta de paciente."
+          : "MÚLTIPLA ESCOLHA: Enunciado claro e objetivo focado em diagnóstico ou conduta.";
+
+        prompt = `Você é um professor titular de Medicina especialista em elaboração de questões para exames de Residência Médica (REVALIDA, ENARE).
+
+${customContextSection ? customContextSection : `=== MATERIAL MÉDICO E CONHECIMENTO DE REFERÊNCIA (RAG) ===\n${contextMaterial}\n=== FIM DO MATERIAL ===`}
+${distractorSection}
+Configurações da Questão:
+- Especialidade: ${specialty} | Tópico: ${topicStr} | Dificuldade: ${difficulty} | Tipo: ${questionType.toUpperCase()}
+- Diretriz de Estrutura: ${typeGuide}
+- Regras: 1 alternativa correta (isCorrect: true) e 3 distratores plausíveis (isCorrect: false). Preencha "commentary" (correta e correlacaoClinica) e "sourceContextExcerpt".
+${existingQuestionsSection}
+Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO contendo um array com 1 única questão:
+[
+  {
+    "statement": "Enunciado completo da questão...",
+    "clinicalContext": "Resumo clínico opcional",
+    "correctAnswerText": "Texto da resposta correta",
+    "correctAnswerExplanation": "Justificativa da resposta correta",
+    "options": [
+      { "letter": "A", "text": "Texto da alternativa A...", "isCorrect": true },
+      { "letter": "B", "text": "Texto do distrator B...", "isCorrect": false, "distractorType": "inversão_função" },
+      { "letter": "C", "text": "Texto do distrator C...", "isCorrect": false, "distractorType": "componente_relacionado" },
+      { "letter": "D", "text": "Texto do distrator D...", "isCorrect": false, "distractorType": "ordem_errada" }
+    ],
+    "commentary": {
+      "correta": "Justificativa embasada nas diretrizes...",
+      "correlacaoClinica": "Síntese prática da conduta."
+    },
+    "sourceContextExcerpt": "Trecho exato do material de estudo que originou esta questão",
+    "specialty": "${specialty}",
+    "topic": "${topicStr}",
+    "difficulty": "${difficulty}",
+    "questionType": "${questionType}"
+  }
+]
+COMANDO DE GERAÇÃO: Crie exatamente 1 questão inédita de múltipla escolha baseada no material acima, sem repetir abordagens anteriores.`;
+      } else {
+        prompt = `Você é um professor titular de Medicina especialista em elaboração de questões de alta qualidade para exames de Residência Médica (REVALIDA, ENARE, USP, UNIFESP, ENAMED).
 
 === MATERIAL MÉDICO E CONHECIMENTO DE REFERÊNCIA (RAG) ===
 ${contextMaterial}
@@ -798,6 +841,7 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
 ${avoidTopicsSection}${customContextSection}${existingQuestionsSection}
 COMANDO DE GERAÇÃO:
 Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas na ${originLabel}, seguindo fielmente todas as 6 regras pedagógicas e o material acima.`;
+      }
 
 
       const selectedModel = (useLightModel && USE_LIGHT_MODEL_FOR_SIMILARITY_REGENERATION)
