@@ -231,7 +231,7 @@ export class ParallelAIService {
           console.log(
             `[ParallelAI:${context}] 🔀 Tentando fallback via Mistral AI (${process.env.MISTRAL_MODEL || "mistral-small-latest"})...`
           );
-          const mistralRes = await callMistral(promptToUse, temperature, context, 7000);
+          const mistralRes = await callMistral(promptToUse, temperature, context, 12000);
           if (mistralRes.text) {
             return this.handleFallbackSuccess(mistralRes, context);
           }
@@ -246,7 +246,7 @@ export class ParallelAIService {
       if (process.env.CEREBRAS_API_KEY) {
         try {
           console.log(
-            `[ParallelAI:${context}] 🔀 Tentando fallback via Cerebras (${process.env.CEREBRAS_MODEL || "llama3.1-8b"})...`
+            `[ParallelAI:${context}] 🔀 Tentando fallback via Cerebras (${process.env.CEREBRAS_MODEL || "gpt-oss-120b"})...`
           );
           const cerebrasRes = await callCerebras(promptToUse, temperature, context, 7000);
           if (cerebrasRes.text) {

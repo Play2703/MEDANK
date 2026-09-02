@@ -9,24 +9,20 @@ function getGatewayConfig() {
     .map((m) => m.trim())
     .filter(Boolean);
 
-  // Sanitiza modelos descontinuados ou restritos a Enterprise no Groq
-  // (ex: groq/llama-3.3-70b-versatile e groq/llama-3.1-8b-instant -> groq/openai/gpt-oss-120b)
-  const sanitizedModels = rawModels.map((m) => {
-    if (
-      m === "groq/llama-3.3-70b-versatile" ||
-      m === "llama-3.3-70b-versatile" ||
-      m === "groq/llama-3.1-8b-instant" ||
-      m === "llama-3.1-8b-instant"
-    ) {
-      return "groq/openai/gpt-oss-120b";
-    }
-    return m;
-  });
+  // Remove modelos groq/* do 9Router (já coberto diretamente e evita 401 da key interna do gateway)
+  const nonGroqModels = rawModels.filter((m) => !m.toLowerCase().startsWith("groq/"));
+  const fallbackModels =
+    nonGroqModels.length > 0
+      ? nonGroqModels
+      : [
+          "mistralai/mistral-small-24b-instruct-2501",
+          "meta-llama/llama-3.3-70b-instruct",
+        ];
 
   return {
     baseUrl: process.env.AI_GATEWAY_BASE_URL || "",
     apiKey: process.env.AI_GATEWAY_API_KEY || "",
-    models: sanitizedModels,
+    models: fallbackModels,
   };
 }
 
@@ -349,7 +345,7 @@ export async function resolveMistralModel(
     const endpoint = `${baseUrl.replace(/\/+$/, "")}/models`;
     const response = await fetch(endpoint, {
       headers: { Authorization: `Bearer ${key}` },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(3000), // Timeout curto de 3s para listagem
     });
 
     if (!response.ok) {
@@ -391,7 +387,7 @@ export async function callMistral(
   prompt: string,
   temperature = 0.2,
   context = "",
-  timeoutMs = 7000
+  timeoutMs = 8000
 ): Promise<GatewayGenerateResult> {
   const apiKey = process.env.MISTRAL_API_KEY || "";
   if (!apiKey) throw new Error("MISTRAL_API_KEY não configurada.");
@@ -420,16 +416,42 @@ export async function callCerebras(
   context = "",
   timeoutMs = 7000
 ): Promise<GatewayGenerateResult> {
-  const apiKey = process.env.CEREBRAS_API_KEY || "";
-  if (!apiKey) throw new Error("CEREBRAS_API_KEY não configurada.");
-  const baseUrl = process.env.CEREBRAS_BASE_URL || "https://api.cerebras.ai/v1";
-  const model = process.env.CEREBRAS_MODEL || "llama3.1-8b";
-  return callOpenAICompatible(
-    { name: "cerebras", baseUrl, apiKey, model, timeoutMs },
-    prompt,
-    temperature,
-    context
+  const rawKey = process.env.CEREBRAS_API_KEY;
+  const apiKey = (rawKey || "").trim();
+  const isKeySet = Boolean(apiKey);
+  const keyLength = apiKey.length;
+  const keyPrefix = isKeySet ? `${apiKey.slice(0, 4)}...` : "N/A";
+
+  console.log(
+    `[Cerebras${context ? `:${context}` : ""}] 🔍 Diagnóstico inicial: CEREBRAS_API_KEY configurada=${isKeySet} (tamanho=${keyLength}, prefixo=${keyPrefix})`
   );
+
+  if (!apiKey) {
+    throw new Error("CEREBRAS_API_KEY não configurada ou vazia no ambiente de execução.");
+  }
+
+  const rawBaseUrl = process.env.CEREBRAS_BASE_URL || "https://api.cerebras.ai/v1";
+  const baseUrl = rawBaseUrl.trim().replace(/\/+$/, "");
+  const model = process.env.CEREBRAS_MODEL || "gpt-oss-120b";
+
+  console.log(
+    `[Cerebras${context ? `:${context}` : ""}] 🚀 Disparando requisição para ${baseUrl}/chat/completions (modelo: ${model})`
+  );
+
+  try {
+    return await callOpenAICompatible(
+      { name: "cerebras", baseUrl, apiKey, model, timeoutMs, maxTokens: 3000 },
+      prompt,
+      temperature,
+      context
+    );
+  } catch (err: any) {
+    console.error(
+      `[Cerebras${context ? `:${context}` : ""}] ❌ Erro detalhado na chamada Cerebras (status=${err.status || err.statusCode || "N/A"}, code=${err.code || "N/A"}):`,
+      err.message || String(err)
+    );
+    throw err;
+  }
 }
 
 export function parseJsonLoose(rawText: string): any {

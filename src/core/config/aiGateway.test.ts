@@ -123,8 +123,8 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
     ).rejects.toThrow(/limite de 200ms atingido/);
   });
 
-  it('deve sanitizar modelo descontinuado groq/llama-3.3-70b-versatile para groq/openai/gpt-oss-120b', async () => {
-    process.env.AI_GATEWAY_MODELS = 'groq/llama-3.3-70b-versatile,mistralai/mistral-small-24b';
+  it('deve filtrar modelos groq do 9Router para não desperdiçar tentativas redundantes', async () => {
+    process.env.AI_GATEWAY_MODELS = 'groq/openai/gpt-oss-120b,mistralai/mistral-small-24b';
 
     let requestedModel = '';
     // @ts-ignore
@@ -144,8 +144,8 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
       prompt: 'Teste sanitização',
     });
 
-    expect(requestedModel).toBe('groq/openai/gpt-oss-120b');
-    expect(result.modelUsed).toBe('groq/openai/gpt-oss-120b');
+    expect(requestedModel).toBe('mistralai/mistral-small-24b');
+    expect(result.modelUsed).toBe('mistralai/mistral-small-24b');
   });
 
   it('callGroq: deve tentar o próximo modelo (openai/gpt-oss-20b) se o primeiro falhar', async () => {

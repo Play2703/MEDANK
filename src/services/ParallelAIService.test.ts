@@ -216,7 +216,7 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     const mockMistral = vi.spyOn(aiGateway, 'callMistral').mockRejectedValue(new Error('Mistral down'));
     const mockCerebras = vi.spyOn(aiGateway, 'callCerebras').mockResolvedValue({
       text: JSON.stringify([{ front: 'Card Cerebras', back: 'Resp Cerebras' }]),
-      modelUsed: 'cerebras/llama3.1-8b',
+      modelUsed: 'cerebras/gpt-oss-120b',
     });
     const mockRouter = vi.spyOn(aiGateway, 'generateWithFallback');
 
@@ -226,7 +226,7 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     });
 
     expect(result.success).toBe(true);
-    expect(result.mainModel).toBe('cerebras/llama3.1-8b');
+    expect(result.mainModel).toBe('cerebras/gpt-oss-120b');
     expect(mockCerebras).toHaveBeenCalled();
     expect(mockRouter).not.toHaveBeenCalled();
 

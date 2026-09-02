@@ -497,8 +497,60 @@ Gere no máximo ${cardCount} flashcards de altíssimo rendimento (High-Yield) ba
 
 const USE_LIGHT_MODEL_FOR_SIMILARITY_REGENERATION = true;
 
+// Semáforo para limitar requisições simultâneas de IA e não estourar TPM do Groq/Mistral sob concorrência
+class AsyncSemaphore {
+  private current = 0;
+  private queue: (() => void)[] = [];
+
+  constructor(private maxConcurrency: number) {}
+
+  async acquire(): Promise<() => void> {
+    if (this.current < this.maxConcurrency) {
+      this.current++;
+      let released = false;
+      return () => {
+        if (!released) {
+          released = true;
+          this.current--;
+          if (this.queue.length > 0) {
+            const next = this.queue.shift();
+            if (next) {
+              this.current++;
+              next();
+            }
+          }
+        }
+      };
+    }
+
+    return new Promise<() => void>((resolve) => {
+      this.queue.push(() => {
+        let released = false;
+        resolve(() => {
+          if (!released) {
+            released = true;
+            this.current--;
+            if (this.queue.length > 0) {
+              const next = this.queue.shift();
+              if (next) {
+                this.current++;
+                next();
+              }
+            }
+          }
+        });
+      });
+    });
+  }
+}
+
+const questionGenerationSemaphore = new AsyncSemaphore(
+  parseInt(process.env.QUESTION_GEN_CONCURRENCY || "2", 10) || 2
+);
+
   // AI Medical Exam Question Generation Endpoint (Fase 33 & 33.5 RAG-Anchored High Quality Exam Questions)
   app.post("/api/generate-questions", async (req, res) => {
+    const releaseSemaphore = await questionGenerationSemaphore.acquire();
     try {
       const {
         retrievedChunks = [],
@@ -945,6 +997,8 @@ Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas 
         error: "Falha ao gerar simulado de questões médicas.",
         details: error.message || String(error),
       });
+    } finally {
+      releaseSemaphore();
     }
   });
 
