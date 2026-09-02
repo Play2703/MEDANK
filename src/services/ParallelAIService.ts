@@ -11,6 +11,7 @@ import {
   callGroq,
   callMistral,
   callCloudflareAI,
+  callCohere,
   validateCloudflareConfig,
   GatewayGenerateResult,
 } from "../core/config/aiGateway";
@@ -31,6 +32,7 @@ export interface ProviderStats {
   groq: number;
   mistral: number;
   cloudflare: number;
+  cohere: number;
   failed: number;
 }
 
@@ -40,6 +42,7 @@ const providerStats: ProviderStats = {
   groq: 0,
   mistral: 0,
   cloudflare: 0,
+  cohere: 0,
   failed: 0,
 };
 
@@ -55,11 +58,12 @@ export function resetProviderStats(): void {
   providerStats.groq = 0;
   providerStats.mistral = 0;
   providerStats.cloudflare = 0;
+  providerStats.cohere = 0;
   providerStats.failed = 0;
   fallbackRoundRobinCounter = 0;
 }
 
-function recordProviderSuccess(providerKey: "gemini" | "groq" | "mistral" | "cloudflare") {
+function recordProviderSuccess(providerKey: "gemini" | "groq" | "mistral" | "cloudflare" | "cohere") {
   providerStats[providerKey]++;
   providerStats.totalRequests++;
   logPeriodicStats();
@@ -74,7 +78,7 @@ function recordProviderFailure() {
 function logPeriodicStats() {
   if (providerStats.totalRequests > 0 && providerStats.totalRequests % 5 === 0) {
     console.log(
-      `[LoadBalancer:Stats] 📊 Distribuição após ${providerStats.totalRequests} requisições -> Gemini: ${providerStats.gemini}, Groq: ${providerStats.groq}, Mistral: ${providerStats.mistral}, Cloudflare: ${providerStats.cloudflare}, Falhas: ${providerStats.failed}`
+      `[LoadBalancer:Stats] 📊 Distribuição após ${providerStats.totalRequests} requisições -> Gemini: ${providerStats.gemini}, Groq: ${providerStats.groq}, Mistral: ${providerStats.mistral}, Cloudflare: ${providerStats.cloudflare}, Cohere: ${providerStats.cohere}, Falhas: ${providerStats.failed}`
     );
   }
 }
@@ -211,7 +215,7 @@ export class ParallelAIService {
    * Executa a geração com Gemini como fonte primária ultra-rápida.
    * Se o Gemini tiver sucesso, enriquece via Validação Local (NER/CID-10/DeCS) em <5ms sem chamar APIs externas.
    * Ordem da cascata em caso de indisponibilidade/cota:
-   * Gemini (com skip inteligente de 429) -> Groq (7s) -> Mistral (12s) -> Cloudflare Workers AI (8s) -> Retorno Rápido de Erro Amigável.
+   * Gemini (com skip inteligente de 429) -> Round-Robin Balanceado [Groq | Mistral | Cloudflare | Cohere] -> Retorno Rápido.
    */
   async executeParallel(
     mainPrompt: string,
@@ -273,7 +277,7 @@ export class ParallelAIService {
         };
       }
 
-      // ══ 2. GEMINI FALHOU/PULOU -> LOAD BALANCER ROUND-ROBIN (GROQ, MISTRAL, CLOUDFLARE) ══
+      // ══ 2. GEMINI FALHOU/PULOU -> LOAD BALANCER ROUND-ROBIN (GROQ, MISTRAL, CLOUDFLARE, COHERE) ══
       console.warn(
         `[ParallelAI:${context}] ⚠️ Gemini indisponível (${geminiResult.error}). Acionando Load Balancer Round-Robin...`
       );
@@ -283,7 +287,7 @@ export class ParallelAIService {
       // Identifica provedores configurados e ativos
       const availableProviders: Array<{
         name: string;
-        key: "groq" | "mistral" | "cloudflare";
+        key: "groq" | "mistral" | "cloudflare" | "cohere";
         execute: () => Promise<GatewayGenerateResult>;
       }> = [];
 
@@ -306,6 +310,13 @@ export class ParallelAIService {
           name: `Cloudflare Workers AI (${process.env.CLOUDFLARE_AI_MODEL || "@cf/openai/gpt-oss-120b"})`,
           key: "cloudflare",
           execute: () => callCloudflareAI(promptToUse, temperature, context, 8000),
+        });
+      }
+      if (process.env.COHERE_API_KEY) {
+        availableProviders.push({
+          name: `Cohere (${process.env.COHERE_MODEL || "command-a-03-2025"})`,
+          key: "cohere",
+          execute: () => callCohere(promptToUse, temperature, context, 8000),
         });
       }
 

@@ -252,4 +252,94 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
     delete process.env.CLOUDFLARE_ACCOUNT_ID;
     delete process.env.CLOUDFLARE_API_TOKEN;
   });
+
+  it('callCohere: deve chamar o endpoint compatível da Cohere com autenticação Bearer e modelo padrão', async () => {
+    process.env.COHERE_API_KEY = 'cohere_test_key';
+
+    let calledUrl = '';
+    let authHeader = '';
+    let requestedModel = '';
+
+    // @ts-ignore
+    global.fetch = vi.fn().mockImplementation(async (url, options) => {
+      calledUrl = String(url);
+      authHeader = options.headers['Authorization'];
+      const body = JSON.parse(options.body);
+      requestedModel = body.model;
+
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          choices: [{ message: { content: '{"cohere":true}' } }],
+        }),
+      };
+    });
+
+    const { callCohere } = await import('./aiGateway');
+    const result = await callCohere('Olá Cohere');
+
+    expect(calledUrl).toBe('https://api.cohere.ai/compatibility/v1/chat/completions');
+    expect(authHeader).toBe('Bearer cohere_test_key');
+    expect(requestedModel).toBe('command-a-03-2025');
+    expect(result.modelUsed).toBe('cohere/command-a-03-2025');
+    expect(result.text).toBe('{"cohere":true}');
+
+    delete process.env.COHERE_API_KEY;
+  });
+
+  it('callCohere: deve tentar próximo modelo quando o primeiro falha (cascata de COHERE_MODELS)', async () => {
+    process.env.COHERE_API_KEY = 'cohere_test_key';
+    process.env.COHERE_MODELS = 'command-a-03-2025,command-r-plus';
+
+    const triedModels: string[] = [];
+
+    // @ts-ignore
+    global.fetch = vi.fn().mockImplementation(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      triedModels.push(body.model);
+
+      if (body.model === 'command-a-03-2025') {
+        return {
+          ok: false,
+          status: 429,
+          text: async () => 'Rate limit exceeded',
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          choices: [{ message: { content: '{"success_fallback":true}' } }],
+        }),
+      };
+    });
+
+    const { callCohere } = await import('./aiGateway');
+    const result = await callCohere('Pergunta cascata Cohere');
+
+    expect(triedModels).toEqual(['command-a-03-2025', 'command-r-plus']);
+    expect(result.modelUsed).toBe('cohere/command-r-plus');
+    expect(result.text).toBe('{"success_fallback":true}');
+
+    delete process.env.COHERE_API_KEY;
+    delete process.env.COHERE_MODELS;
+  });
+
+  it('callCohere: deve lançar erro se todos os modelos falharem', async () => {
+    process.env.COHERE_API_KEY = 'cohere_test_key';
+
+    // @ts-ignore
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => 'Internal Server Error',
+    });
+
+    const { callCohere } = await import('./aiGateway');
+    await expect(callCohere('Pergunta')).rejects.toThrow('todos os modelos disponíveis falharam');
+
+    delete process.env.COHERE_API_KEY;
+  });
 });

@@ -496,6 +496,43 @@ export async function callCloudflareAI(
   }
 }
 
+export async function callCohere(
+  prompt: string,
+  temperature = 0.2,
+  context = "",
+  timeoutMs = 8000,
+  responseFormat: "json_object" | "text" = "json_object"
+): Promise<GatewayGenerateResult> {
+  const apiKey = (process.env.COHERE_API_KEY || "").trim();
+  if (!apiKey) throw new Error("COHERE_API_KEY não configurada.");
+  const baseUrl = process.env.COHERE_BASE_URL || "https://api.cohere.ai/compatibility/v1";
+  const models = (
+    process.env.COHERE_MODELS
+      ? process.env.COHERE_MODELS.split(",").map((m) => m.trim())
+      : [process.env.COHERE_MODEL || "command-a-03-2025"]
+  ).filter(Boolean);
+
+  let lastError: any = null;
+  for (const model of models) {
+    try {
+      return await callOpenAICompatible(
+        { name: "cohere", baseUrl, apiKey, model, timeoutMs, maxTokens: 3000, responseFormat },
+        prompt,
+        temperature,
+        context
+      );
+    } catch (err: any) {
+      lastError = err;
+      console.warn(
+        `[Cohere${context ? `:${context}` : ""}] ⚠️ Modelo "${model}" falhou (${err.status || err.message}). Tentando próximo...`
+      );
+    }
+  }
+  throw new Error(
+    `Cohere: todos os modelos disponíveis falharam. Último erro: ${lastError?.message || lastError}`
+  );
+}
+
 export function parseJsonLoose(rawText: string): any {
   if (!rawText || !rawText.trim()) return null;
   let text = rawText.trim();

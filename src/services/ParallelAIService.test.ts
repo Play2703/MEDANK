@@ -285,13 +285,14 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     mockRouter.mockRestore();
   });
 
-  it('Round-Robin Load Balancer: deve alternar o primeiro provedor tentado entre Groq, Mistral e Cloudflare', async () => {
+  it('Round-Robin Load Balancer: deve alternar o primeiro provedor tentado entre Groq, Mistral, Cloudflare e Cohere', async () => {
     mockGenerateContent.mockRejectedValue({ status: 503, message: 'Gemini down' });
 
     process.env.GROQ_API_KEY = 'groq_key';
     process.env.MISTRAL_API_KEY = 'mistral_key';
     process.env.CLOUDFLARE_ACCOUNT_ID = '1234567890abcdef1234567890abcdef';
     process.env.CLOUDFLARE_API_TOKEN = 'cf_token';
+    process.env.COHERE_API_KEY = 'cohere_key';
 
     const mockGroq = vi.spyOn(aiGateway, 'callGroq').mockResolvedValue({
       text: JSON.stringify([{ front: 'Groq', back: 'Resp' }]),
@@ -304,6 +305,10 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     const mockCF = vi.spyOn(aiGateway, 'callCloudflareAI').mockResolvedValue({
       text: JSON.stringify([{ front: 'CF', back: 'Resp' }]),
       modelUsed: 'cloudflare-ai/@cf/openai/gpt-oss-120b',
+    });
+    const mockCohere = vi.spyOn(aiGateway, 'callCohere').mockResolvedValue({
+      text: JSON.stringify([{ front: 'Cohere', back: 'Resp' }]),
+      modelUsed: 'cohere/command-a-03-2025',
     });
 
     // 1ª Req -> Groq primeiro
@@ -318,19 +323,26 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     const res3 = await service.executeParallel('prompt 3', undefined, { initialDelayMs: 10 });
     expect(res3.mainModel).toBe('cloudflare-ai/@cf/openai/gpt-oss-120b');
 
+    // 4ª Req -> Cohere primeiro
+    const res4 = await service.executeParallel('prompt 4', undefined, { initialDelayMs: 10 });
+    expect(res4.mainModel).toBe('cohere/command-a-03-2025');
+
     const stats = getProviderStats();
-    expect(stats.totalRequests).toBe(3);
+    expect(stats.totalRequests).toBe(4);
     expect(stats.groq).toBe(1);
     expect(stats.mistral).toBe(1);
     expect(stats.cloudflare).toBe(1);
+    expect(stats.cohere).toBe(1);
 
     delete process.env.GROQ_API_KEY;
     delete process.env.MISTRAL_API_KEY;
     delete process.env.CLOUDFLARE_ACCOUNT_ID;
     delete process.env.CLOUDFLARE_API_TOKEN;
+    delete process.env.COHERE_API_KEY;
     mockGroq.mockRestore();
     mockMistral.mockRestore();
     mockCF.mockRestore();
+    mockCohere.mockRestore();
   });
 
   describe('TAREFA 1 & 4 — Validação em Lote Unificado (Opção A)', () => {
