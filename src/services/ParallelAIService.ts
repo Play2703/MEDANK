@@ -178,17 +178,33 @@ export function resetGeminiQuotaCooldown(): void {
 }
 
 export class ParallelAIService {
-  private geminiClient: GoogleGenAI | null = null;
+  private geminiClients: GoogleGenAI[] = [];
+  private currentGeminiKeyIndex = 0;
 
-  private getGeminiClient(): GoogleGenAI {
-    if (!this.geminiClient) {
-      const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("GEMINI_API_KEY não configurada. Defina essa variável no arquivo .env.");
-      }
-      this.geminiClient = new GoogleGenAI({ apiKey });
+  private getGeminiApiKeys(): string[] {
+    const rawKeys = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "";
+    return rawKeys.split(",").map((k) => k.trim()).filter(Boolean);
+  }
+
+  getGeminiClient(keyIndex?: number): GoogleGenAI {
+    const apiKeys = this.getGeminiApiKeys();
+    if (apiKeys.length === 0) {
+      throw new Error("GEMINI_API_KEYS ou GEMINI_API_KEY não configurada. Defina essa variável no arquivo .env.");
     }
-    return this.geminiClient;
+    if (this.geminiClients.length !== apiKeys.length) {
+      this.geminiClients = apiKeys.map((apiKey) => new GoogleGenAI({ apiKey }));
+    }
+    const idx = keyIndex ?? this.currentGeminiKeyIndex;
+    const safeIdx = ((idx % this.geminiClients.length) + this.geminiClients.length) % this.geminiClients.length;
+    return this.geminiClients[safeIdx];
+  }
+
+  getCurrentGeminiKeyIndex(): number {
+    return this.currentGeminiKeyIndex;
+  }
+
+  setCurrentGeminiKeyIndex(index: number): void {
+    this.currentGeminiKeyIndex = index;
   }
 
   /**
@@ -525,84 +541,113 @@ export class ParallelAIService {
       };
     }
 
-    try {
-      const client = this.getGeminiClient();
-      const model = modelOverride || process.env.PRIMARY_AI_MODEL || "gemini-3.6-flash";
+    const apiKeys = this.getGeminiApiKeys();
+    const totalKeys = Math.max(apiKeys.length, 1);
+    let lastError: any = null;
 
-      const r = await retryWithBackoff(
-        async () => {
-          const res = await client.models.generateContent({
-            model,
-            contents: prompt,
-            config: {
-              responseMimeType: "application/json",
-              temperature: temp,
-            },
-          });
+    for (let attempt = 0; attempt < totalKeys; attempt++) {
+      const keyIdx = (this.currentGeminiKeyIndex + attempt) % totalKeys;
+      try {
+        const client = this.getGeminiClient(keyIdx);
+        const model = modelOverride || process.env.PRIMARY_AI_MODEL || "gemini-3.6-flash";
 
-          if (!res.text || !res.text.trim()) {
-            throw new Error(`Gemini (${model}) retornou texto vazio.`);
-          }
+        const r = await retryWithBackoff(
+          async () => {
+            const res = await client.models.generateContent({
+              model,
+              contents: prompt,
+              config: {
+                responseMimeType: "application/json",
+                temperature: temp,
+              },
+            });
 
-          return res;
-        },
-        {
-          maxRetries,
-          initialDelayMs,
-          maxDelayMs: 8000,
-          contextTag: `ParallelAI:Gemini:${context}`,
-          isRetryable: (err) => {
-            // Se o erro for de cota esgotada (429), aborta retries lentos imediatamente
-            if (isGeminiQuotaError(err)) {
-              return false;
+            if (!res.text || !res.text.trim()) {
+              throw new Error(`Gemini (${model}) retornou texto vazio.`);
             }
-            return isRetryableError(err);
+
+            return res;
           },
-        }
-      );
-
-      if (r.usageMetadata) {
-        console.debug(
-          "[TokenUsage]",
-          JSON.stringify({
-            timestamp: new Date().toISOString(),
-            context: `parallel-gemini:${context}`,
-            endpoint: "ParallelAIService.callGemini",
-            model,
-            promptTokenCount: r.usageMetadata.promptTokenCount || 0,
-            candidatesTokenCount: r.usageMetadata.candidatesTokenCount || 0,
-            totalTokenCount: r.usageMetadata.totalTokenCount || 0,
-            cachedContentTokenCount: (r.usageMetadata as any).cachedContentTokenCount || 0,
-          })
-        );
-      }
-
-      const usage = r.usageMetadata
-        ? {
-            promptTokenCount: r.usageMetadata.promptTokenCount || 0,
-            candidatesTokenCount: r.usageMetadata.candidatesTokenCount || 0,
-            totalTokenCount: r.usageMetadata.totalTokenCount || 0,
-            cachedContentTokenCount: (r.usageMetadata as any).cachedContentTokenCount || 0,
+          {
+            maxRetries,
+            initialDelayMs,
+            maxDelayMs: 8000,
+            contextTag: `ParallelAI:Gemini:${context}:key${keyIdx + 1}`,
+            isRetryable: (err) => {
+              // Se o erro for de cota esgotada (429), aborta retries lentos da chave atual imediatamente
+              if (isGeminiQuotaError(err)) {
+                return false;
+              }
+              return isRetryableError(err);
+            },
           }
-        : undefined;
+        );
 
-      return { success: true, text: r.text || "", model, usage };
-    } catch (e: any) {
-      if (isGeminiQuotaError(e)) {
-        const cooldownMs = extractGeminiRetryDelayMs(e, 60);
-        geminiQuotaBlockedUntil = Date.now() + cooldownMs;
-        const cooldownSec = Math.round(cooldownMs / 1000);
-        console.warn(
-          `[ParallelAI:callGemini:${context}] ⚠️ Quota do Gemini esgotada (429 RESOURCE_EXHAUSTED). Ativando cooldown de ${cooldownSec}s para pular chamadas subsequentes.`
-        );
-      } else {
-        console.warn(
-          `[ParallelAI:callGemini:${context}] ⚠️ Falha no Gemini após retries:`,
-          e.message || String(e)
-        );
+        // Fixa a próxima chamada já começando pela chave que funcionou
+        this.currentGeminiKeyIndex = keyIdx;
+
+        if (r.usageMetadata) {
+          console.debug(
+            "[TokenUsage]",
+            JSON.stringify({
+              timestamp: new Date().toISOString(),
+              context: `parallel-gemini:${context}`,
+              endpoint: "ParallelAIService.callGemini",
+              model,
+              promptTokenCount: r.usageMetadata.promptTokenCount || 0,
+              candidatesTokenCount: r.usageMetadata.candidatesTokenCount || 0,
+              totalTokenCount: r.usageMetadata.totalTokenCount || 0,
+              cachedContentTokenCount: (r.usageMetadata as any).cachedContentTokenCount || 0,
+            })
+          );
+        }
+
+        const usage = r.usageMetadata
+          ? {
+              promptTokenCount: r.usageMetadata.promptTokenCount || 0,
+              candidatesTokenCount: r.usageMetadata.candidatesTokenCount || 0,
+              totalTokenCount: r.usageMetadata.totalTokenCount || 0,
+              cachedContentTokenCount: (r.usageMetadata as any).cachedContentTokenCount || 0,
+            }
+          : undefined;
+
+        return { success: true, text: r.text || "", model, usage };
+      } catch (e: any) {
+        lastError = e;
+        if (isGeminiQuotaError(e) && attempt < totalKeys - 1) {
+          console.warn(
+            `[ParallelAI:callGemini:${context}] Chave ${keyIdx + 1}/${totalKeys} atingiu cota, rotacionando para a próxima...`
+          );
+          continue; // tenta a próxima chave, SEM ativar cooldown ainda
+        }
+
+        // Se o erro NÃO for de cota, aborta as tentativas de chave adicionais
+        if (!isGeminiQuotaError(e)) {
+          console.warn(
+            `[ParallelAI:callGemini:${context}] ⚠️ Falha no Gemini após retries:`,
+            e.message || String(e)
+          );
+          return { success: false, text: "", model: "gemini", error: e.message || String(e) };
+        }
       }
-      return { success: false, text: "", model: "gemini", error: e.message || String(e) };
     }
+
+    // Só ativa o cooldown global depois que TODAS as chaves da lista falharem por erro de cota
+    if (isGeminiQuotaError(lastError)) {
+      const cooldownMs = extractGeminiRetryDelayMs(lastError, 60);
+      geminiQuotaBlockedUntil = Date.now() + cooldownMs;
+      const cooldownSec = Math.round(cooldownMs / 1000);
+      console.warn(
+        `[ParallelAI:callGemini:${context}] ⚠️ Todas as ${totalKeys} chaves do Gemini esgotaram cota (429 RESOURCE_EXHAUSTED). Ativando cooldown de ${cooldownSec}s para pular chamadas subsequentes.`
+      );
+    }
+
+    return {
+      success: false,
+      text: "",
+      model: "gemini",
+      error: lastError?.message || String(lastError || "Falha em todas as chaves Gemini"),
+    };
   }
 
   private handleFallbackSuccess(

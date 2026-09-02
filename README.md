@@ -15,7 +15,7 @@ View your app in AI Studio: https://ai.studio/apps/0db7e3d0-924f-47ca-b1dc-9fd2f
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Set `GEMINI_API_KEYS` (or `GEMINI_API_KEY`) in `.env` to your Gemini API key(s). Se usar múltiplas chaves separadas por vírgula (`GEMINI_API_KEYS="chave1,chave2,chave3"`), o backend fará rotação automática entre elas antes de acionar o circuit breaker de cota (429). `GEMINI_API_KEYS` tem prioridade sobre `GEMINI_API_KEY` quando ambas estiverem definidas.
 3. Run the app:
    `npm run dev`
 

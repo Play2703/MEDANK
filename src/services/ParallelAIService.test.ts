@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ParallelAIService, resetGeminiQuotaCooldown, resetProviderStats, getProviderStats } from './ParallelAIService';
+import {
+  ParallelAIService,
+  resetGeminiQuotaCooldown,
+  getGeminiQuotaCooldownUntil,
+  resetProviderStats,
+  getProviderStats,
+} from './ParallelAIService';
 import * as aiGateway from '../core/config/aiGateway';
 
 describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validação Local)', () => {
@@ -133,6 +139,119 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
 
     delete process.env.GROQ_API_KEY;
     mockGroq.mockRestore();
+  });
+
+  it('Multi-Keys Gemini: quando chave 1 atinge cota 429, rotaciona para chave 2 com sucesso sem ativar cooldown global', async () => {
+    process.env.GEMINI_API_KEYS = 'secret_key_1,secret_key_2,secret_key_3';
+    delete process.env.GEMINI_API_KEY;
+
+    const mockGen1 = vi.fn().mockRejectedValue({
+      status: 429,
+      message: 'Resource has been exhausted (quota limit reached).',
+    });
+    const mockGen2 = vi.fn().mockResolvedValue({
+      text: JSON.stringify([{ front: 'Card Key 2', back: 'Resp Key 2' }]),
+      usageMetadata: { promptTokenCount: 15, candidatesTokenCount: 25, totalTokenCount: 40 },
+    });
+    const mockGen3 = vi.fn();
+
+    const clientMap: Record<number, any> = {
+      0: { models: { generateContent: mockGen1 } },
+      1: { models: { generateContent: mockGen2 } },
+      2: { models: { generateContent: mockGen3 } },
+    };
+
+    // @ts-ignore
+    service.getGeminiClient = vi.fn().mockImplementation((keyIdx?: number) => {
+      const idx = keyIdx ?? service.getCurrentGeminiKeyIndex();
+      return clientMap[idx];
+    });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await service.executeParallel('prompt multi key', undefined, {
+      context: 'test-multi-key-success',
+      initialDelayMs: 10,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.mainModel).toContain('gemini');
+    expect(mockGen1).toHaveBeenCalledTimes(1);
+    expect(mockGen2).toHaveBeenCalledTimes(1);
+    expect(mockGen3).not.toHaveBeenCalled();
+
+    // Confirma que o cooldown global NÃO foi ativado
+    expect(getGeminiQuotaCooldownUntil()).toBeLessThanOrEqual(Date.now());
+
+    // Confirma que o índice atual do Gemini ficou na chave 2 (índice 1)
+    expect(service.getCurrentGeminiKeyIndex()).toBe(1);
+
+    // Confirma que nenhuma chave secreta foi vazada nos logs, apenas índices
+    const warnCalls = warnSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(warnCalls).toContain('Chave 1/3 atingiu cota, rotacionando para a próxima');
+    expect(warnCalls).not.toContain('secret_key_1');
+    expect(warnCalls).not.toContain('secret_key_2');
+
+    warnSpy.mockRestore();
+    delete process.env.GEMINI_API_KEYS;
+    process.env.GEMINI_API_KEY = 'test_key';
+  });
+
+  it('Multi-Keys Gemini: quando TODAS as chaves atingem cota 429, ativa cooldown global e dispara fallback', async () => {
+    process.env.GEMINI_API_KEYS = 'secret_key_1,secret_key_2,secret_key_3';
+    process.env.GROQ_API_KEY = 'groq_test_key';
+    delete process.env.GEMINI_API_KEY;
+
+    const mockGen1 = vi.fn().mockRejectedValue({ status: 429, message: 'Resource exhausted 429' });
+    const mockGen2 = vi.fn().mockRejectedValue({ status: 429, message: 'Resource exhausted 429' });
+    const mockGen3 = vi.fn().mockRejectedValue({ status: 429, message: 'Resource exhausted 429' });
+
+    const clientMap: Record<number, any> = {
+      0: { models: { generateContent: mockGen1 } },
+      1: { models: { generateContent: mockGen2 } },
+      2: { models: { generateContent: mockGen3 } },
+    };
+
+    // @ts-ignore
+    service.getGeminiClient = vi.fn().mockImplementation((keyIdx?: number) => {
+      const idx = keyIdx ?? service.getCurrentGeminiKeyIndex();
+      return clientMap[idx];
+    });
+
+    const mockGroq = vi.spyOn(aiGateway, 'callGroq').mockResolvedValue({
+      text: JSON.stringify([{ front: 'Card Groq Multi', back: 'Resp Groq Multi' }]),
+      modelUsed: 'groq/openai/gpt-oss-120b',
+    });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await service.executeParallel('prompt all keys fail', undefined, {
+      context: 'test-multi-key-all-fail',
+      initialDelayMs: 10,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.mainModel).toBe('groq/openai/gpt-oss-120b');
+    expect(mockGen1).toHaveBeenCalledTimes(1);
+    expect(mockGen2).toHaveBeenCalledTimes(1);
+    expect(mockGen3).toHaveBeenCalledTimes(1);
+    expect(mockGroq).toHaveBeenCalledTimes(1);
+
+    // Confirma que o cooldown global FOI ativado após todas falharem
+    expect(getGeminiQuotaCooldownUntil()).toBeGreaterThan(Date.now());
+
+    // Confirma que nos logs só constam índices e nunca chaves secretas
+    const warnCalls = warnSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(warnCalls).toContain('Todas as 3 chaves do Gemini esgotaram cota');
+    expect(warnCalls).not.toContain('secret_key_1');
+    expect(warnCalls).not.toContain('secret_key_2');
+    expect(warnCalls).not.toContain('secret_key_3');
+
+    warnSpy.mockRestore();
+    mockGroq.mockRestore();
+    delete process.env.GEMINI_API_KEYS;
+    delete process.env.GROQ_API_KEY;
+    process.env.GEMINI_API_KEY = 'test_key';
   });
 
   it('Fallback Cascata: Gemini falha -> Groq falha -> Mistral responde com sucesso', async () => {
