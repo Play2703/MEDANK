@@ -1154,6 +1154,30 @@ export class QuestionGenerationService {
       rem -= current;
     }
 
+    // PASSO 1 & 2: Mapeia as unidades de cobertura para a quantidade TOTAL de questões ANTES do batching
+    let allCoverageAssignments: CoverageAssignment[] = [];
+    if (coverageUnits.length > 0 && aiQuantityToGenerate > 0) {
+      const { assignments } = assignCoverageUnitsToQuestions(coverageUnits, aiQuantityToGenerate);
+      allCoverageAssignments = assignments;
+    }
+
+    // Prepara as fatias contíguas de assignments por lote para evitar sobreposição entre lotes
+    let currentAssignmentOffset = 0;
+    const batchCoverageMap: CoverageAssignment[][] = [];
+    for (const batchQty of batchQuantities) {
+      const batchSlice = allCoverageAssignments.slice(
+        currentAssignmentOffset,
+        currentAssignmentOffset + batchQty
+      );
+      // Re-indexa questionIndex para 0..batchQty-1 para cada requisição individual ao servidor
+      const reindexedSlice = batchSlice.map((a, idx) => ({
+        ...a,
+        questionIndex: idx,
+      }));
+      batchCoverageMap.push(reindexedSlice);
+      currentAssignmentOffset += batchQty;
+    }
+
     const allRawQuestions: any[] = [];
     const saturatedTopics = new Set<string>();
     const regenStatsTracker = createSimilarityRegenStatsTracker();
@@ -1205,11 +1229,7 @@ export class QuestionGenerationService {
         adaptationPromptBlockForThisBatch = formatAdaptationPromptBlock(adaptationCandidates[candidateIdx]);
       }
 
-      let batchCoverageAssignments: CoverageAssignment[] = [];
-      if (coverageUnits.length > 0) {
-        const { assignments } = assignCoverageUnitsToQuestions(coverageUnits, batchQty);
-        batchCoverageAssignments = assignments;
-      }
+      const batchCoverageAssignments: CoverageAssignment[] = batchCoverageMap[batchIdx] || [];
 
       // TAREFA 4: Consulta em tempo real os enunciados já gerados pelos lotes paralelos
       const liveAntiDuplication = sharedGeneratedStatements.length > 0

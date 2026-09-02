@@ -211,4 +211,84 @@ NOTAS DE ANATOMIA - TRONCO ENCEFÁLICO
 
     global.fetch = originalFetch;
   });
+
+  it('REGRESSÃO: divisão em lotes (batching) deve alocar fatias contíguas de unidades de cobertura sem sobreposição', async () => {
+    // 15 unidades de cobertura distintas
+    const fifteenUnitsContext = Array.from({ length: 15 }, (_, i) => `${i + 1}. Tópico Médico ${i + 1}: Fisiopatologia e conduta específica do tema ${i + 1} com detalhes clínicos relevantes para a questão.`).join('\n\n');
+
+    const capturedBatchPayloads: any[] = [];
+    const originalFetch = global.fetch;
+
+    global.fetch = vi.fn(async (url: any, options: any) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('/api/generate-questions')) {
+        const payload = JSON.parse(options.body);
+        capturedBatchPayloads.push(payload);
+        const batchQty = payload.quantity || 5;
+        const fakeQuestions = Array.from({ length: batchQty }, (_, i) => ({
+          statement: `Questão ${i + 1} do lote ${capturedBatchPayloads.length}`,
+          correctAnswerText: `Resposta ${i + 1}`,
+          correctAnswerExplanation: `Explicação ${i + 1}`,
+          sourceContextExcerpt: `Tópico ${i + 1}`,
+          coverageUnitId: payload.coverageAssignments?.[i]?.unitId || `unit-${i + 1}`,
+          commentary: {
+            correta: 'Correta',
+            porOpcao: { A: 'A', B: 'B', C: 'C', D: 'D' },
+          },
+        }));
+
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            questions: fakeQuestions,
+            mainModel: 'test-model',
+          }),
+        } as any;
+      }
+      return { ok: true, status: 200, json: async () => ({}) } as any;
+    });
+
+    const request: QuestionGenerationRequest = {
+      id: 'req-batching-10',
+      mode: 'geral',
+      configuration: {
+        specialty: 'Clínica Médica',
+        topics: ['Geral'],
+        quantity: 10, // 2 lotes de 5 questões
+        difficulty: 'media',
+        questionType: 'conceitual',
+        customContext: fifteenUnitsContext,
+        strictCustomContextOnly: true,
+        includeCommentary: true,
+        showReferences: false,
+        autoGenerateFlashcards: false,
+      },
+      createdAt: new Date().toISOString(),
+    };
+
+    const service = new QuestionGenerationService();
+    const result = await service.generateQuestions(request);
+
+    expect(capturedBatchPayloads.length).toBe(2);
+    expect(result.questionSet.questions).toHaveLength(10);
+
+    const batch0UnitIds = capturedBatchPayloads[0].coverageAssignments.map((a: any) => a.unitId);
+    const batch1UnitIds = capturedBatchPayloads[1].coverageAssignments.map((a: any) => a.unitId);
+
+    // Cada lote deve receber 5 unidades
+    expect(batch0UnitIds).toHaveLength(5);
+    expect(batch1UnitIds).toHaveLength(5);
+
+    // Os dois lotes NÃO podem receber o mesmo conjunto de unidades (interseção vazia)
+    const intersection = batch0UnitIds.filter((id: string) => batch1UnitIds.includes(id));
+    expect(intersection).toHaveLength(0);
+
+    // A união dos IDs deve ter cardinalidade 10 (10 tópicos únicos cobertos)
+    const allAssignedUnitIds = new Set([...batch0UnitIds, ...batch1UnitIds]);
+    expect(allAssignedUnitIds.size).toBe(10);
+
+    global.fetch = originalFetch;
+  });
 });
