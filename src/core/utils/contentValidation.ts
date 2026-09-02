@@ -104,7 +104,7 @@ export function isValidGeneratedQuestion(q: any): boolean {
     }
     // Se tiver options também, valida as options
     if (Array.isArray(q.options) && q.options.length > 0) {
-      if (q.options.length !== 4) return false;
+      if (q.options.length !== 4 && q.options.length !== 5) return false;
       for (const opt of q.options) {
         if (!opt || typeof opt !== 'object' || !isValidOptionText(opt.text)) {
           return false;
@@ -114,8 +114,8 @@ export function isValidGeneratedQuestion(q: any): boolean {
     return true;
   }
 
-  // 2. options must be an array of length 4 (formato legado)
-  if (!Array.isArray(q.options) || q.options.length !== 4) {
+  // 2. options must be an array of length 4 ou 5 (formato padrão A-D / A-E)
+  if (!Array.isArray(q.options) || (q.options.length !== 4 && q.options.length !== 5)) {
     return false;
   }
 

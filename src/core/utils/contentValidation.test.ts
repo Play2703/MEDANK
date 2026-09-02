@@ -134,6 +134,56 @@ describe('contentValidation', () => {
       expect(isValidGeneratedQuestion(qWithLetter)).toBe(true);
     });
 
+    it('deve retornar true para questões com 5 alternativas (formato A-E)', () => {
+      const qWith5Options = {
+        ...validQuestion,
+        options: [
+          ...validQuestion.options,
+          { letter: 'E', text: 'Encaminhar ao especialista', isCorrect: false },
+        ],
+      };
+      expect(isValidGeneratedQuestion(qWith5Options)).toBe(true);
+    });
+
+    it('deve aceitar questões do tipo asserção combinada com assertionItems e combinações nas opções', () => {
+      const assercaoQuestion = {
+        statement: 'Acerca da fisiopatologia e manejo do choque circulatório, analise as afirmativas a seguir:',
+        assertionItems: [
+          { numeral: 'I', text: 'O choque séptico caracteriza-se por vasodilatação sistêmica e redução da resistência vascular periférica.' },
+          { numeral: 'II', text: 'A reposição volêmica inicial recomendada no choque séptico é de 30 mL/kg de cristaloides.' },
+          { numeral: 'III', text: 'A noradrenalina é o vasopressor de primeira linha na falha de resposta à ressuscitação volêmica.' },
+          { numeral: 'IV', text: 'Os corticoides em altas doses são indicados rotineiramente a todos os pacientes com sepse.' },
+        ],
+        options: [
+          { letter: 'A', text: 'Apenas os itens I e II estão corretos', isCorrect: false },
+          { letter: 'B', text: 'Apenas os itens I, II e III estão corretos', isCorrect: true },
+          { letter: 'C', text: 'Apenas os itens II e IV estão corretos', isCorrect: false },
+          { letter: 'D', text: 'Todos os itens estão corretos', isCorrect: false },
+        ],
+        commentary: {
+          correta: 'Os itens I, II e III são verdadeiros de acordo com as diretrizes do Surviving Sepsis Campaign. O item IV é falso pois corticoides não são indicados rotineiramente em altas doses.',
+          porItem: {
+            I: 'Verdadeiro: o perfil hemodinâmico distributivo cursa com queda de RVP.',
+            II: 'Verdadeiro: 30 mL/kg de cristaloides nas primeiras 3 horas.',
+            III: 'Verdadeiro: noradrenalina é o vasopressor de 1ª linha.',
+            IV: 'Falso: hidrocortisona apenas na sepse refratária a vasopressores.',
+          },
+          porOpcao: {
+            A: 'Incorreta: o item III também é verdadeiro.',
+            B: 'Correta: apenas I, II e III são verdadeiros.',
+            C: 'Incorreta: o item IV é falso.',
+            D: 'Incorreta: o item IV é incorreto.',
+          },
+        },
+      };
+      expect(isValidGeneratedQuestion(assercaoQuestion)).toBe(true);
+    });
+
+    it('deve retornar false se options não tiver 4 ou 5 itens', () => {
+      expect(isValidGeneratedQuestion({ ...validQuestion, options: validQuestion.options.slice(0, 3) })).toBe(false);
+      expect(isValidGeneratedQuestion({ ...validQuestion, options: [...validQuestion.options, { letter: 'E', text: 'Opt E', isCorrect: false }, { letter: 'F', text: 'Opt F', isCorrect: false }] })).toBe(false);
+    });
+
     it('deve retornar false se o commentary estiver vazio ou ausente', () => {
       expect(isValidGeneratedQuestion({ ...validQuestion, commentary: '' })).toBe(false);
     });

@@ -636,8 +636,11 @@ async function replaceInvalidQuestionsDeficit(
               __needsReview: matchedValidation?.status === 'low_anchoring',
             };
           });
+          const repRetrievedChunksText = Array.isArray(postPayload.retrievedChunks)
+            ? postPayload.retrievedChunks.map((c: any) => c.text || c.content || (typeof c === 'string' ? c : '')).join(' ')
+            : undefined;
           let replacementValid = repWithReview.filter(
-            (q: any) => isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, postPayload.customContext)
+            (q: any) => isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, postPayload.customContext, repRetrievedChunksText)
           );
           if (replacementValid.length > 0) {
             replacementValid = await processRawQuestionsWithSimilarityCheck(
@@ -651,7 +654,7 @@ async function replaceInvalidQuestionsDeficit(
               sharedGeneratedStatements
             );
             replacementValid = replacementValid.filter(
-              (q: any) => isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, postPayload.customContext)
+              (q: any) => isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, postPayload.customContext, repRetrievedChunksText)
             );
           }
           console.warn(
@@ -715,7 +718,14 @@ export function calculateAutoTopicDistribution(totalQuantity: number, topics: st
  * Deterministic N-Gram Word Overlap Algorithm
  */
 export function findLongestConsecutiveWordOverlap(text1: string, text2: string): { maxOverlapLength: number; matchingSequence: string } {
-  const normalize = (t: string) => t.toLowerCase().replace(/[^\w\s]/gi, ' ').split(/\s+/).filter(Boolean);
+  const normalize = (t: string) =>
+    (t || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/gi, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 1);
   const words1 = normalize(text1);
   const words2 = normalize(text2);
 
@@ -744,12 +754,18 @@ export function findLongestConsecutiveWordOverlap(text1: string, text2: string):
 /**
  * Validação de ancoragem estrita no texto-fonte / customContext (Grounding Check pós-geração)
  */
-export function isQuestionGroundedInCustomContext(q: any, customContext?: string): boolean {
+export function isQuestionGroundedInCustomContext(
+  q: any,
+  customContext?: string,
+  retrievedChunksText?: string
+): boolean {
   if (!customContext || typeof customContext !== 'string' || customContext.trim().length < 30) {
-    return true; // Sem customContext relevante, não aplica restrição
+    return true; // Sem customContext relevante (sem nota do usuário), não aplica restrição
   }
 
-  const normContext = customContext
+  // Validar contra AMBAS as fontes combinadas (nota + acervo), não só a nota isolada
+  const combinedSourceContext = [customContext, retrievedChunksText].filter(Boolean).join(' ');
+  const normContext = combinedSourceContext
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
@@ -790,7 +806,7 @@ export function isQuestionGroundedInCustomContext(q: any, customContext?: string
   }
 
   const matchRatio = matchedWords / words.length;
-  const overlap = findLongestConsecutiveWordOverlap(statement, customContext);
+  const overlap = findLongestConsecutiveWordOverlap(statement, combinedSourceContext);
 
   if (matchedWords < 2 && overlap.maxOverlapLength < 2 && matchRatio < 0.15) {
     console.warn(
@@ -1382,8 +1398,12 @@ export class QuestionGenerationService {
     let overallMaxWordOverlap = finalOverlap.maxLen;
     let overallMatchingSeq = finalOverlap.seq;
 
+    const directRetrievedChunksText = Array.isArray(retrievedChunks)
+      ? retrievedChunks.map((c: any) => c.text || c.content || (typeof c === 'string' ? c : '')).join(' ')
+      : undefined;
+
     let validRawQuestions = allRawQuestions.filter((q) =>
-      isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, config.customContext)
+      isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, config.customContext, directRetrievedChunksText)
     );
     if (validRawQuestions.length < quantity) {
       console.warn(
@@ -1445,6 +1465,7 @@ export class QuestionGenerationService {
           setId,
           statement: statementStr,
           clinicalContext: q.clinicalContext || undefined,
+          assertionItems: Array.isArray(q.assertionItems) ? q.assertionItems : undefined,
           options,
           correctOptionId: correctOpt.id,
           commentary: q.commentary || 'Sem comentário fornecido.',
@@ -1955,8 +1976,12 @@ export class QuestionGenerationService {
           sharedGeneratedStatements
         );
 
+        const distRetrievedChunksText = Array.isArray(retrievedChunks)
+          ? retrievedChunks.map((c: any) => c.text || c.content || (typeof c === 'string' ? c : '')).join(' ')
+          : undefined;
+
         let validRawQuestions = rawQuestions.filter((q) =>
-          isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, topicContext || config.customContext)
+          isValidGeneratedQuestion(q) && isQuestionGroundedInCustomContext(q, topicContext || config.customContext, distRetrievedChunksText)
         );
         if (validRawQuestions.length < countForThisTopic) {
           console.warn(
@@ -2045,6 +2070,7 @@ export class QuestionGenerationService {
           setId,
           statement: statementStr,
           clinicalContext: q.clinicalContext || undefined,
+          assertionItems: Array.isArray(q.assertionItems) ? q.assertionItems : undefined,
           options,
           correctOptionId: correctOpt.id,
           commentary: q.commentary || 'Sem comentário fornecido.',

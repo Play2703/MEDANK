@@ -6,7 +6,7 @@ export type DistributionMode = 'interdisciplinar' | 'distribuido';
 
 export type QuestionDifficulty = 'facil' | 'media' | 'dificil' | 'misturar';
 
-export type QuestionType = 'conceitual' | 'caso_clinico' | 'multipla_escolha' | 'misturar';
+export type QuestionType = 'conceitual' | 'caso_clinico' | 'multipla_escolha' | 'assercao_combinada' | 'misturar';
 
 export interface QuestionConfiguration {
   specialty: string;                 // Especialidade principal ou primeira selecionada
@@ -176,6 +176,7 @@ export interface ProfessorProfile {
 export interface StructuredCommentary {
   correta: string;                  // por que a alternativa correta está certa
   porOpcao: Record<string, string>; // uma explicação por CADA alternativa (ex: { "A": "...", "B": "..." })
+  porItem?: Record<string, string>; // explicação por CADA item (ex: { "I": "...", "II": "..." })
   correlacaoClinica?: string;       // resumo de correlação clínica
 }
 
@@ -210,6 +211,7 @@ export interface Question {
   setId: string;
   statement: string;
   clinicalContext?: string;
+  assertionItems?: { numeral: string; text: string }[]; // Ex: [{numeral: "I", text: "..."}]
   options: QuestionOption[];
   correctOptionId: string;
   commentary: QuestionCommentary;

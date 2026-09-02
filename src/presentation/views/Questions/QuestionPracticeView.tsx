@@ -215,6 +215,20 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
             {currentQuestion.statement}
           </p>
 
+          {/* Assertion Items (for assercao_combinada questions) */}
+          {currentQuestion.assertionItems && currentQuestion.assertionItems.length > 0 && (
+            <div className="space-y-2 py-3 px-4 rounded-2xl bg-white/[0.04] border border-white/10">
+              {currentQuestion.assertionItems.map((item, idx) => (
+                <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm">
+                  <span className="font-bold text-indigo-400 shrink-0 min-w-[24px]">
+                    {item.numeral.endsWith('.') ? item.numeral : `${item.numeral}.`}
+                  </span>
+                  <span className="text-slate-200 leading-relaxed">{item.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {currentQuestion.flaggedSimilar && (
             <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
@@ -312,7 +326,26 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
                       </div>
                     )}
 
-                    {/* 2. Lista de alternativas incorretas */}
+                    {/* 2. Análise por Item (se presente em asserção combinada) */}
+                    {comm.porItem && Object.keys(comm.porItem).length > 0 && (
+                      <div className="space-y-2 pt-1 border-t border-white/10">
+                        <span className="font-bold text-amber-300 block text-xs uppercase tracking-wider">
+                          Análise Individual dos Itens:
+                        </span>
+                        <ul className="space-y-2 pl-0.5">
+                          {Object.entries(comm.porItem).map(([itemNumeral, itemExp]) => (
+                            <li key={itemNumeral} className="flex items-start gap-2.5">
+                              <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold text-xs shrink-0 mt-0.5">
+                                {itemNumeral}
+                              </span>
+                              <span className="opacity-90">{itemExp}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 3. Lista de alternativas incorretas */}
                     {incorrectOptions.length > 0 && (
                       <div className="space-y-2 pt-1 border-t border-white/10">
                         <span className="font-bold text-rose-300 block text-xs uppercase tracking-wider">
@@ -335,7 +368,7 @@ export const QuestionPracticeView: React.FC<QuestionPracticeViewProps> = ({ onBa
                       </div>
                     )}
 
-                    {/* 3. Correlação Clínica */}
+                    {/* 4. Correlação Clínica */}
                     {comm.correlacaoClinica && (
                       <div className="p-3 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-start gap-2.5">
                         <Stethoscope className="w-4 h-4 text-indigo-300 shrink-0 mt-0.5" />

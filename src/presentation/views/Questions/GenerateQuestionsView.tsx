@@ -1279,6 +1279,7 @@ export const GenerateQuestionsView: React.FC<GenerateQuestionsViewProps> = ({
               <option value="caso_clinico">Caso Clínico</option>
               <option value="conceitual">Conceitual Puro</option>
               <option value="multipla_escolha">Múltipla Escolha Curta</option>
+              <option value="assercao_combinada">Asserção Combinada (Itens I, II, III...)</option>
               <option value="misturar">Misturar Todos</option>
             </select>
           </div>

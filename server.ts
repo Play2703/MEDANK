@@ -691,10 +691,27 @@ DIRETRIZ E MATRIZ DE CONTEÚDO OBRIGATÓRIA — TIPO: CONCEITUAL
 DIRETRIZ E MATRIZ DE CONTEÚDO OBRIGATÓRIA — TIPO: CASO CLÍNICO
 ═══════════════════════════════════════════════════════════════════════════════
 - ESTRUTURA DO ENUNCIADO: OBRIGATÓRIO seguir vinheta clínica progressiva com paciente fictício:
-  • Dados demográficos fictícios realistas (idade, sexo, ocupação, etnia) → Queixa Principal → História da Doença Atual (HDA) → Antecedentes/Medicamentos → Exame Físico (achados pertinentes) → Exames Complementares (valores específicos) → Pergunta Objetiva de Tomada de Decisão.
-- INCLUIR: Vinheta clínica progressiva (anamnese completa), dados demográficos realistas, exame físico com achados e exames complementares com valores específicos.
-- OMITIR: Perguntas puramente conceituais sem anamnese e excesso de dados irrelevantes.
-- COMENTÁRIO: OBRIGATÓRIO objeto JSON estruturado contendo "correta" (justificativa completa), "porOpcao" (A, B, C, D) e "correlacaoClinica" (síntese prática da conduta e diretriz).
+  • Dados demográficos fictícios realistas e VARIADOS entre as questões do lote (idade, sexo, 
+    ocupação, etnia, comorbidades de base) → Queixa Principal → História da Doença Atual (HDA, 
+    com cronologia clara: início, evolução, fatores de piora/melhora) → Antecedentes Pessoais/
+    Medicações em Uso → Exame Físico (sinais vitais + achados pertinentes, positivos E 
+    negativos relevantes) → Exames Complementares (quando pertinente ao raciocínio, incluir 
+    VALORES NUMÉRICOS ESPECÍFICOS com unidade, não só "exame alterado") → Pergunta Objetiva de 
+    Tomada de Decisão.
+  • VARIEDADE DE DESFECHO: alterne entre perguntas pedindo diagnóstico, conduta imediata, 
+    próximo exame a solicitar, interpretação de exame já apresentado, e reconhecimento de 
+    erro/contraindicação — não repita sempre "qual a conduta" em todas as questões do lote.
+  • Quando o tópico permitir dado laboratorial relevante pro raciocínio (função renal, 
+    eletrólitos, gasometria, hemograma, etc.), APRESENTAR como pequena tabela ou lista com 
+    valor + unidade + faixa de referência, não só descrever em prosa.
+- INCLUIR: Vinheta clínica progressiva completa, dados demográficos realistas e variados, exame 
+  físico com achados específicos, exames complementares com valores concretos quando aplicável.
+- OMITIR: Perguntas puramente conceituais sem anamnese, repetição do mesmo padrão demográfico/
+  desfecho em todas as questões do mesmo lote, dados irrelevantes que não mudam o raciocínio.
+- COMENTÁRIO: OBRIGATÓRIO objeto JSON estruturado contendo "correta" (justificativa completa 
+  citando o(s) achado(s) do caso que sustentam a resposta), "porOpcao" (por que cada alternativa 
+  está certa ou errada, referenciando o caso) e "correlacaoClinica" (síntese prática da conduta 
+  e diretriz, incluindo quando pertinente qual diretriz/guideline embasa a resposta).
 `;
       } else if (questionType === "multipla_escolha") {
         questionTypeSection = `
@@ -707,25 +724,61 @@ DIRETRIZ E MATRIZ DE CONTEÚDO OBRIGATÓRIA — TIPO: MÚLTIPLA ESCOLHA CURTA
 - OMITIR: Estrutura anamnéstica completa/obrigatória e excesso de dados clínicos que ofuscam a pergunta.
 - COMENTÁRIO: "correta" (justificativa direta da resposta) e "porOpcao" (explicações dos erros de raciocínio de cada alternativa). O campo "correlacaoClinica" é OPCIONAL.
 `;
+      } else if (questionType === "assercao_combinada") {
+        questionTypeSection = `
+═══════════════════════════════════════════════════════════════════════════════
+DIRETRIZ E MATRIZ DE CONTEÚDO OBRIGATÓRIA — TIPO: ASSERÇÃO COMBINADA (ITENS)
+═══════════════════════════════════════════════════════════════════════════════
+- ESTRUTURA DO ENUNCIADO: Um enunciado introdutório contextualizando o tema, seguido de uma 
+  lista numerada de 3 a 5 afirmativas (numeradas I, II, III, IV, e opcionalmente V), cada uma 
+  podendo ser verdadeira ou falsa independentemente. Finalizar com uma pergunta do tipo 
+  "Assinale a alternativa correta" ou "Estão corretas".
+- CONTEÚDO DAS AFIRMATIVAS: Cada item (I, II, III...) deve ser uma afirmação técnica completa 
+  e autocontida sobre o tópico — misture afirmativas verdadeiras e falsas de forma não óbvia 
+  (evite que todos os itens falsos sejam obviamente errados; use o mesmo padrão de distractorType 
+  já usado nas alternativas normais: inversão de função, componente relacionado trocado, 
+  terminologia parcialmente correta).
+- ALTERNATIVAS (campo "options", mesmo formato A-E já usado): cada alternativa descreve uma 
+  COMBINAÇÃO de quais itens estão corretos, no formato "Apenas os itens I e III estão corretos", 
+  "Apenas o item II está correto", "Os itens I, II e IV estão corretos", "Todos os itens estão 
+  corretos", "Nenhum item está correto" — variar a estrutura das combinações entre as questões 
+  do lote, não repetir sempre o mesmo padrão (ex: não deixar sempre "todos corretos" como opção 
+  óbvia de descarte).
+- COMENTÁRIO: OBRIGATÓRIO explicar a veracidade de CADA item individualmente (por que é 
+  verdadeiro ou falso) dentro de "porOpcao" ou um campo adicional "porItem", além da 
+  justificativa geral em "correta".
+
+FORMATO JSON ADICIONAL PARA ESTE TIPO (incluir "assertionItems" no objeto da questão, além dos 
+campos padrão já usados):
+"assertionItems": [
+  { "numeral": "I", "text": "Texto completo da afirmativa I..." },
+  { "numeral": "II", "text": "Texto completo da afirmativa II..." },
+  { "numeral": "III", "text": "Texto completo da afirmativa III..." },
+  { "numeral": "IV", "text": "Texto completo da afirmativa IV..." }
+]
+`;
       } else {
         questionTypeSection = `
 ═══════════════════════════════════════════════════════════════════════════════
 DIRETRIZ E MATRIZ DE CONTEÚDO OBRIGATÓRIA — TIPO: MISTURAR
 ═══════════════════════════════════════════════════════════════════════════════
-- ESTRUTURA DO LOTE: Varie entre os três estilos acima ao longo do lote: aproximadamente 1/3 de questões "conceitual", 1/3 de "caso_clinico" e 1/3 de "multipla_escolha".
+- ESTRUTURA DO LOTE: Varie entre os estilos acima ao longo do lote: aproximadamente 1/3 de questões "conceitual", 1/3 de "caso_clinico" e 1/3 de "multipla_escolha", podendo opcionalmente incluir "assercao_combinada" como uma quinta variação minoritária (ex: 1 em cada 6-8 questões do lote, já que é um formato mais denso/difícil).
 - Siga as regras específicas de enunciado e comentário para cada estilo individual dentro do lote:
   • Se tipo="caso_clinico": OBRIGATÓRIO seguir progressão anamnéstica (Queixa Principal → HDA → Antecedentes → Exame Físico → Exames → Pergunta) e "correlacaoClinica" no comentário.
   • Se tipo="conceitual": PROIBIDO incluir vinheta de paciente ou dados demográficos fictícios; enunciado DEVE ser uma pergunta direta; "correlacaoClinica" no comentário é OPCIONAL.
   • Se tipo="multipla_escolha": Enunciado direto e objetivo (pode ter contexto clínico BREVE de 1-2 frases); "correlacaoClinica" opcional.
+  • Se tipo="assercao_combinada": incluir 3-5 itens numerados (assertionItems) e alternativas de combinação, seguindo a diretriz específica acima.
 `;
       }
 
       let prompt = "";
       if (useLightModel) {
         const typeGuide = questionType === "caso_clinico"
-          ? "CASO CLÍNICO: Enunciado com vinheta clínica progressiva (dados demográficos, queixa, HDA, exame físico/complementares pertinentes e pergunta objetiva de decisão clínica)."
+          ? "CASO CLÍNICO: Enunciado com vinheta clínica progressiva (dados demográficos variados, queixa, HDA, exame físico/complementares pertinentes com valores específicos e pergunta objetiva de decisão clínica)."
           : questionType === "conceitual"
           ? "CONCEITUAL: Pergunta direta e objetiva sobre mecanismo, anatomia ou conceito fundamental, sem vinheta de paciente."
+          : questionType === "assercao_combinada"
+          ? "ASSERÇÃO COMBINADA: Enunciado contextualizado com 3 a 5 itens numerados (I, II, III, IV), campo assertionItems e alternativas com combinações de itens corretos."
           : "MÚLTIPLA ESCOLHA: Enunciado claro e objetivo focado em diagnóstico ou conduta.";
 
         prompt = `Você é um professor titular de Medicina especialista em elaboração de questões para exames de Residência Médica (REVALIDA, ENARE).
@@ -735,13 +788,16 @@ ${distractorSection}
 Configurações da Questão:
 - Especialidade: ${specialty} | Tópico: ${topicStr} | Dificuldade: ${difficulty} | Tipo: ${questionType.toUpperCase()}
 - Diretriz de Estrutura: ${typeGuide}
-- Regras: 1 alternativa correta (isCorrect: true) e 3 distratores plausíveis (isCorrect: false). Preencha "commentary" (correta e correlacaoClinica) e "sourceContextExcerpt".
+- Regras: 1 alternativa correta (isCorrect: true) e 3 distratores plausíveis (isCorrect: false). Preencha "commentary" (correta e correlacaoClinica) e "sourceContextExcerpt". Se tipo for "assercao_combinada", preencha também "assertionItems".
 ${existingQuestionsSection}
 Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO contendo um array com 1 única questão:
 [
   {
     "statement": "Enunciado completo da questão...",
     "clinicalContext": "Resumo clínico opcional",
+    "assertionItems": [
+      { "numeral": "I", "text": "Texto da afirmativa I (apenas se questionType === 'assercao_combinada')" }
+    ],
     "correctAnswerText": "Texto da resposta correta",
     "correctAnswerExplanation": "Justificativa da resposta correta",
     "options": [
@@ -776,7 +832,7 @@ Configurações Solicitadas:
 - Assuntos: ${topicStr}
 - Origem / Perfil de Referência: ${originLabel}
 - Nível de Dificuldade: ${difficulty} ("facil", "media", "dificil")
-- TIPO DE QUESTÃO OBRIGATÓRIO: ${questionType.toUpperCase()} ("caso_clinico", "conceitual", "multipla_escolha", "misturar")
+- TIPO DE QUESTÃO OBRIGATÓRIO: ${questionType.toUpperCase()} ("caso_clinico", "conceitual", "multipla_escolha", "assercao_combinada", "misturar")
 
 ${questionTypeSection}
 
@@ -797,6 +853,12 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
   {
     "statement": "Enunciado completo e progressivo da questão...",
     "clinicalContext": "Resumo clínico opcional",
+    "assertionItems": [
+      { "numeral": "I", "text": "Texto da afirmativa I... (OBRIGATÓRIO E PRESENTE APENAS SE questionType === 'assercao_combinada')" },
+      { "numeral": "II", "text": "Texto da afirmativa II..." },
+      { "numeral": "III", "text": "Texto da afirmativa III..." },
+      { "numeral": "IV", "text": "Texto da afirmativa IV..." }
+    ],
     "correctAnswerText": "Texto da resposta/conduta/diagnóstico correto, de forma objetiva",
     "correctAnswerExplanation": "Por que esta é a resposta correta",
     "options": [
@@ -826,6 +888,10 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
     ],
     "commentary": {
       "correta": "Justificativa da alternativa correta embasada nas diretrizes médicas...",
+      "porOpcao": {
+        "A": "Explicação da alternativa A...",
+        "B": "Explicação do distrator B..."
+      },
       "correlacaoClinica": "Síntese da correlação clínica e conceito fundamental."
     },
     "sourceContextExcerpt": "Trecho exato do material de estudo que originou esta questão",

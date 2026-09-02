@@ -254,4 +254,37 @@ pode incluir contexto clínico BREVE (1-2 frases), mas NÃO é obrigatória a pr
     // Verificar que "progressão anamnéstica" é mencionada como NÃO obrigatória, não como obrigatória
     expect(multipleChoiceRule).toContain('NÃO é obrigatória a progressão anamnéstica');
   });
+
+  it('Q1-7: Prompt para "assercao_combinada" exige itens numerados (I, II, III...) e combinações', async () => {
+    const questionType = 'assercao_combinada';
+    const assercaoDirective = `
+TIPO: ASSERÇÃO COMBINADA (ITENS)
+- ESTRUTURA DO ENUNCIADO: Um enunciado introdutório contextualizando o tema, seguido de uma 
+  lista numerada de 3 a 5 afirmativas (numeradas I, II, III, IV, e opcionalmente V)
+- CONTEÚDO DAS AFIRMATIVAS: Cada item deve ser uma afirmação técnica completa
+- ALTERNATIVAS: cada alternativa descreve uma COMBINAÇÃO de quais itens estão corretos
+- COMENTÁRIO: OBRIGATÓRIO explicar a veracidade de CADA item individualmente dentro de porOpcao ou porItem
+`;
+
+    expect(assercaoDirective).toContain('ASSERÇÃO COMBINADA');
+    expect(assercaoDirective).toContain('3 a 5 afirmativas');
+    expect(assercaoDirective).toContain('COMBINAÇÃO');
+    expect(assercaoDirective).toContain('porItem');
+  });
+
+  it('Q1-8: Prompt para "caso_clinico" enriquecido exige dados demográficos variados e valores laboratoriais numéricos', async () => {
+    const enrichedCasoClinicoDirective = `
+TIPO: CASO CLÍNICO
+- ESTRUTURA DO ENUNCIADO: OBRIGATÓRIO seguir vinheta clínica progressiva com paciente fictício:
+  • Dados demográficos fictícios realistas e VARIADOS entre as questões do lote
+  • VARIEDADE DE DESFECHO: alterne entre perguntas pedindo diagnóstico, conduta imediata, próximo exame
+  • VALORES NUMÉRICOS ESPECÍFICOS com unidade, não só "exame alterado"
+- COMENTÁRIO: OBRIGATÓRIO objeto JSON estruturado contendo "correta", "porOpcao" e "correlacaoClinica"
+`;
+
+    expect(enrichedCasoClinicoDirective).toContain('VARIADOS');
+    expect(enrichedCasoClinicoDirective).toContain('VARIEDADE DE DESFECHO');
+    expect(enrichedCasoClinicoDirective).toContain('VALORES NUMÉRICOS ESPECÍFICOS');
+    expect(enrichedCasoClinicoDirective).toContain('correlacaoClinica');
+  });
 });
