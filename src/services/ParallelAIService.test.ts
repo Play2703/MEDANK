@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ParallelAIService, resetGeminiQuotaCooldown } from './ParallelAIService';
+import { ParallelAIService, resetGeminiQuotaCooldown, resetProviderStats, getProviderStats } from './ParallelAIService';
 import * as aiGateway from '../core/config/aiGateway';
 
 describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validação Local)', () => {
@@ -9,6 +9,7 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
   beforeEach(() => {
     vi.clearAllMocks();
     resetGeminiQuotaCooldown();
+    resetProviderStats();
     process.env.GEMINI_API_KEY = 'test_key';
     service = new ParallelAIService();
 
@@ -165,29 +166,44 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     mockRouter.mockRestore();
   });
 
-  it('Fallback Cascata: Gemini, Groq e Mistral falham -> Cloudflare Workers AI responde com sucesso', async () => {
+  it('Round-Robin Load Balancer: deve alternar o primeiro provedor tentado entre Groq, Mistral e Cloudflare', async () => {
     mockGenerateContent.mockRejectedValue({ status: 503, message: 'Gemini down' });
 
     process.env.GROQ_API_KEY = 'groq_key';
     process.env.MISTRAL_API_KEY = 'mistral_key';
-    process.env.CLOUDFLARE_ACCOUNT_ID = 'cf_acc';
-    process.env.CLOUDFLARE_API_TOKEN = 'cf_tok';
+    process.env.CLOUDFLARE_ACCOUNT_ID = '1234567890abcdef1234567890abcdef';
+    process.env.CLOUDFLARE_API_TOKEN = 'cf_token';
 
-    const mockGroq = vi.spyOn(aiGateway, 'callGroq').mockRejectedValue(new Error('Groq down'));
-    const mockMistral = vi.spyOn(aiGateway, 'callMistral').mockRejectedValue(new Error('Mistral down'));
+    const mockGroq = vi.spyOn(aiGateway, 'callGroq').mockResolvedValue({
+      text: JSON.stringify([{ front: 'Groq', back: 'Resp' }]),
+      modelUsed: 'groq/openai/gpt-oss-120b',
+    });
+    const mockMistral = vi.spyOn(aiGateway, 'callMistral').mockResolvedValue({
+      text: JSON.stringify([{ front: 'Mistral', back: 'Resp' }]),
+      modelUsed: 'mistral/mistral-small-latest',
+    });
     const mockCF = vi.spyOn(aiGateway, 'callCloudflareAI').mockResolvedValue({
-      text: JSON.stringify([{ front: 'Card Cloudflare', back: 'Resp Cloudflare' }]),
+      text: JSON.stringify([{ front: 'CF', back: 'Resp' }]),
       modelUsed: 'cloudflare-ai/@cf/openai/gpt-oss-120b',
     });
 
-    const result = await service.executeParallel('prompt', undefined, {
-      context: 'test-cloudflare-fallback',
-      initialDelayMs: 10,
-    });
+    // 1ª Req -> Groq primeiro
+    const res1 = await service.executeParallel('prompt 1', undefined, { initialDelayMs: 10 });
+    expect(res1.mainModel).toBe('groq/openai/gpt-oss-120b');
 
-    expect(result.success).toBe(true);
-    expect(result.mainModel).toBe('cloudflare-ai/@cf/openai/gpt-oss-120b');
-    expect(mockCF).toHaveBeenCalled();
+    // 2ª Req -> Mistral primeiro
+    const res2 = await service.executeParallel('prompt 2', undefined, { initialDelayMs: 10 });
+    expect(res2.mainModel).toBe('mistral/mistral-small-latest');
+
+    // 3ª Req -> Cloudflare primeiro
+    const res3 = await service.executeParallel('prompt 3', undefined, { initialDelayMs: 10 });
+    expect(res3.mainModel).toBe('cloudflare-ai/@cf/openai/gpt-oss-120b');
+
+    const stats = getProviderStats();
+    expect(stats.totalRequests).toBe(3);
+    expect(stats.groq).toBe(1);
+    expect(stats.mistral).toBe(1);
+    expect(stats.cloudflare).toBe(1);
 
     delete process.env.GROQ_API_KEY;
     delete process.env.MISTRAL_API_KEY;

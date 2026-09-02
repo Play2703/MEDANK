@@ -420,6 +420,30 @@ export async function callMistral(
   }
 }
 
+export function validateCloudflareConfig(): { valid: boolean; reason?: string } {
+  const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || "").trim();
+  const apiToken = (process.env.CLOUDFLARE_API_TOKEN || "").trim();
+
+  if (!accountId && !apiToken) {
+    return { valid: false, reason: "CLOUDFLARE_ACCOUNT_ID e CLOUDFLARE_API_TOKEN não definidos." };
+  }
+
+  if (!accountId || !apiToken) {
+    const reason = "CLOUDFLARE_ACCOUNT_ID ou CLOUDFLARE_API_TOKEN está incompleto no .env.";
+    console.warn(`[CloudflareAI] ⚠️ ${reason}`);
+    return { valid: false, reason };
+  }
+
+  // Account ID deve ser uma string hexadecimal de 32 caracteres (evita tokens com prefixo cfat_)
+  if (!/^[a-f0-9]{32}$/i.test(accountId)) {
+    const reason = `CLOUDFLARE_ACCOUNT_ID parece inválido ("${accountId.slice(0, 8)}..."). Deve ser uma string hex de 32 caracteres do painel da Cloudflare (não use API Token com prefixo "cfat_").`;
+    console.warn(`[CloudflareAI] ⚠️ ${reason}`);
+    return { valid: false, reason };
+  }
+
+  return { valid: true };
+}
+
 export async function callCloudflareAI(
   prompt: string,
   temperature = 0.2,
@@ -427,15 +451,13 @@ export async function callCloudflareAI(
   timeoutMs = 8000,
   responseFormat: "json_object" | "text" = "json_object"
 ): Promise<GatewayGenerateResult> {
-  const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || "").trim();
-  const apiToken = (process.env.CLOUDFLARE_API_TOKEN || "").trim();
-
-  if (!accountId || !apiToken) {
-    throw new Error(
-      "CLOUDFLARE_ACCOUNT_ID ou CLOUDFLARE_API_TOKEN não configurados no ambiente de execução."
-    );
+  const validation = validateCloudflareConfig();
+  if (!validation.valid) {
+    throw new Error(`[CloudflareAI] Configuração inválida: ${validation.reason}`);
   }
 
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID!.trim();
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN!.trim();
   const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`;
   const model = process.env.CLOUDFLARE_AI_MODEL || "@cf/openai/gpt-oss-120b";
   const startTime = Date.now();

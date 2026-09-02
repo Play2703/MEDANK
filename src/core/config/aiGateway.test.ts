@@ -204,7 +204,7 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
   });
 
   it('callCloudflareAI: deve chamar o endpoint do Cloudflare Workers AI com a autenticação e modelo corretos', async () => {
-    process.env.CLOUDFLARE_ACCOUNT_ID = 'cf_acc_123';
+    process.env.CLOUDFLARE_ACCOUNT_ID = '1234567890abcdef1234567890abcdef';
     process.env.CLOUDFLARE_API_TOKEN = 'cf_tok_456';
 
     let calledUrl = '';
@@ -230,11 +230,24 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
     const { callCloudflareAI } = await import('./aiGateway');
     const result = await callCloudflareAI('Pergunta Cloudflare');
 
-    expect(calledUrl).toBe('https://api.cloudflare.com/client/v4/accounts/cf_acc_123/ai/v1/chat/completions');
+    expect(calledUrl).toBe('https://api.cloudflare.com/client/v4/accounts/1234567890abcdef1234567890abcdef/ai/v1/chat/completions');
     expect(authHeader).toBe('Bearer cf_tok_456');
     expect(requestedModel).toBe('@cf/openai/gpt-oss-120b');
     expect(result.modelUsed).toBe('cloudflare-ai/@cf/openai/gpt-oss-120b');
     expect(result.text).toBe('{"cf":true}');
+
+    delete process.env.CLOUDFLARE_ACCOUNT_ID;
+    delete process.env.CLOUDFLARE_API_TOKEN;
+  });
+
+  it('validateCloudflareConfig: deve rejeitar accountId com formato de token cfat_', async () => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = 'cfat_1234567890abcdef1234567890abcdef';
+    process.env.CLOUDFLARE_API_TOKEN = 'valid_token';
+
+    const { validateCloudflareConfig } = await import('./aiGateway');
+    const check = validateCloudflareConfig();
+    expect(check.valid).toBe(false);
+    expect(check.reason).toContain('string hex de 32 caracteres');
 
     delete process.env.CLOUDFLARE_ACCOUNT_ID;
     delete process.env.CLOUDFLARE_API_TOKEN;

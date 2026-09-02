@@ -11,6 +11,7 @@ import {
   callGroq,
   callMistral,
   callCloudflareAI,
+  validateCloudflareConfig,
   GatewayGenerateResult,
 } from "../core/config/aiGateway";
 import { retryWithBackoff, isRetryableError } from "../core/utils/retryUtils";
@@ -22,6 +23,60 @@ export interface RecognizedMedicalEntity {
   category: string;
   codeSystem?: string | null;
   code?: string | null;
+}
+
+export interface ProviderStats {
+  totalRequests: number;
+  gemini: number;
+  groq: number;
+  mistral: number;
+  cloudflare: number;
+  failed: number;
+}
+
+const providerStats: ProviderStats = {
+  totalRequests: 0,
+  gemini: 0,
+  groq: 0,
+  mistral: 0,
+  cloudflare: 0,
+  failed: 0,
+};
+
+let fallbackRoundRobinCounter = 0;
+
+export function getProviderStats(): ProviderStats {
+  return { ...providerStats };
+}
+
+export function resetProviderStats(): void {
+  providerStats.totalRequests = 0;
+  providerStats.gemini = 0;
+  providerStats.groq = 0;
+  providerStats.mistral = 0;
+  providerStats.cloudflare = 0;
+  providerStats.failed = 0;
+  fallbackRoundRobinCounter = 0;
+}
+
+function recordProviderSuccess(providerKey: "gemini" | "groq" | "mistral" | "cloudflare") {
+  providerStats[providerKey]++;
+  providerStats.totalRequests++;
+  logPeriodicStats();
+}
+
+function recordProviderFailure() {
+  providerStats.failed++;
+  providerStats.totalRequests++;
+  logPeriodicStats();
+}
+
+function logPeriodicStats() {
+  if (providerStats.totalRequests > 0 && providerStats.totalRequests % 5 === 0) {
+    console.log(
+      `[LoadBalancer:Stats] 📊 Distribuição após ${providerStats.totalRequests} requisições -> Gemini: ${providerStats.gemini}, Groq: ${providerStats.groq}, Mistral: ${providerStats.mistral}, Cloudflare: ${providerStats.cloudflare}, Falhas: ${providerStats.failed}`
+    );
+  }
 }
 
 export interface LocalValidationItem {
@@ -187,6 +242,7 @@ export class ParallelAIService {
         console.log(
           `[ParallelAI:${context}] ✅ Sucesso via ${geminiResult.model} (Validação local concluída em memória; fallbacks não foram necessários)`
         );
+        recordProviderSuccess("gemini");
 
         return {
           success: true,
@@ -201,73 +257,83 @@ export class ParallelAIService {
         };
       }
 
-      // ══ 2. GEMINI FALHOU/PULOU -> CASCATA DE FALLBACK ÁGIL (GROQ -> MISTRAL -> CLOUDFLARE WORKERS AI) ══
+      // ══ 2. GEMINI FALHOU/PULOU -> LOAD BALANCER ROUND-ROBIN (GROQ, MISTRAL, CLOUDFLARE) ══
       console.warn(
-        `[ParallelAI:${context}] ⚠️ Gemini indisponível (${geminiResult.error}). Acionando cascata de fallback: Groq -> Mistral -> Cloudflare Workers AI...`
+        `[ParallelAI:${context}] ⚠️ Gemini indisponível (${geminiResult.error}). Acionando Load Balancer Round-Robin...`
       );
 
       const promptToUse = helperPrompt || mainPrompt;
 
-      // 2.1 GROQ (se GROQ_API_KEY estiver no .env)
+      // Identifica provedores configurados e ativos
+      const availableProviders: Array<{
+        name: string;
+        key: "groq" | "mistral" | "cloudflare";
+        execute: () => Promise<GatewayGenerateResult>;
+      }> = [];
+
       if (process.env.GROQ_API_KEY) {
-        try {
-          console.log(
-            `[ParallelAI:${context}] 🔀 Tentando fallback via Groq (${process.env.GROQ_MODEL || "openai/gpt-oss-120b"})...`
-          );
-          const groqRes = await callGroq(promptToUse, temperature, context, 7000);
-          if (groqRes.text) {
-            return this.handleFallbackSuccess(groqRes, context);
-          }
-        } catch (err: any) {
-          console.warn(
-            `[ParallelAI:${context}] ⚠️ Groq falhou (${err.status || err.message}). Avançando para o próximo fallback...`
-          );
-        }
+        availableProviders.push({
+          name: `Groq (${process.env.GROQ_MODEL || "openai/gpt-oss-120b"})`,
+          key: "groq",
+          execute: () => callGroq(promptToUse, temperature, context, 7000),
+        });
       }
-
-      // 2.2 MISTRAL AI (se MISTRAL_API_KEY estiver no .env)
       if (process.env.MISTRAL_API_KEY) {
-        try {
-          console.log(
-            `[ParallelAI:${context}] 🔀 Tentando fallback via Mistral AI (${process.env.MISTRAL_MODEL || "mistral-small-latest"})...`
-          );
-          const mistralRes = await callMistral(promptToUse, temperature, context, 12000);
-          if (mistralRes.text) {
-            return this.handleFallbackSuccess(mistralRes, context);
+        availableProviders.push({
+          name: `Mistral AI (${process.env.MISTRAL_MODEL || "mistral-small-latest"})`,
+          key: "mistral",
+          execute: () => callMistral(promptToUse, temperature, context, 12000),
+        });
+      }
+      if (validateCloudflareConfig().valid) {
+        availableProviders.push({
+          name: `Cloudflare Workers AI (${process.env.CLOUDFLARE_AI_MODEL || "@cf/openai/gpt-oss-120b"})`,
+          key: "cloudflare",
+          execute: () => callCloudflareAI(promptToUse, temperature, context, 8000),
+        });
+      }
+
+      if (availableProviders.length > 0) {
+        // Seleção Round-Robin cíclica
+        const reqNum = ++fallbackRoundRobinCounter;
+        const startIndex = (reqNum - 1) % availableProviders.length;
+        const rotatedProviders = [
+          ...availableProviders.slice(startIndex),
+          ...availableProviders.slice(0, startIndex),
+        ];
+
+        const firstChosen = rotatedProviders[0];
+        console.log(
+          `[LoadBalancer] ⚖️ Requisição #${reqNum} iniciando round-robin em: ${firstChosen.name} (índice ${startIndex + 1}/${availableProviders.length})`
+        );
+
+        for (const provider of rotatedProviders) {
+          try {
+            console.log(`[ParallelAI:${context}] 🔀 Tentando provedor ${provider.name}...`);
+            const result = await provider.execute();
+            if (result.text) {
+              recordProviderSuccess(provider.key);
+              return this.handleFallbackSuccess(result, context);
+            }
+          } catch (err: any) {
+            console.warn(
+              `[ParallelAI:${context}] ⚠️ Provedor ${provider.name} falhou (${err.status || err.message}). Avançando na fila balanceada...`
+            );
           }
-        } catch (err: any) {
-          console.warn(
-            `[ParallelAI:${context}] ⚠️ Mistral falhou (${err.status || err.message}). Avançando para o próximo fallback...`
-          );
         }
       }
 
-      // 2.3 CLOUDFLARE WORKERS AI (se CLOUDFLARE_ACCOUNT_ID e CLOUDFLARE_API_TOKEN estiverem no .env)
-      if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) {
-        try {
-          console.log(
-            `[ParallelAI:${context}] 🔀 Tentando fallback via Cloudflare Workers AI (${process.env.CLOUDFLARE_AI_MODEL || "@cf/openai/gpt-oss-120b"})...`
-          );
-          const cfRes = await callCloudflareAI(promptToUse, temperature, context, 8000);
-          if (cfRes.text) {
-            return this.handleFallbackSuccess(cfRes, context);
-          }
-        } catch (err: any) {
-          console.warn(
-            `[ParallelAI:${context}] ⚠️ Cloudflare Workers AI falhou (${err.status || err.message}).`
-          );
-        }
-      }
-
-      // ══ 3. TODAS AS ESTRATÉGIAS DIRETAS FALHARAM (Retorno rápido sem latência morta do 9Router) ══
+      // ══ 3. TODOS OS PROVEDORES FALHARAM ══
+      recordProviderFailure();
       console.error(
-        `[ParallelAI:${context}] ❌ Todos os provedores diretos falharam (Gemini -> Groq -> Mistral -> Cloudflare Workers AI).`
+        `[ParallelAI:${context}] ❌ Todos os provedores configurados falharam no round-robin.`
       );
       return {
         success: false,
         error: "Todos os provedores de IA estão temporariamente indisponíveis, tente novamente em instantes.",
       };
     } catch (error: any) {
+      recordProviderFailure();
       console.error(`[ParallelAI:${context}] Erro inesperado na orquestração de IA:`, error);
       return { success: false, error: error.message || String(error) };
     }

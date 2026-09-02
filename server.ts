@@ -7,10 +7,10 @@ import fs from "fs";
 import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { generateWithFallback, parseJsonLoose, LIGHT_AI_MODEL } from "./src/core/config/aiGateway";
+import { generateWithFallback, parseJsonLoose, LIGHT_AI_MODEL, validateCloudflareConfig } from "./src/core/config/aiGateway";
 import { mapWithConcurrency } from "./src/core/utils/asyncUtils";
 import { retryWithBackoff } from "./src/core/utils/retryUtils";
-import { parallelAIService } from "./src/services/ParallelAIService";
+import { parallelAIService, getProviderStats } from "./src/services/ParallelAIService";
 
 import { PDFExamRenderService } from "./src/services/PDFExamRenderService";
 import { interpretExamDNA } from "./src/core/medcore_kernel/engines/ExamDNAInterpreter";
@@ -563,6 +563,11 @@ class AsyncSemaphore {
 const questionGenerationSemaphore = new AsyncSemaphore(
   parseInt(process.env.QUESTION_GEN_CONCURRENCY || "2", 10) || 2
 );
+
+  // Monitoramento de distribuição de carga dos provedores de IA
+  app.get("/api/ai-stats", (_req, res) => {
+    res.json({ success: true, stats: getProviderStats() });
+  });
 
   // AI Medical Exam Question Generation Endpoint (Fase 33 & 33.5 RAG-Anchored High Quality Exam Questions)
   app.post("/api/generate-questions", async (req, res) => {
@@ -1465,6 +1470,9 @@ Responda de forma clara, didática, embasada nas diretrizes médicas mais recent
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[MedAnki Server] 🚀 Servidor pronto e escutando na porta ${PORT}`);
+
+    // Validação preventiva do Cloudflare Workers AI no boot
+    validateCloudflareConfig();
 
     // Warmup assíncrono dos motores pós-vinculação de porta
     setImmediate(async () => {
