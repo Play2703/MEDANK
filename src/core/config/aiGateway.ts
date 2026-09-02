@@ -9,10 +9,16 @@ function getGatewayConfig() {
     .map((m) => m.trim())
     .filter(Boolean);
 
-  // Sanitiza modelos descontinuados conhecidos (ex: groq/llama-3.3-70b-versatile -> groq/llama-3.1-8b-instant)
+  // Sanitiza modelos descontinuados ou restritos a Enterprise no Groq
+  // (ex: groq/llama-3.3-70b-versatile e groq/llama-3.1-8b-instant -> groq/openai/gpt-oss-120b)
   const sanitizedModels = rawModels.map((m) => {
-    if (m === "groq/llama-3.3-70b-versatile" || m === "llama-3.3-70b-versatile") {
-      return "groq/llama-3.1-8b-instant";
+    if (
+      m === "groq/llama-3.3-70b-versatile" ||
+      m === "llama-3.3-70b-versatile" ||
+      m === "groq/llama-3.1-8b-instant" ||
+      m === "llama-3.1-8b-instant"
+    ) {
+      return "groq/openai/gpt-oss-120b";
     }
     return m;
   });
@@ -191,6 +197,7 @@ export interface OpenAICompatibleConfig {
   apiKey: string;
   model: string;
   timeoutMs?: number;
+  maxTokens?: number;
   responseFormat?: "json_object" | "text";
 }
 
@@ -208,6 +215,9 @@ export async function callOpenAICompatible(
     temperature,
     stream: false,
   };
+  if (config.maxTokens) {
+    requestBody.max_tokens = config.maxTokens;
+  }
   if (format === "json_object") {
     requestBody.response_format = { type: "json_object" };
   }
@@ -282,13 +292,99 @@ export async function callGroq(
   const apiKey = process.env.GROQ_API_KEY || "";
   if (!apiKey) throw new Error("GROQ_API_KEY não configurada.");
   const baseUrl = process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
-  const model = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
-  return callOpenAICompatible(
-    { name: "groq", baseUrl, apiKey, model, timeoutMs },
-    prompt,
-    temperature,
-    context
-  );
+
+  const models = (
+    process.env.GROQ_MODELS
+      ? process.env.GROQ_MODELS.split(",").map((m) => m.trim())
+      : [process.env.GROQ_MODEL || "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
+  ).filter(Boolean);
+
+  let lastError: any = null;
+  for (const model of models) {
+    try {
+      return await callOpenAICompatible(
+        { name: "groq", baseUrl, apiKey, model, timeoutMs, maxTokens: 3000 },
+        prompt,
+        temperature,
+        context
+      );
+    } catch (err: any) {
+      lastError = err;
+      console.warn(
+        `[Groq${context ? `:${context}` : ""}] ⚠️ Modelo "${model}" falhou (${err.status || err.message}). Tentando próximo modelo Groq...`
+      );
+    }
+  }
+
+  throw new Error(`Groq: todos os modelos disponíveis falharam. Último erro: ${lastError?.message || lastError}`);
+}
+
+let cachedMistralModel: { id: string; fetchedAt: number } | null = null;
+const MISTRAL_MODEL_CACHE_TTL = 60 * 60 * 1000; // 1h
+
+export function resetMistralModelCache(): void {
+  cachedMistralModel = null;
+}
+
+export async function resolveMistralModel(
+  baseUrl = "https://api.mistral.ai/v1",
+  apiKey = ""
+): Promise<string> {
+  // Se houver MISTRAL_MODEL forçado no env, respeita
+  if (process.env.MISTRAL_MODEL) {
+    return process.env.MISTRAL_MODEL;
+  }
+
+  const now = Date.now();
+
+  // Reusa o cache se ainda estiver dentro do TTL
+  if (cachedMistralModel && now - cachedMistralModel.fetchedAt < MISTRAL_MODEL_CACHE_TTL) {
+    return cachedMistralModel.id;
+  }
+
+  try {
+    const key = apiKey || process.env.MISTRAL_API_KEY || "";
+    if (!key) return "mistral-small-latest";
+
+    const endpoint = `${baseUrl.replace(/\/+$/, "")}/models`;
+    const response = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Falha ao listar modelos Mistral (${response.status})`);
+    }
+
+    const data = await response.json();
+    const modelIds: string[] = (data?.data || []).map((m: { id: string }) => m.id);
+
+    // Prioriza IDs versionados de "small" (mais estável que aliases -latest),
+    // pegando o mais recente (maior data no ID, ex: 2506 ou 2409)
+    const versionedSmall = modelIds
+      .filter((id) => /^mistral-small-\d{4}$/.test(id))
+      .sort()
+      .pop();
+
+    const resolved =
+      versionedSmall ??
+      modelIds.find((id) => id === "mistral-small-latest") ??
+      modelIds.find((id) => id.startsWith("mistral-small"));
+
+    if (!resolved) {
+      throw new Error("Nenhum modelo 'mistral-small*' encontrado na lista da Mistral");
+    }
+
+    cachedMistralModel = { id: resolved, fetchedAt: now };
+    console.log(`[Mistral] Modelo resolvido dinamicamente: ${resolved}`);
+    return resolved;
+  } catch (err: any) {
+    // Fallback de segurança: se a listagem falhar, usa o alias conhecido
+    console.warn(
+      `⚠️ Falha ao resolver modelo Mistral dinamicamente, usando fallback: ${err?.message || String(err)}`
+    );
+    return "mistral-small-latest";
+  }
 }
 
 export async function callMistral(
@@ -300,13 +396,22 @@ export async function callMistral(
   const apiKey = process.env.MISTRAL_API_KEY || "";
   if (!apiKey) throw new Error("MISTRAL_API_KEY não configurada.");
   const baseUrl = process.env.MISTRAL_BASE_URL || "https://api.mistral.ai/v1";
-  const model = process.env.MISTRAL_MODEL || "mistral-small-latest";
-  return callOpenAICompatible(
-    { name: "mistral", baseUrl, apiKey, model, timeoutMs },
-    prompt,
-    temperature,
-    context
-  );
+  const model = await resolveMistralModel(baseUrl, apiKey);
+
+  try {
+    return await callOpenAICompatible(
+      { name: "mistral", baseUrl, apiKey, model, timeoutMs, maxTokens: 3000 },
+      prompt,
+      temperature,
+      context
+    );
+  } catch (err: any) {
+    // Se o modelo cacheado passou a ser inválido (404/400), invalida o cache pra forçar nova resolução na próxima chamada
+    if (err.status === 404 || err.status === 400 || err.statusCode === 404 || err.statusCode === 400) {
+      cachedMistralModel = null;
+    }
+    throw err;
+  }
 }
 
 export async function callCerebras(

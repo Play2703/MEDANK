@@ -145,7 +145,7 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
 
     const mockGroq = vi.spyOn(aiGateway, 'callGroq').mockResolvedValue({
       text: JSON.stringify([{ front: 'Card Groq', back: 'Resp Groq' }]),
-      modelUsed: 'groq/llama-3.1-8b-instant',
+      modelUsed: 'groq/openai/gpt-oss-120b',
     });
 
     process.env.GROQ_API_KEY = 'test_groq_key';
@@ -157,7 +157,7 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     });
 
     expect(res1.success).toBe(true);
-    expect(res1.mainModel).toBe('groq/llama-3.1-8b-instant');
+    expect(res1.mainModel).toBe('groq/openai/gpt-oss-120b');
     expect(mockGenerateContent).toHaveBeenCalledTimes(1); // Não gastou 3 retries lentos!
 
     // 2ª Chamada: Gemini está em cooldown -> é pulado diretamente (0 chamadas a mais no Gemini)
@@ -167,7 +167,7 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     });
 
     expect(res2.success).toBe(true);
-    expect(res2.mainModel).toBe('groq/llama-3.1-8b-instant');
+    expect(res2.mainModel).toBe('groq/openai/gpt-oss-120b');
     expect(mockGenerateContent).toHaveBeenCalledTimes(1); // Manteve 1, não chamou Gemini de novo!
 
     delete process.env.GROQ_API_KEY;

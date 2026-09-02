@@ -123,7 +123,7 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
     ).rejects.toThrow(/limite de 200ms atingido/);
   });
 
-  it('deve sanitizar modelo descontinuado groq/llama-3.3-70b-versatile para groq/llama-3.1-8b-instant', async () => {
+  it('deve sanitizar modelo descontinuado groq/llama-3.3-70b-versatile para groq/openai/gpt-oss-120b', async () => {
     process.env.AI_GATEWAY_MODELS = 'groq/llama-3.3-70b-versatile,mistralai/mistral-small-24b';
 
     let requestedModel = '';
@@ -144,7 +144,74 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
       prompt: 'Teste sanitização',
     });
 
-    expect(requestedModel).toBe('groq/llama-3.1-8b-instant');
-    expect(result.modelUsed).toBe('groq/llama-3.1-8b-instant');
+    expect(requestedModel).toBe('groq/openai/gpt-oss-120b');
+    expect(result.modelUsed).toBe('groq/openai/gpt-oss-120b');
+  });
+
+  it('callGroq: deve tentar o próximo modelo (openai/gpt-oss-20b) se o primeiro falhar', async () => {
+    process.env.GROQ_API_KEY = 'groq_test_key';
+    const triedModels: string[] = [];
+
+    // @ts-ignore
+    global.fetch = vi.fn().mockImplementation(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      triedModels.push(body.model);
+
+      if (body.model === 'openai/gpt-oss-120b') {
+        return {
+          ok: false,
+          status: 429,
+          text: async () => 'Rate limit exceeded on gpt-oss-120b',
+        };
+      }
+
+      if (body.model === 'openai/gpt-oss-20b') {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({
+            choices: [{ message: { content: '{"recovered":true}' } }],
+          }),
+        };
+      }
+
+      throw new Error('Unexpected model');
+    });
+
+    const { callGroq } = await import('./aiGateway');
+    const result = await callGroq('Olá Groq');
+
+    expect(triedModels).toEqual(['openai/gpt-oss-120b', 'openai/gpt-oss-20b']);
+    expect(result.modelUsed).toBe('groq/openai/gpt-oss-20b');
+    expect(result.text).toBe('{"recovered":true}');
+
+    delete process.env.GROQ_API_KEY;
+  });
+
+  it('resolveMistralModel: deve resolver dinamicamente o modelo versionado mais recente de mistral-small', async () => {
+    process.env.MISTRAL_API_KEY = 'mistral_test_key';
+    const { resolveMistralModel, resetMistralModelCache } = await import('./aiGateway');
+    resetMistralModelCache();
+
+    // @ts-ignore
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [
+          { id: 'mistral-tiny' },
+          { id: 'mistral-small-2402' },
+          { id: 'mistral-small-2506' },
+          { id: 'mistral-small-latest' },
+          { id: 'mistral-large-2407' },
+        ],
+      }),
+    });
+
+    const resolved = await resolveMistralModel();
+    expect(resolved).toBe('mistral-small-2506'); // Versionado mais recente
+
+    delete process.env.MISTRAL_API_KEY;
+    resetMistralModelCache();
   });
 });

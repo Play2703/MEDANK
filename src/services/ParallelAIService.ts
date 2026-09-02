@@ -212,7 +212,7 @@ export class ParallelAIService {
       if (process.env.GROQ_API_KEY) {
         try {
           console.log(
-            `[ParallelAI:${context}] 🔀 Tentando fallback via Groq (${process.env.GROQ_MODEL || "llama-3.1-8b-instant"})...`
+            `[ParallelAI:${context}] 🔀 Tentando fallback via Groq (${process.env.GROQ_MODEL || "openai/gpt-oss-120b"})...`
           );
           const groqRes = await callGroq(promptToUse, temperature, context, 7000);
           if (groqRes.text) {
