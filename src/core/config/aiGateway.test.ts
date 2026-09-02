@@ -148,7 +148,7 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
     expect(result.modelUsed).toBe('mistralai/mistral-small-24b');
   });
 
-  it('callGroq: deve tentar o próximo modelo (openai/gpt-oss-20b) se o primeiro falhar', async () => {
+  it('callGroq: deve utilizar openai/gpt-oss-120b para chamadas em json_object mode', async () => {
     process.env.GROQ_API_KEY = 'groq_test_key';
     const triedModels: string[] = [];
 
@@ -157,33 +157,21 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
       const body = JSON.parse(options.body);
       triedModels.push(body.model);
 
-      if (body.model === 'openai/gpt-oss-120b') {
-        return {
-          ok: false,
-          status: 429,
-          text: async () => 'Rate limit exceeded on gpt-oss-120b',
-        };
-      }
-
-      if (body.model === 'openai/gpt-oss-20b') {
-        return {
-          ok: true,
-          status: 200,
-          text: async () => JSON.stringify({
-            choices: [{ message: { content: '{"recovered":true}' } }],
-          }),
-        };
-      }
-
-      throw new Error('Unexpected model');
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          choices: [{ message: { content: '{"ok":true}' } }],
+        }),
+      };
     });
 
     const { callGroq } = await import('./aiGateway');
     const result = await callGroq('Olá Groq');
 
-    expect(triedModels).toEqual(['openai/gpt-oss-120b', 'openai/gpt-oss-20b']);
-    expect(result.modelUsed).toBe('groq/openai/gpt-oss-20b');
-    expect(result.text).toBe('{"recovered":true}');
+    expect(triedModels).toEqual(['openai/gpt-oss-120b']);
+    expect(result.modelUsed).toBe('groq/openai/gpt-oss-120b');
+    expect(result.text).toBe('{"ok":true}');
 
     delete process.env.GROQ_API_KEY;
   });
@@ -213,5 +201,42 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
 
     delete process.env.MISTRAL_API_KEY;
     resetMistralModelCache();
+  });
+
+  it('callCloudflareAI: deve chamar o endpoint do Cloudflare Workers AI com a autenticação e modelo corretos', async () => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = 'cf_acc_123';
+    process.env.CLOUDFLARE_API_TOKEN = 'cf_tok_456';
+
+    let calledUrl = '';
+    let authHeader = '';
+    let requestedModel = '';
+
+    // @ts-ignore
+    global.fetch = vi.fn().mockImplementation(async (url, options) => {
+      calledUrl = String(url);
+      authHeader = options.headers['Authorization'];
+      const body = JSON.parse(options.body);
+      requestedModel = body.model;
+
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          choices: [{ message: { content: '{"cf":true}' } }],
+        }),
+      };
+    });
+
+    const { callCloudflareAI } = await import('./aiGateway');
+    const result = await callCloudflareAI('Pergunta Cloudflare');
+
+    expect(calledUrl).toBe('https://api.cloudflare.com/client/v4/accounts/cf_acc_123/ai/v1/chat/completions');
+    expect(authHeader).toBe('Bearer cf_tok_456');
+    expect(requestedModel).toBe('@cf/openai/gpt-oss-120b');
+    expect(result.modelUsed).toBe('cloudflare-ai/@cf/openai/gpt-oss-120b');
+    expect(result.text).toBe('{"cf":true}');
+
+    delete process.env.CLOUDFLARE_ACCOUNT_ID;
+    delete process.env.CLOUDFLARE_API_TOKEN;
   });
 });

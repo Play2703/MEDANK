@@ -185,7 +185,7 @@ export async function generateWithFallback(
   );
 }
 
-// ══ HELPER GENÉRICO PARA PROVEDORES COMPATÍVEIS COM OPENAI (GROQ, MISTRAL, CEREBRAS) ══
+// ══ HELPER GENÉRICO PARA PROVEDORES COMPATÍVEIS COM OPENAI (GROQ, MISTRAL, CLOUDFLARE WORKERS AI) ══
 
 export interface OpenAICompatibleConfig {
   name: string;
@@ -283,23 +283,25 @@ export async function callGroq(
   prompt: string,
   temperature = 0.2,
   context = "",
-  timeoutMs = 7000
+  timeoutMs = 7000,
+  responseFormat: "json_object" | "text" = "json_object"
 ): Promise<GatewayGenerateResult> {
   const apiKey = process.env.GROQ_API_KEY || "";
   if (!apiKey) throw new Error("GROQ_API_KEY não configurada.");
   const baseUrl = process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
 
+  // Mantém apenas gpt-oss-120b (mais confiável em JSON mode estruturado, evita 400 do 20b)
   const models = (
     process.env.GROQ_MODELS
       ? process.env.GROQ_MODELS.split(",").map((m) => m.trim())
-      : [process.env.GROQ_MODEL || "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
+      : [process.env.GROQ_MODEL || "openai/gpt-oss-120b"]
   ).filter(Boolean);
 
   let lastError: any = null;
   for (const model of models) {
     try {
       return await callOpenAICompatible(
-        { name: "groq", baseUrl, apiKey, model, timeoutMs, maxTokens: 3000 },
+        { name: "groq", baseUrl, apiKey, model, timeoutMs, maxTokens: 3000, responseFormat },
         prompt,
         temperature,
         context
@@ -387,21 +389,29 @@ export async function callMistral(
   prompt: string,
   temperature = 0.2,
   context = "",
-  timeoutMs = 8000
+  timeoutMs = 12000
 ): Promise<GatewayGenerateResult> {
   const apiKey = process.env.MISTRAL_API_KEY || "";
   if (!apiKey) throw new Error("MISTRAL_API_KEY não configurada.");
   const baseUrl = process.env.MISTRAL_BASE_URL || "https://api.mistral.ai/v1";
   const model = await resolveMistralModel(baseUrl, apiKey);
+  const startTime = Date.now();
 
   try {
-    return await callOpenAICompatible(
+    const res = await callOpenAICompatible(
       { name: "mistral", baseUrl, apiKey, model, timeoutMs, maxTokens: 3000 },
       prompt,
       temperature,
       context
     );
+    const elapsed = Date.now() - startTime;
+    console.log(`[Mistral${context ? `:${context}` : ""}] ✅ Completion gerado com sucesso em ${elapsed}ms (modelo: ${model})`);
+    return res;
   } catch (err: any) {
+    const elapsed = Date.now() - startTime;
+    console.warn(
+      `[Mistral${context ? `:${context}` : ""}] ⚠️ Falhou após ${elapsed}ms (modelo: ${model}, status=${err.status || err.statusCode || "N/A"}): ${err.message || err}`
+    );
     // Se o modelo cacheado passou a ser inválido (404/400), invalida o cache pra forçar nova resolução na próxima chamada
     if (err.status === 404 || err.status === 400 || err.statusCode === 404 || err.statusCode === 400) {
       cachedMistralModel = null;
@@ -410,44 +420,54 @@ export async function callMistral(
   }
 }
 
-export async function callCerebras(
+export async function callCloudflareAI(
   prompt: string,
   temperature = 0.2,
   context = "",
-  timeoutMs = 7000
+  timeoutMs = 8000,
+  responseFormat: "json_object" | "text" = "json_object"
 ): Promise<GatewayGenerateResult> {
-  const rawKey = process.env.CEREBRAS_API_KEY;
-  const apiKey = (rawKey || "").trim();
-  const isKeySet = Boolean(apiKey);
-  const keyLength = apiKey.length;
-  const keyPrefix = isKeySet ? `${apiKey.slice(0, 4)}...` : "N/A";
+  const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || "").trim();
+  const apiToken = (process.env.CLOUDFLARE_API_TOKEN || "").trim();
 
-  console.log(
-    `[Cerebras${context ? `:${context}` : ""}] 🔍 Diagnóstico inicial: CEREBRAS_API_KEY configurada=${isKeySet} (tamanho=${keyLength}, prefixo=${keyPrefix})`
-  );
-
-  if (!apiKey) {
-    throw new Error("CEREBRAS_API_KEY não configurada ou vazia no ambiente de execução.");
+  if (!accountId || !apiToken) {
+    throw new Error(
+      "CLOUDFLARE_ACCOUNT_ID ou CLOUDFLARE_API_TOKEN não configurados no ambiente de execução."
+    );
   }
 
-  const rawBaseUrl = process.env.CEREBRAS_BASE_URL || "https://api.cerebras.ai/v1";
-  const baseUrl = rawBaseUrl.trim().replace(/\/+$/, "");
-  const model = process.env.CEREBRAS_MODEL || "gpt-oss-120b";
+  const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1`;
+  const model = process.env.CLOUDFLARE_AI_MODEL || "@cf/openai/gpt-oss-120b";
+  const startTime = Date.now();
 
   console.log(
-    `[Cerebras${context ? `:${context}` : ""}] 🚀 Disparando requisição para ${baseUrl}/chat/completions (modelo: ${model})`
+    `[CloudflareAI${context ? `:${context}` : ""}] 🚀 Disparando requisição para Cloudflare Workers AI (modelo: ${model})`
   );
 
   try {
-    return await callOpenAICompatible(
-      { name: "cerebras", baseUrl, apiKey, model, timeoutMs, maxTokens: 3000 },
+    const res = await callOpenAICompatible(
+      {
+        name: "cloudflare-ai",
+        baseUrl,
+        apiKey: apiToken,
+        model,
+        timeoutMs,
+        maxTokens: 3000,
+        responseFormat,
+      },
       prompt,
       temperature,
       context
     );
+    const elapsed = Date.now() - startTime;
+    console.log(
+      `[CloudflareAI${context ? `:${context}` : ""}] ✅ Sucesso em ${elapsed}ms (modelo: ${model})`
+    );
+    return res;
   } catch (err: any) {
+    const elapsed = Date.now() - startTime;
     console.error(
-      `[Cerebras${context ? `:${context}` : ""}] ❌ Erro detalhado na chamada Cerebras (status=${err.status || err.statusCode || "N/A"}, code=${err.code || "N/A"}):`,
+      `[CloudflareAI${context ? `:${context}` : ""}] ❌ Falhou após ${elapsed}ms (modelo: ${model}, status=${err.status || err.statusCode || "N/A"}):`,
       err.message || String(err)
     );
     throw err;

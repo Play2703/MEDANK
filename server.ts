@@ -135,13 +135,24 @@ async function startServer() {
   // REAL Embedding Endpoint (Gemini gemini-embedding-001 with outputDimensionality: 768, batching and rate limit throttling)
   app.post("/api/embeddings", async (req, res) => {
     try {
-      const contents = req.body.contents || req.body.text || req.body.texts;
+      const rawContents = req.body.contents ?? req.body.text ?? req.body.texts;
 
-      if (!contents) {
+      if (rawContents === undefined || rawContents === null) {
         return res.status(400).json({ error: "O conteúdo para embedding é obrigatório." });
       }
 
-      const inputList: string[] = Array.isArray(contents) ? contents : [contents];
+      const inputList: string[] = Array.isArray(rawContents) ? rawContents : [rawContents];
+
+      // Guarda para lista vazia antes de chamar a API Gemini
+      if (inputList.length === 0) {
+        return res.json({
+          success: true,
+          embeddings: [],
+          model: "gemini-embedding-001",
+          dimension: 768,
+        });
+      }
+
       const ai = getGeminiClient();
 
       const allEmbeddings: number[][] = [];
@@ -152,6 +163,11 @@ async function startServer() {
         const batch = inputList.slice(i, i + BATCH_SIZE);
         
         const batchResults = await mapWithConcurrency(batch, EMBED_CONCURRENCY, async (textChunk) => {
+          // Se o chunk for vazio ou só espaços, não envia para a API Gemini (evita requests must not be empty)
+          if (!textChunk || !String(textChunk).trim()) {
+            return new Array(768).fill(0);
+          }
+
           let attempts = 0;
           let success = false;
           let embeddingValues: number[] = [];

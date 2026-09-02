@@ -10,7 +10,7 @@ import {
   parseJsonLoose,
   callGroq,
   callMistral,
-  callCerebras,
+  callCloudflareAI,
   GatewayGenerateResult,
 } from "../core/config/aiGateway";
 import { retryWithBackoff, isRetryableError } from "../core/utils/retryUtils";
@@ -140,7 +140,7 @@ export class ParallelAIService {
    * Executa a geração com Gemini como fonte primária ultra-rápida.
    * Se o Gemini tiver sucesso, enriquece via Validação Local (NER/CID-10/DeCS) em <5ms sem chamar APIs externas.
    * Ordem da cascata em caso de indisponibilidade/cota:
-   * Gemini (com skip inteligente de 429) -> Groq (7s) -> Mistral (7s) -> Cerebras (7s) -> 9Router.
+   * Gemini (com skip inteligente de 429) -> Groq (7s) -> Mistral (12s) -> Cloudflare Workers AI (8s) -> Retorno Rápido de Erro Amigável.
    */
   async executeParallel(
     mainPrompt: string,
@@ -201,9 +201,9 @@ export class ParallelAIService {
         };
       }
 
-      // ══ 2. GEMINI FALHOU/PULOU -> CASCATA DE FALLBACK ÁGIL (GROQ -> MISTRAL -> CEREBRAS -> 9ROUTER) ══
+      // ══ 2. GEMINI FALHOU/PULOU -> CASCATA DE FALLBACK ÁGIL (GROQ -> MISTRAL -> CLOUDFLARE WORKERS AI) ══
       console.warn(
-        `[ParallelAI:${context}] ⚠️ Gemini indisponível (${geminiResult.error}). Acionando cascata de fallback: Groq -> Mistral -> Cerebras -> 9Router...`
+        `[ParallelAI:${context}] ⚠️ Gemini indisponível (${geminiResult.error}). Acionando cascata de fallback: Groq -> Mistral -> Cloudflare Workers AI...`
       );
 
       const promptToUse = helperPrompt || mainPrompt;
@@ -242,45 +242,30 @@ export class ParallelAIService {
         }
       }
 
-      // 2.3 CEREBRAS (se CEREBRAS_API_KEY estiver no .env)
-      if (process.env.CEREBRAS_API_KEY) {
+      // 2.3 CLOUDFLARE WORKERS AI (se CLOUDFLARE_ACCOUNT_ID e CLOUDFLARE_API_TOKEN estiverem no .env)
+      if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) {
         try {
           console.log(
-            `[ParallelAI:${context}] 🔀 Tentando fallback via Cerebras (${process.env.CEREBRAS_MODEL || "gpt-oss-120b"})...`
+            `[ParallelAI:${context}] 🔀 Tentando fallback via Cloudflare Workers AI (${process.env.CLOUDFLARE_AI_MODEL || "@cf/openai/gpt-oss-120b"})...`
           );
-          const cerebrasRes = await callCerebras(promptToUse, temperature, context, 7000);
-          if (cerebrasRes.text) {
-            return this.handleFallbackSuccess(cerebrasRes, context);
+          const cfRes = await callCloudflareAI(promptToUse, temperature, context, 8000);
+          if (cfRes.text) {
+            return this.handleFallbackSuccess(cfRes, context);
           }
         } catch (err: any) {
           console.warn(
-            `[ParallelAI:${context}] ⚠️ Cerebras falhou (${err.status || err.message}). Avançando para o 9Router...`
+            `[ParallelAI:${context}] ⚠️ Cloudflare Workers AI falhou (${err.status || err.message}).`
           );
         }
       }
 
-      // 2.4 9ROUTER (Fallback final com timeout curto por modelo)
-      const routerResult = await this.call9Router(
-        promptToUse,
-        temperature,
-        context,
-        fallbackTimeoutMs
-      );
-
-      if (routerResult.success && routerResult.text) {
-        return this.handleFallbackSuccess(
-          { text: routerResult.text, modelUsed: routerResult.model },
-          context
-        );
-      }
-
-      // ══ 3. TODAS AS ESTRATÉGIAS FALHARAM ══
+      // ══ 3. TODAS AS ESTRATÉGIAS DIRETAS FALHARAM (Retorno rápido sem latência morta do 9Router) ══
       console.error(
-        `[ParallelAI:${context}] ❌ Todas as estratégias da cascata falharam (Gemini -> Groq -> Mistral -> Cerebras -> 9Router).`
+        `[ParallelAI:${context}] ❌ Todos os provedores diretos falharam (Gemini -> Groq -> Mistral -> Cloudflare Workers AI).`
       );
       return {
         success: false,
-        error: `[${context}] Falha em todos os provedores de IA. Gemini: ${geminiResult.error} | 9Router: ${routerResult.error}`,
+        error: "Todos os provedores de IA estão temporariamente indisponíveis, tente novamente em instantes.",
       };
     } catch (error: any) {
       console.error(`[ParallelAI:${context}] Erro inesperado na orquestração de IA:`, error);

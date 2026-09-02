@@ -81,47 +81,11 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     mockRouter.mockRestore();
   });
 
-  it('Fallback: se o Gemini falhar após todos os retries, aciona o 9Router com teto de timeout', async () => {
-    mockGenerateContent.mockRejectedValue({
-      status: 503,
-      message: 'Persistent 503 Service Unavailable',
-    });
-
-    const mockRouter = vi.spyOn(aiGateway, 'generateWithFallback').mockResolvedValue({
-      text: JSON.stringify([{ front: 'Card Fallback', back: 'Resposta Fallback' }]),
-      modelUsed: 'claude-3-haiku',
-    });
-
-    const result = await service.executeParallel('prompt', 'helper', {
-      temperature: 0.2,
-      context: 'test-fallback-9router',
-      initialDelayMs: 10,
-      fallbackTimeoutMs: 30000,
-    });
-
-    expect(result.success).toBe(true);
-    expect(result.mainModel).toBe('claude-3-haiku');
-    expect(result.helperModel).toBe('claude-3-haiku');
-    expect(mockGenerateContent).toHaveBeenCalledTimes(3);
-    expect(mockRouter).toHaveBeenCalledTimes(1);
-    expect(mockRouter).toHaveBeenCalledWith(
-      expect.objectContaining({
-        maxTotalTimeMs: 30000,
-      })
-    );
-
-    mockRouter.mockRestore();
-  });
-
-  it('deve retornar erro fatal se Gemini e 9Router falharem esgotados', async () => {
+  it('deve retornar erro claro ao usuário se todos os provedores da cascata falharem', async () => {
     mockGenerateContent.mockRejectedValue({
       status: 503,
       message: 'Gemini down',
     });
-
-    const mockRouter = vi.spyOn(aiGateway, 'generateWithFallback').mockRejectedValue(
-      new Error('9Router 429 quota exhausted on all models')
-    );
 
     const result = await service.executeParallel('prompt', 'helper', {
       temperature: 0.2,
@@ -130,11 +94,7 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('Falha em todos os provedores de IA');
-    expect(result.error).toContain('Gemini');
-    expect(result.error).toContain('9Router');
-
-    mockRouter.mockRestore();
+    expect(result.error).toContain('Todos os provedores de IA estão temporariamente indisponíveis');
   });
 
   it('Circuit Breaker Gemini: em caso de 429 RESOURCE_EXHAUSTED, não faz 3 retries e pula nas chamadas seguintes', async () => {
@@ -205,38 +165,37 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     mockRouter.mockRestore();
   });
 
-  it('Fallback Cascata: Gemini, Groq e Mistral falham -> Cerebras responde com sucesso', async () => {
+  it('Fallback Cascata: Gemini, Groq e Mistral falham -> Cloudflare Workers AI responde com sucesso', async () => {
     mockGenerateContent.mockRejectedValue({ status: 503, message: 'Gemini down' });
 
     process.env.GROQ_API_KEY = 'groq_key';
     process.env.MISTRAL_API_KEY = 'mistral_key';
-    process.env.CEREBRAS_API_KEY = 'cerebras_key';
+    process.env.CLOUDFLARE_ACCOUNT_ID = 'cf_acc';
+    process.env.CLOUDFLARE_API_TOKEN = 'cf_tok';
 
     const mockGroq = vi.spyOn(aiGateway, 'callGroq').mockRejectedValue(new Error('Groq down'));
     const mockMistral = vi.spyOn(aiGateway, 'callMistral').mockRejectedValue(new Error('Mistral down'));
-    const mockCerebras = vi.spyOn(aiGateway, 'callCerebras').mockResolvedValue({
-      text: JSON.stringify([{ front: 'Card Cerebras', back: 'Resp Cerebras' }]),
-      modelUsed: 'cerebras/gpt-oss-120b',
+    const mockCF = vi.spyOn(aiGateway, 'callCloudflareAI').mockResolvedValue({
+      text: JSON.stringify([{ front: 'Card Cloudflare', back: 'Resp Cloudflare' }]),
+      modelUsed: 'cloudflare-ai/@cf/openai/gpt-oss-120b',
     });
-    const mockRouter = vi.spyOn(aiGateway, 'generateWithFallback');
 
     const result = await service.executeParallel('prompt', undefined, {
-      context: 'test-cerebras-fallback',
+      context: 'test-cloudflare-fallback',
       initialDelayMs: 10,
     });
 
     expect(result.success).toBe(true);
-    expect(result.mainModel).toBe('cerebras/gpt-oss-120b');
-    expect(mockCerebras).toHaveBeenCalled();
-    expect(mockRouter).not.toHaveBeenCalled();
+    expect(result.mainModel).toBe('cloudflare-ai/@cf/openai/gpt-oss-120b');
+    expect(mockCF).toHaveBeenCalled();
 
     delete process.env.GROQ_API_KEY;
     delete process.env.MISTRAL_API_KEY;
-    delete process.env.CEREBRAS_API_KEY;
+    delete process.env.CLOUDFLARE_ACCOUNT_ID;
+    delete process.env.CLOUDFLARE_API_TOKEN;
     mockGroq.mockRestore();
     mockMistral.mockRestore();
-    mockCerebras.mockRestore();
-    mockRouter.mockRestore();
+    mockCF.mockRestore();
   });
 
   describe('TAREFA 1 & 4 — Validação em Lote Unificado (Opção A)', () => {
