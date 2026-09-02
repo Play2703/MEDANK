@@ -4,13 +4,23 @@ export const PRIMARY_AI_MODEL = process.env.PRIMARY_AI_MODEL || "gemini-3.6-flas
 export const LIGHT_AI_MODEL = process.env.LIGHT_AI_MODEL || "gemini-3.5-flash-lite";
 
 function getGatewayConfig() {
+  const rawModels = (process.env.AI_GATEWAY_MODELS || "")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+
+  // Sanitiza modelos descontinuados conhecidos (ex: groq/llama-3.3-70b-versatile -> groq/llama-3.1-8b-instant)
+  const sanitizedModels = rawModels.map((m) => {
+    if (m === "groq/llama-3.3-70b-versatile" || m === "llama-3.3-70b-versatile") {
+      return "groq/llama-3.1-8b-instant";
+    }
+    return m;
+  });
+
   return {
     baseUrl: process.env.AI_GATEWAY_BASE_URL || "",
     apiKey: process.env.AI_GATEWAY_API_KEY || "",
-    models: (process.env.AI_GATEWAY_MODELS || "")
-      .split(",")
-      .map((m) => m.trim())
-      .filter(Boolean),
+    models: sanitizedModels,
   };
 }
 
@@ -66,7 +76,8 @@ export async function generateWithFallback(
     const model = models[mIdx];
     const modelContext = `9router:${model}${contextTag}`;
     const remainingTimeMs = Math.max(3000, maxTotalTimeMs - (Date.now() - startTime));
-    const requestTimeoutMs = Math.min(20000, remainingTimeMs);
+    // Timeout curto de 7s por modelo para falhar rápido e avançar na lista sem travar a requisição
+    const requestTimeoutMs = Math.min(7000, remainingTimeMs);
 
     try {
       // 1 tentativa por modelo com timeout proporcional para permitir cascata fluida dentro do teto
@@ -169,6 +180,150 @@ export async function generateWithFallback(
 
   throw new Error(
     `[aiGateway${contextTag}] Todos os modelos do fallback falharam (ou limite de ${maxTotalTimeMs}ms atingido). Último erro: ${lastError?.message || lastError}`
+  );
+}
+
+// ══ HELPER GENÉRICO PARA PROVEDORES COMPATÍVEIS COM OPENAI (GROQ, MISTRAL, CEREBRAS) ══
+
+export interface OpenAICompatibleConfig {
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  timeoutMs?: number;
+  responseFormat?: "json_object" | "text";
+}
+
+export async function callOpenAICompatible(
+  config: OpenAICompatibleConfig,
+  prompt: string,
+  temperature = 0.2,
+  contextTag = ""
+): Promise<GatewayGenerateResult> {
+  const timeoutMs = config.timeoutMs ?? 7000;
+  const format = config.responseFormat ?? "json_object";
+  const requestBody: any = {
+    model: config.model,
+    messages: [{ role: "user", content: prompt }],
+    temperature,
+    stream: false,
+  };
+  if (format === "json_object") {
+    requestBody.response_format = { type: "json_object" };
+  }
+
+  const endpoint = config.baseUrl.endsWith("/chat/completions")
+    ? config.baseUrl
+    : `${config.baseUrl.replace(/\/+$/, "")}/chat/completions`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => "");
+    const status = response.status;
+    const errObj: any = new Error(
+      `[${config.name}${contextTag ? `:${contextTag}` : ""}] HTTP ${status} para "${config.model}": ${errBody}`
+    );
+    errObj.status = status;
+    errObj.statusCode = status;
+    throw errObj;
+  }
+
+  const rawText = await response.text();
+  let text = "";
+  let usageMetadata: any = undefined;
+
+  if (rawText.trim().startsWith("data:") || rawText.includes("\ndata:")) {
+    const parsed = parseJsonLoose(rawText);
+    if (parsed && typeof parsed === "object") {
+      text = typeof parsed.content === "string" ? parsed.content : JSON.stringify(parsed);
+    } else {
+      text = String(parsed || "");
+    }
+  } else {
+    const data = JSON.parse(rawText);
+    text = data?.choices?.[0]?.message?.content || "";
+    if (data?.usage) {
+      usageMetadata = {
+        promptTokenCount: data.usage.prompt_tokens || 0,
+        candidatesTokenCount: data.usage.completion_tokens || 0,
+        totalTokenCount: data.usage.total_tokens || 0,
+      };
+    }
+  }
+
+  if (!text || !text.trim()) {
+    throw new Error(
+      `[${config.name}${contextTag ? `:${contextTag}` : ""}] Modelo "${config.model}" retornou conteúdo vazio.`
+    );
+  }
+
+  return {
+    text,
+    modelUsed: `${config.name}/${config.model}`,
+    usage: usageMetadata,
+  };
+}
+
+export async function callGroq(
+  prompt: string,
+  temperature = 0.2,
+  context = "",
+  timeoutMs = 7000
+): Promise<GatewayGenerateResult> {
+  const apiKey = process.env.GROQ_API_KEY || "";
+  if (!apiKey) throw new Error("GROQ_API_KEY não configurada.");
+  const baseUrl = process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
+  const model = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+  return callOpenAICompatible(
+    { name: "groq", baseUrl, apiKey, model, timeoutMs },
+    prompt,
+    temperature,
+    context
+  );
+}
+
+export async function callMistral(
+  prompt: string,
+  temperature = 0.2,
+  context = "",
+  timeoutMs = 7000
+): Promise<GatewayGenerateResult> {
+  const apiKey = process.env.MISTRAL_API_KEY || "";
+  if (!apiKey) throw new Error("MISTRAL_API_KEY não configurada.");
+  const baseUrl = process.env.MISTRAL_BASE_URL || "https://api.mistral.ai/v1";
+  const model = process.env.MISTRAL_MODEL || "mistral-small-latest";
+  return callOpenAICompatible(
+    { name: "mistral", baseUrl, apiKey, model, timeoutMs },
+    prompt,
+    temperature,
+    context
+  );
+}
+
+export async function callCerebras(
+  prompt: string,
+  temperature = 0.2,
+  context = "",
+  timeoutMs = 7000
+): Promise<GatewayGenerateResult> {
+  const apiKey = process.env.CEREBRAS_API_KEY || "";
+  if (!apiKey) throw new Error("CEREBRAS_API_KEY não configurada.");
+  const baseUrl = process.env.CEREBRAS_BASE_URL || "https://api.cerebras.ai/v1";
+  const model = process.env.CEREBRAS_MODEL || "llama3.1-8b";
+  return callOpenAICompatible(
+    { name: "cerebras", baseUrl, apiKey, model, timeoutMs },
+    prompt,
+    temperature,
+    context
   );
 }
 

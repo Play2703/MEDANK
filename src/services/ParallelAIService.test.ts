@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ParallelAIService } from './ParallelAIService';
+import { ParallelAIService, resetGeminiQuotaCooldown } from './ParallelAIService';
 import * as aiGateway from '../core/config/aiGateway';
 
 describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validação Local)', () => {
@@ -8,6 +8,7 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetGeminiQuotaCooldown();
     process.env.GEMINI_API_KEY = 'test_key';
     service = new ParallelAIService();
 
@@ -133,6 +134,108 @@ describe('ParallelAIService - Arquitetura Otimizada (Gemini Principal + Validaç
     expect(result.error).toContain('Gemini');
     expect(result.error).toContain('9Router');
 
+    mockRouter.mockRestore();
+  });
+
+  it('Circuit Breaker Gemini: em caso de 429 RESOURCE_EXHAUSTED, não faz 3 retries e pula nas chamadas seguintes', async () => {
+    mockGenerateContent.mockRejectedValue({
+      status: 429,
+      message: 'Resource has been exhausted (e.g. check quota). Please retry after 30s',
+    });
+
+    const mockGroq = vi.spyOn(aiGateway, 'callGroq').mockResolvedValue({
+      text: JSON.stringify([{ front: 'Card Groq', back: 'Resp Groq' }]),
+      modelUsed: 'groq/llama-3.1-8b-instant',
+    });
+
+    process.env.GROQ_API_KEY = 'test_groq_key';
+
+    // 1ª Chamada: Gemini recebe 429 -> aborta retries lentos (1 chamada) e usa Groq
+    const res1 = await service.executeParallel('prompt 1', undefined, {
+      context: 'test-quota-skip-1',
+      initialDelayMs: 10,
+    });
+
+    expect(res1.success).toBe(true);
+    expect(res1.mainModel).toBe('groq/llama-3.1-8b-instant');
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1); // Não gastou 3 retries lentos!
+
+    // 2ª Chamada: Gemini está em cooldown -> é pulado diretamente (0 chamadas a mais no Gemini)
+    const res2 = await service.executeParallel('prompt 2', undefined, {
+      context: 'test-quota-skip-2',
+      initialDelayMs: 10,
+    });
+
+    expect(res2.success).toBe(true);
+    expect(res2.mainModel).toBe('groq/llama-3.1-8b-instant');
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1); // Manteve 1, não chamou Gemini de novo!
+
+    delete process.env.GROQ_API_KEY;
+    mockGroq.mockRestore();
+  });
+
+  it('Fallback Cascata: Gemini falha -> Groq falha -> Mistral responde com sucesso', async () => {
+    mockGenerateContent.mockRejectedValue({ status: 503, message: 'Gemini down' });
+
+    process.env.GROQ_API_KEY = 'groq_key';
+    process.env.MISTRAL_API_KEY = 'mistral_key';
+
+    const mockGroq = vi.spyOn(aiGateway, 'callGroq').mockRejectedValue(new Error('Groq 500 error'));
+    const mockMistral = vi.spyOn(aiGateway, 'callMistral').mockResolvedValue({
+      text: JSON.stringify([{ front: 'Card Mistral', back: 'Resp Mistral' }]),
+      modelUsed: 'mistral/mistral-small-latest',
+    });
+    const mockRouter = vi.spyOn(aiGateway, 'generateWithFallback');
+
+    const result = await service.executeParallel('prompt', undefined, {
+      context: 'test-mistral-fallback',
+      initialDelayMs: 10,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.mainModel).toBe('mistral/mistral-small-latest');
+    expect(mockGroq).toHaveBeenCalled();
+    expect(mockMistral).toHaveBeenCalled();
+    expect(mockRouter).not.toHaveBeenCalled(); // 9Router não foi necessário
+
+    delete process.env.GROQ_API_KEY;
+    delete process.env.MISTRAL_API_KEY;
+    mockGroq.mockRestore();
+    mockMistral.mockRestore();
+    mockRouter.mockRestore();
+  });
+
+  it('Fallback Cascata: Gemini, Groq e Mistral falham -> Cerebras responde com sucesso', async () => {
+    mockGenerateContent.mockRejectedValue({ status: 503, message: 'Gemini down' });
+
+    process.env.GROQ_API_KEY = 'groq_key';
+    process.env.MISTRAL_API_KEY = 'mistral_key';
+    process.env.CEREBRAS_API_KEY = 'cerebras_key';
+
+    const mockGroq = vi.spyOn(aiGateway, 'callGroq').mockRejectedValue(new Error('Groq down'));
+    const mockMistral = vi.spyOn(aiGateway, 'callMistral').mockRejectedValue(new Error('Mistral down'));
+    const mockCerebras = vi.spyOn(aiGateway, 'callCerebras').mockResolvedValue({
+      text: JSON.stringify([{ front: 'Card Cerebras', back: 'Resp Cerebras' }]),
+      modelUsed: 'cerebras/llama3.1-8b',
+    });
+    const mockRouter = vi.spyOn(aiGateway, 'generateWithFallback');
+
+    const result = await service.executeParallel('prompt', undefined, {
+      context: 'test-cerebras-fallback',
+      initialDelayMs: 10,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.mainModel).toBe('cerebras/llama3.1-8b');
+    expect(mockCerebras).toHaveBeenCalled();
+    expect(mockRouter).not.toHaveBeenCalled();
+
+    delete process.env.GROQ_API_KEY;
+    delete process.env.MISTRAL_API_KEY;
+    delete process.env.CEREBRAS_API_KEY;
+    mockGroq.mockRestore();
+    mockMistral.mockRestore();
+    mockCerebras.mockRestore();
     mockRouter.mockRestore();
   });
 

@@ -122,4 +122,29 @@ describe('aiGateway - generateWithFallback com Retry, Fallback Sequencial e Teto
       })
     ).rejects.toThrow(/limite de 200ms atingido/);
   });
+
+  it('deve sanitizar modelo descontinuado groq/llama-3.3-70b-versatile para groq/llama-3.1-8b-instant', async () => {
+    process.env.AI_GATEWAY_MODELS = 'groq/llama-3.3-70b-versatile,mistralai/mistral-small-24b';
+
+    let requestedModel = '';
+    // @ts-ignore
+    global.fetch = vi.fn().mockImplementation(async (_url, options) => {
+      const body = JSON.parse(options.body);
+      requestedModel = body.model;
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({
+          choices: [{ message: { content: '{"ok":true}' } }],
+        }),
+      };
+    });
+
+    const result = await generateWithFallback({
+      prompt: 'Teste sanitização',
+    });
+
+    expect(requestedModel).toBe('groq/llama-3.1-8b-instant');
+    expect(result.modelUsed).toBe('groq/llama-3.1-8b-instant');
+  });
 });

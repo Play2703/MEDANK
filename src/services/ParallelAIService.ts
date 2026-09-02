@@ -5,8 +5,15 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { generateWithFallback, parseJsonLoose } from "../core/config/aiGateway";
-import { retryWithBackoff } from "../core/utils/retryUtils";
+import {
+  generateWithFallback,
+  parseJsonLoose,
+  callGroq,
+  callMistral,
+  callCerebras,
+  GatewayGenerateResult,
+} from "../core/config/aiGateway";
+import { retryWithBackoff, isRetryableError } from "../core/utils/retryUtils";
 import { dictionaryNEREngine, MatchedEntity } from "../core/ner/DictionaryNEREngine";
 
 export interface RecognizedMedicalEntity {
@@ -64,6 +71,57 @@ export interface ParallelExecutionOptions {
   fallbackTimeoutMs?: number;
 }
 
+/**
+ * Circuit Breaker em memória para cota do Gemini (429 / RESOURCE_EXHAUSTED).
+ * Evita que o backend gaste 3 retries e ~10s de espera quando a cota diária já zerou.
+ */
+let geminiQuotaBlockedUntil = 0;
+
+export function isGeminiQuotaError(error: any): boolean {
+  if (!error) return false;
+  const status = error?.status || error?.statusCode || error?.response?.status;
+  if (status === 429) return true;
+  const msg = (
+    (typeof error === "string" ? error : error?.message || "") +
+    " " +
+    (error?.code || "") +
+    " " +
+    (error?.details || "")
+  ).toLowerCase();
+  return (
+    msg.includes("resource_exhausted") ||
+    msg.includes("resource exhausted") ||
+    msg.includes("quota") ||
+    msg.includes("429") ||
+    msg.includes("too many requests")
+  );
+}
+
+export function extractGeminiRetryDelayMs(error: any, defaultSeconds = 60): number {
+  if (!error) return defaultSeconds * 1000;
+  const msg = (typeof error === "string" ? error : error?.message || "") + " " + (error?.details || "");
+  const match = msg.match(/(?:retry|wait)\s+(?:in|after|for)?\s*([0-9\.]+)\s*(?:s|seconds)/i);
+  if (match && match[1]) {
+    const sec = parseFloat(match[1]);
+    if (!isNaN(sec) && sec > 0) {
+      return Math.round(sec * 1000);
+    }
+  }
+  return defaultSeconds * 1000;
+}
+
+export function getGeminiQuotaCooldownUntil(): number {
+  return geminiQuotaBlockedUntil;
+}
+
+export function setGeminiQuotaCooldown(delayMs: number): void {
+  geminiQuotaBlockedUntil = Date.now() + delayMs;
+}
+
+export function resetGeminiQuotaCooldown(): void {
+  geminiQuotaBlockedUntil = 0;
+}
+
 export class ParallelAIService {
   private geminiClient: GoogleGenAI | null = null;
 
@@ -81,7 +139,8 @@ export class ParallelAIService {
   /**
    * Executa a geração com Gemini como fonte primária ultra-rápida.
    * Se o Gemini tiver sucesso, enriquece via Validação Local (NER/CID-10/DeCS) em <5ms sem chamar APIs externas.
-   * O 9Router é acionado estritamente como fallback apenas se o Gemini falhar após retries.
+   * Ordem da cascata em caso de indisponibilidade/cota:
+   * Gemini (com skip inteligente de 429) -> Groq (7s) -> Mistral (7s) -> Cerebras (7s) -> 9Router.
    */
   async executeParallel(
     mainPrompt: string,
@@ -126,7 +185,7 @@ export class ParallelAIService {
         const localValidation = this.runLocalValidation(mainData, context);
 
         console.log(
-          `[ParallelAI:${context}] ✅ Sucesso via ${geminiResult.model} (Validação local concluída em memória; 9Router não foi necessário)`
+          `[ParallelAI:${context}] ✅ Sucesso via ${geminiResult.model} (Validação local concluída em memória; fallbacks não foram necessários)`
         );
 
         return {
@@ -142,47 +201,82 @@ export class ParallelAIService {
         };
       }
 
-      // ══ 3. GEMINI FALHOU -> 9ROUTER ESTREITAMENTE COMO FALLBACK COM TETO DE TEMPO ══
+      // ══ 2. GEMINI FALHOU/PULOU -> CASCATA DE FALLBACK ÁGIL (GROQ -> MISTRAL -> CEREBRAS -> 9ROUTER) ══
       console.warn(
-        `[ParallelAI:${context}] ⚠️ Gemini indisponível após retries (${geminiResult.error}). Acionando 9Router como fallback estrito (teto ${fallbackTimeoutMs}ms)...`
+        `[ParallelAI:${context}] ⚠️ Gemini indisponível (${geminiResult.error}). Acionando cascata de fallback: Groq -> Mistral -> Cerebras -> 9Router...`
       );
 
+      const promptToUse = helperPrompt || mainPrompt;
+
+      // 2.1 GROQ (se GROQ_API_KEY estiver no .env)
+      if (process.env.GROQ_API_KEY) {
+        try {
+          console.log(
+            `[ParallelAI:${context}] 🔀 Tentando fallback via Groq (${process.env.GROQ_MODEL || "llama-3.1-8b-instant"})...`
+          );
+          const groqRes = await callGroq(promptToUse, temperature, context, 7000);
+          if (groqRes.text) {
+            return this.handleFallbackSuccess(groqRes, context);
+          }
+        } catch (err: any) {
+          console.warn(
+            `[ParallelAI:${context}] ⚠️ Groq falhou (${err.status || err.message}). Avançando para o próximo fallback...`
+          );
+        }
+      }
+
+      // 2.2 MISTRAL AI (se MISTRAL_API_KEY estiver no .env)
+      if (process.env.MISTRAL_API_KEY) {
+        try {
+          console.log(
+            `[ParallelAI:${context}] 🔀 Tentando fallback via Mistral AI (${process.env.MISTRAL_MODEL || "mistral-small-latest"})...`
+          );
+          const mistralRes = await callMistral(promptToUse, temperature, context, 7000);
+          if (mistralRes.text) {
+            return this.handleFallbackSuccess(mistralRes, context);
+          }
+        } catch (err: any) {
+          console.warn(
+            `[ParallelAI:${context}] ⚠️ Mistral falhou (${err.status || err.message}). Avançando para o próximo fallback...`
+          );
+        }
+      }
+
+      // 2.3 CEREBRAS (se CEREBRAS_API_KEY estiver no .env)
+      if (process.env.CEREBRAS_API_KEY) {
+        try {
+          console.log(
+            `[ParallelAI:${context}] 🔀 Tentando fallback via Cerebras (${process.env.CEREBRAS_MODEL || "llama3.1-8b"})...`
+          );
+          const cerebrasRes = await callCerebras(promptToUse, temperature, context, 7000);
+          if (cerebrasRes.text) {
+            return this.handleFallbackSuccess(cerebrasRes, context);
+          }
+        } catch (err: any) {
+          console.warn(
+            `[ParallelAI:${context}] ⚠️ Cerebras falhou (${err.status || err.message}). Avançando para o 9Router...`
+          );
+        }
+      }
+
+      // 2.4 9ROUTER (Fallback final com timeout curto por modelo)
       const routerResult = await this.call9Router(
-        helperPrompt || mainPrompt,
+        promptToUse,
         temperature,
         context,
         fallbackTimeoutMs
       );
 
       if (routerResult.success && routerResult.text) {
-        let fallbackData;
-        try {
-          fallbackData = parseJsonLoose(routerResult.text);
-        } catch {
-          fallbackData = { content: routerResult.text };
-        }
-
-        const localValidation = this.runLocalValidation(fallbackData, context);
-
-        console.log(
-          `[ParallelAI:${context}] 🔀 Sucesso via fallback do 9Router (${routerResult.model}) com validação local.`
+        return this.handleFallbackSuccess(
+          { text: routerResult.text, modelUsed: routerResult.model },
+          context
         );
-
-        return {
-          success: true,
-          mainText: routerResult.text,
-          mainData: fallbackData,
-          mainModel: routerResult.model,
-          helperText: routerResult.text,
-          helperData: fallbackData,
-          helperModel: routerResult.model,
-          localValidation,
-        };
       }
 
-      // ══ 4. AMBOS FALHARAM ══
+      // ══ 3. TODAS AS ESTRATÉGIAS FALHARAM ══
       console.error(
-        `[ParallelAI:${context}] ❌ Todas as estratégias falharam (Gemini retries + 9Router fallback teto ${fallbackTimeoutMs}ms).`
+        `[ParallelAI:${context}] ❌ Todas as estratégias da cascata falharam (Gemini -> Groq -> Mistral -> Cerebras -> 9Router).`
       );
       return {
         success: false,
@@ -366,6 +460,20 @@ export class ParallelAIService {
     initialDelayMs = 2000,
     modelOverride?: string
   ) {
+    // Checagem de Circuit Breaker para Cota do Gemini
+    if (Date.now() < geminiQuotaBlockedUntil) {
+      const waitSeconds = Math.ceil((geminiQuotaBlockedUntil - Date.now()) / 1000);
+      console.warn(
+        `[ParallelAI:callGemini:${context}] ⏭️ Gemini em cooldown de cota (429) por mais ${waitSeconds}s. Pulando direto para fallback...`
+      );
+      return {
+        success: false,
+        text: "",
+        model: "gemini",
+        error: `Gemini quota em cooldown ativo (${waitSeconds}s restantes)`,
+      };
+    }
+
     try {
       const client = this.getGeminiClient();
       const model = modelOverride || process.env.PRIMARY_AI_MODEL || "gemini-3.6-flash";
@@ -392,6 +500,13 @@ export class ParallelAIService {
           initialDelayMs,
           maxDelayMs: 8000,
           contextTag: `ParallelAI:Gemini:${context}`,
+          isRetryable: (err) => {
+            // Se o erro for de cota esgotada (429), aborta retries lentos imediatamente
+            if (isGeminiQuotaError(err)) {
+              return false;
+            }
+            return isRetryableError(err);
+          },
         }
       );
 
@@ -422,12 +537,51 @@ export class ParallelAIService {
 
       return { success: true, text: r.text || "", model, usage };
     } catch (e: any) {
-      console.warn(
-        `[ParallelAI:callGemini:${context}] ⚠️ Falha persistente no Gemini após retries:`,
-        e.message || String(e)
-      );
+      if (isGeminiQuotaError(e)) {
+        const cooldownMs = extractGeminiRetryDelayMs(e, 60);
+        geminiQuotaBlockedUntil = Date.now() + cooldownMs;
+        const cooldownSec = Math.round(cooldownMs / 1000);
+        console.warn(
+          `[ParallelAI:callGemini:${context}] ⚠️ Quota do Gemini esgotada (429 RESOURCE_EXHAUSTED). Ativando cooldown de ${cooldownSec}s para pular chamadas subsequentes.`
+        );
+      } else {
+        console.warn(
+          `[ParallelAI:callGemini:${context}] ⚠️ Falha no Gemini após retries:`,
+          e.message || String(e)
+        );
+      }
       return { success: false, text: "", model: "gemini", error: e.message || String(e) };
     }
+  }
+
+  private handleFallbackSuccess(
+    result: { text: string; modelUsed: string; usage?: any },
+    context: string
+  ): ParallelResult {
+    let fallbackData;
+    try {
+      fallbackData = parseJsonLoose(result.text);
+    } catch {
+      fallbackData = { content: result.text };
+    }
+
+    const localValidation = this.runLocalValidation(fallbackData, context);
+
+    console.log(
+      `[ParallelAI:${context}] 🔀 Sucesso via fallback (${result.modelUsed}) com validação local.`
+    );
+
+    return {
+      success: true,
+      mainText: result.text,
+      mainData: fallbackData,
+      mainModel: result.modelUsed,
+      usage: result.usage,
+      helperText: result.text,
+      helperData: fallbackData,
+      helperModel: result.modelUsed,
+      localValidation,
+    };
   }
 
   private async call9Router(
