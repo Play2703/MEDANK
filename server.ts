@@ -910,16 +910,27 @@ Configurações Solicitadas:
 ${questionTypeSection}
 
 REGRAS RÍGIDAS DE ELABORAÇÃO PEDAGÓGICA E QUALIDADE CLÍNICA (OBRIGATÓRIO):
-1. ANCORAGEM ESTRITA AO TEXTO-FONTE: Toda questão, resposta correta e distractores DEVEM ser derivados EXCLUSIVAMENTE do trecho/material atribuído. NÃO invente conceitos, exemplos ou variações não mencionadas no texto. Se o texto não contiver informação suficiente, sinalize "INSUFICIENTE_CONTEXTO".
-2. RESPOSTA CORRETA NÃO ATRELADA AO TAMANHO: Varie intencionalmente o comprimento da resposta correta entre as questões do lote (Q1 mais curta, Q2 mais longa, Q3 intermediária). Isso impede que o aluno desenvolva o vício de escolher sempre a alternativa mais longa.
-3. DISTRACTORES ESTRATÉGICOS E CONVINCENTES: Cada alternativa incorreta deve ser extraída ou derivada do material (não inventada), plausível para quem tem compreensão superficial e explorar um erro conceitual comum.
-4. DIVERSIDADE DE TIPOS DE ERRO (DISTRATORES): Cada distrator (isCorrect: false) deve ser classificado em um dos tipos válidos:
-   - "inversão_função" (ex: trocar auditivo por visual)
-   - "ordem_errada" (ex: inverter sequência crânio-caudal ou temporal)
-   - "componente_relacionado" (ex: citar outra estrutura ou mecanismo presente no mesmo trecho)
-   - "terminologia_parcial" (ex: usar termo parcialmente correto ou nomenclatura incompleta)
-5. UNICIDADE E SIMETRIA: Exatamente 1 alternativa correta (isCorrect: true) e 3 incorretas (isCorrect: false). As 4 alternativas devem ter profundidade técnica e formato gramatical compatíveis.
-6. TAGUEAMENTO E RASTREABILIDADE: Preencha "sourceContextExcerpt" com o trecho exato que originou a questão e inclua os códigos CID-10 e especialidade nas tags.
+1. REGRAS DE COBERTURA:
+   - Gere exatamente 1 questão por tópico/unidade fornecida, distribuindo as questões de forma proporcional entre TODAS as seções do documento-fonte — não apenas as primeiras seções. Se a quantidade de questões for menor que o número de tópicos, selecione tópicos alternando entre seções diferentes (round-robin por seção), nunca pegando só os primeiros N tópicos em ordem sequencial.
+   - NUNCA gere duas questões que testem o mesmo fato/mecanismo com apenas o cenário clínico (nome, profissão, idade) trocado. Compare o fato testado de cada questão com as demais — se houver sobreposição > 70%, descarte uma e gere outra a partir de um tópico ainda não coberto.
+2. ANCORAGEM ESTRITA AO TEXTO-FONTE: Toda questão, resposta correta e distratores DEVEM ser derivados EXCLUSIVAMENTE do trecho/material atribuído. NÃO invente fatos, doenças, valores ou condutas não presentes no trecho.
+3. FORMULAÇÃO, SIMETRIA E PLAUSIBILIDADE:
+   - Cada questão deve ter exatamente 4 alternativas (A, B, C, D), sendo apenas 1 correta (isCorrect: true) e 3 incorretas (isCorrect: false).
+   - As 3 alternativas incorretas devem ser plausíveis mas claramente refutáveis pelo texto-fonte — evite distratores absurdos ou gramaticalmente estranhos.
+   - Cada distrator deve ser classificado em um dos tipos válidos: "inversão_função", "ordem_errada", "componente_relacionado", "terminologia_parcial".
+   - RESPOSTA CORRETA NÃO ATRELADA AO TAMANHO: Varie o comprimento da resposta correta entre as questões do lote (não deixe a correta sempre mais longa).
+4. HIGIENE DE IDIOMA (100% PORTUGUÊS):
+   - Não misture idiomas. Toda questão, alternativa e comentário DEVE estar 100% em português — revise e substitua qualquer termo em inglês que não seja sigla técnica padrão (ex: siglas como "FFA", "HDL", "GLP-1" são aceitáveis; palavras como "compensatory", "treatment", "increase" são PROIBIDAS).
+5. PRESERVAÇÃO DE CARACTERES ESPECIAIS E GREGOS:
+   - Preserve caracteres especiais e gregos exatamente como aparecem no texto-fonte (α, β, ², ³, PGE₂, TNF-α, etc.). NUNCA substitua por caracteres corrompidos ou pontuação fora de lugar (";", "Â", "‚"). Se o encoding de saída não suportar um caractere, escreva por extenso (ex: "TNF-alfa", "PGE2") em vez de gerar um símbolo quebrado.
+6. REGRAS DO GABARITO COMENTADO:
+   - No campo "correta" de "commentary" (Justificativa da Correta), nomeie explicitamente a LETRA da alternativa correta daquela questão específica (ex: "A alternativa B é a correta pois...") — NUNCA reutilize a letra de uma questão anterior. Releia qual letra (A/B/C/D) foi marcada com isCorrect: true para aquela questão e use exatamente essa letra no texto.
+   - No campo "porOpcao" de "commentary" (Demais alternativas incorretas), identifique cada uma pela sua própria letra (A, B, C, D) e explique por que ela diverge do texto-fonte — não copie a mesma explicação genérica para alternativas diferentes.
+7. AUTO-VERIFICAÇÃO ANTES DE RETORNAR:
+   (a) A letra citada na justificativa da alternativa correta é exatamente a mesma marcada como correta nas opções?
+   (b) Há palavras em inglês fora de siglas técnicas?
+   (c) Há caracteres corrompidos (";", "Â", "‚" fora de contexto)?
+   Se qualquer verificação falhar, corrija imediatamente antes de finalizar o JSON.
 
 Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos de texto fora do JSON):
 [
@@ -960,10 +971,12 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
       }
     ],
     "commentary": {
-      "correta": "Justificativa da alternativa correta embasada nas diretrizes médicas...",
+      "correta": "Justificativa da alternativa correta nomeando a letra correspondente e embasada no texto-fonte...",
       "porOpcao": {
         "A": "Explicação da alternativa A...",
-        "B": "Explicação do distrator B..."
+        "B": "Explicação do distrator B...",
+        "C": "Explicação do distrator C...",
+        "D": "Explicação do distrator D..."
       },
       "correlacaoClinica": "Síntese da correlação clínica e conceito fundamental."
     },
@@ -979,7 +992,7 @@ Retorne EXCLUSIVAMENTE em formato JSON VÁLIDO (sem markdown extra, sem blocos d
 ]
 ${avoidTopicsSection}${customContextSection}${existingQuestionsSection}
 COMANDO DE GERAÇÃO:
-Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas na ${originLabel}, seguindo fielmente todas as 6 regras pedagógicas e o material acima.`;
+Crie exatamente ${quantity} questões inéditas de múltipla escolha inspiradas na ${originLabel}, seguindo fielmente todas as regras de cobertura, formulação, gabarito comentado e auto-verificação acima.`;
       }
 
 

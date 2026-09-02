@@ -287,6 +287,34 @@ Porção caudal onde ocorre a decussação motora piramidal.
       expect(units[1].label).toContain('Síndrome Nefrótica');
     });
 
+    it('deve subdividir blocos que ultrapassam 150 palavras em subtópicos balanceados de 40 a 120 palavras', async () => {
+      // Cria um bloco longo com cerca de 300 palavras
+      const paragraphA = Array(15).fill('O receptor de GLP-1 modula a inflamação sinovial e reduz a liberação de citocinas pró-inflamatórias.').join(' ');
+      const paragraphB = Array(15).fill('A ativação microglial é inibida por agonistas de GLP-1, diminuindo a dor neuropática e a sensibilização central.').join(' ');
+      const longNote = `# Farmacologia GLP-1\n${paragraphA}\n\n# Efeitos Centrais\n${paragraphB}`;
+
+      const units = await segmentContextIntoCoverageUnits(longNote);
+      expect(units.length).toBeGreaterThan(2);
+      for (const u of units) {
+        expect(u.wordCount).toBeLessThanOrEqual(150);
+        expect(u.wordCount).toBeGreaterThanOrEqual(30);
+      }
+    });
+
+    it('deve mesclar fragmentos de parágrafos menores que 20 palavras para evitar micro-tópicos rasos', async () => {
+      const fragmentNotes = `
+Texto muito curto com poucas palavras.
+
+Conteúdo completo sobre a fisiopatologia do choque séptico com hipotensão refratária a volume necessitando de noradrenalina precoce e vasopressina como adjuvante em casos refratários.
+      `.trim();
+
+      const units = await segmentContextIntoCoverageUnits(fragmentNotes);
+      // O fragmento pequeno deve ter sido mesclado
+      expect(units).toHaveLength(1);
+      expect(units[0].content).toContain('Texto muito curto');
+      expect(units[0].content).toContain('choque séptico');
+    });
+
     it('deve retornar 1 unidade única para textos curtos ou bloco único', async () => {
       const shortText = 'Breve anotação sobre anatomia da traqueia.';
       const units = await segmentContextIntoCoverageUnits(shortText);

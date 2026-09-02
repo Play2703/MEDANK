@@ -385,7 +385,7 @@ export async function segmentContextIntoCoverageUnits(
       }
     }
     if (units.length >= 2) {
-      return units;
+      return balanceCoverageUnits(units);
     }
   }
 
@@ -415,7 +415,7 @@ export async function segmentContextIntoCoverageUnits(
       }
     }
     if (units.length >= 2) {
-      return units;
+      return balanceCoverageUnits(units);
     }
   }
 
@@ -449,7 +449,7 @@ export async function segmentContextIntoCoverageUnits(
       }
     }
     if (units.length >= 2) {
-      return units;
+      return balanceCoverageUnits(units);
     }
   }
 
@@ -479,7 +479,7 @@ export async function segmentContextIntoCoverageUnits(
       }
     }
     if (units.length >= 2) {
-      return units;
+      return balanceCoverageUnits(units);
     }
   }
 
@@ -506,14 +506,16 @@ export async function segmentContextIntoCoverageUnits(
     const embeddings = await localEmbeddingClient.generateEmbeddings(rawParagraphs);
 
     if (!embeddings || embeddings.length !== rawParagraphs.length) {
-      return rawParagraphs.map((p, idx) => ({
-        id: `unit-${idx + 1}`,
-        label: generateUnitLabel(p, idx, 'paragraph_semantic'),
-        content: p,
-        charCount: p.length,
-        wordCount: p.split(/\s+/).filter(Boolean).length,
-        sourceType: 'paragraph_semantic',
-      }));
+      return balanceCoverageUnits(
+        rawParagraphs.map((p, idx) => ({
+          id: `unit-${idx + 1}`,
+          label: generateUnitLabel(p, idx, 'paragraph_semantic'),
+          content: p,
+          charCount: p.length,
+          wordCount: p.split(/\s+/).filter(Boolean).length,
+          sourceType: 'paragraph_semantic',
+        }))
+      );
     }
 
     // Agrupa parágrafos vizinhos com similaridade de cosseno >= 0.75
@@ -547,7 +549,7 @@ export async function segmentContextIntoCoverageUnits(
       });
     }
 
-    return groupedUnits.map((g, idx) => {
+    const rawUnits = groupedUnits.map((g, idx) => {
       const content = g.texts.join('\n\n');
       return {
         id: `unit-${idx + 1}`,
@@ -555,20 +557,153 @@ export async function segmentContextIntoCoverageUnits(
         content,
         charCount: content.length,
         wordCount: content.split(/\s+/).filter(Boolean).length,
-        sourceType: 'paragraph_semantic',
+        sourceType: 'paragraph_semantic' as const,
       };
     });
+
+    return balanceCoverageUnits(rawUnits);
   } catch (err) {
     console.warn('[contextSegmentation] Semantic grouping failed, falling back to per-paragraph units:', err);
-    return rawParagraphs.map((p, idx) => ({
+    return balanceCoverageUnits(
+      rawParagraphs.map((p, idx) => ({
+        id: `unit-${idx + 1}`,
+        label: generateUnitLabel(p, idx, 'paragraph_semantic'),
+        content: p,
+        charCount: p.length,
+        wordCount: p.split(/\s+/).filter(Boolean).length,
+        sourceType: 'paragraph_semantic',
+      }))
+    );
+  }
+}
+
+/**
+ * Normaliza e equilibra as Unidades de Cobertura conforme as regras pedagógicas:
+ * 1. Cada tópico idealmente deve conter entre 40 e 120 palavras (mínimo 30, máximo 150).
+ * 2. Tópicos > 150 palavras são subdivididos por frases/parágrafos em subtópicos balanceados.
+ * 3. Ignora metadados de formatação ("Material elaborado a partir de...", etc.).
+ * 4. Preserva tópicos explicitamente delimitados pelo autor (títulos, listas numeradas, bullets).
+ */
+export function balanceCoverageUnits(units: CoverageUnit[]): CoverageUnit[] {
+  if (!units || units.length === 0) return [];
+
+  // Filtra metadados óbvios de rodapé/tabela
+  const METADATA_PATTERNS = [
+    /^material elaborado a partir/i,
+    /^fonte:\s*/i,
+    /^tabela\s+\d+[:\s-]/i,
+    /^figura\s+\d+[:\s-]/i,
+    /^refer[êe]ncias?\s*(bibliogr[áa]ficas?)?[:\s-]*$/i,
+  ];
+
+  const filtered = units.filter((u) => {
+    const trimmed = u.content.trim();
+    if (!trimmed) return false;
+    if (METADATA_PATTERNS.some((p) => p.test(trimmed)) && trimmed.length < 120) {
+      return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) return units;
+
+  // 1. Subdividir blocos que excedem 150 palavras
+  const subdivided: CoverageUnit[] = [];
+
+  for (const unit of filtered) {
+    const words = unit.content.trim().split(/\s+/).filter(Boolean);
+    const wordCount = words.length;
+
+    if (wordCount <= 150) {
+      subdivided.push({
+        ...unit,
+        wordCount,
+        charCount: unit.content.length,
+      });
+    } else {
+      // Subdivide em blocos de 40 a 120 palavras por fronteiras de frases
+      const sentences = unit.content
+        .split(/(?<=[.!?])\s+|\n+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      let currentChunk: string[] = [];
+      let currentWordCount = 0;
+      let subIndex = 1;
+
+      for (const sentence of sentences) {
+        const sentenceWords = sentence.split(/\s+/).filter(Boolean).length;
+        if (currentWordCount + sentenceWords > 120 && currentWordCount >= 40) {
+          const chunkContent = currentChunk.join(' ');
+          subdivided.push({
+            id: `${unit.id}-p${subIndex}`,
+            label: `${unit.label} (Parte ${subIndex})`,
+            content: chunkContent,
+            charCount: chunkContent.length,
+            wordCount: currentWordCount,
+            sourceType: unit.sourceType,
+          });
+          subIndex++;
+          currentChunk = [sentence];
+          currentWordCount = sentenceWords;
+        } else {
+          currentChunk.push(sentence);
+          currentWordCount += sentenceWords;
+        }
+      }
+
+      if (currentChunk.length > 0) {
+        const chunkContent = currentChunk.join(' ');
+        // Se a última parte for muito pequena (< 30 palavras) e já houver subtópicos, anexa à anterior
+        if (currentWordCount < 30 && subdivided.length > 0 && subIndex > 1) {
+          const prev = subdivided[subdivided.length - 1];
+          prev.content = `${prev.content} ${chunkContent}`;
+          prev.charCount = prev.content.length;
+          prev.wordCount = prev.content.split(/\s+/).filter(Boolean).length;
+        } else {
+          subdivided.push({
+            id: `${unit.id}-p${subIndex}`,
+            label: subIndex > 1 ? `${unit.label} (Parte ${subIndex})` : unit.label,
+            content: chunkContent,
+            charCount: chunkContent.length,
+            wordCount: currentWordCount,
+            sourceType: unit.sourceType,
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Mesclar fragmentos excessivamente curtos de parágrafos não estruturados
+  if (subdivided.length > 1) {
+    const merged: CoverageUnit[] = [];
+    for (let i = 0; i < subdivided.length; i++) {
+      const current = subdivided[i];
+      const isTinyUnstructured = current.sourceType === 'paragraph_semantic' && current.wordCount < 20;
+      if (isTinyUnstructured && i < subdivided.length - 1) {
+        const next = subdivided[i + 1];
+        next.content = `${current.content}\n\n${next.content}`;
+        next.charCount = next.content.length;
+        next.wordCount = next.content.split(/\s+/).filter(Boolean).length;
+      } else if (isTinyUnstructured && merged.length > 0) {
+        const prev = merged[merged.length - 1];
+        prev.content = `${prev.content}\n\n${current.content}`;
+        prev.charCount = prev.content.length;
+        prev.wordCount = prev.content.split(/\s+/).filter(Boolean).length;
+      } else {
+        merged.push(current);
+      }
+    }
+    return merged.map((u, idx) => ({
+      ...u,
       id: `unit-${idx + 1}`,
-      label: generateUnitLabel(p, idx, 'paragraph_semantic'),
-      content: p,
-      charCount: p.length,
-      wordCount: p.split(/\s+/).filter(Boolean).length,
-      sourceType: 'paragraph_semantic',
     }));
   }
+
+  return subdivided.map((u, idx) => ({
+    ...u,
+    id: `unit-${idx + 1}`,
+  }));
 }
 
 export interface CoverageAssignment {
@@ -582,7 +717,8 @@ export interface CoverageAssignment {
  * PASSO 2: Mapeia a quantidade de questões solicitadas às Unidades de Cobertura.
  * - Se quantity >= units.length: garante que TODAS as unidades recebam pelo menos 1 questão.
  *   As questões excedentes são distribuídas proporcionalmente ao tamanho (charCount) das unidades.
- * - Se quantity < units.length: prioriza as primeiras/maiores unidades e registra quais ficaram de fora.
+ * - Se quantity < units.length: distribui as questões uniformemente entre as seções (round-robin por seção)
+ *   para garantir representação de todo o documento, em vez de pegar apenas os primeiros N tópicos.
  */
 export function assignCoverageUnitsToQuestions(
   units: CoverageUnit[],
@@ -596,8 +732,25 @@ export function assignCoverageUnitsToQuestions(
   const omittedUnitLabels: string[] = [];
 
   if (quantity < units.length) {
-    const selectedUnits = units.slice(0, quantity);
-    const omitted = units.slice(quantity);
+    // Distribui as questões uniformemente ao longo de todo o documento (round-robin por seção/posição)
+    const step = units.length / quantity;
+    const selectedIndices: number[] = [];
+    for (let i = 0; i < quantity; i++) {
+      const idx = Math.min(Math.floor(i * step), units.length - 1);
+      if (!selectedIndices.includes(idx)) {
+        selectedIndices.push(idx);
+      }
+    }
+    // Se houver colisões por arredondamento, preenche com os não selecionados
+    for (let i = 0; i < units.length && selectedIndices.length < quantity; i++) {
+      if (!selectedIndices.includes(i)) {
+        selectedIndices.push(i);
+      }
+    }
+    selectedIndices.sort((a, b) => a - b);
+
+    const selectedUnits = selectedIndices.map((idx) => units[idx]);
+    const omitted = units.filter((_, idx) => !selectedIndices.includes(idx));
     for (const u of omitted) {
       omittedUnitLabels.push(u.label);
     }

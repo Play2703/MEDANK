@@ -123,9 +123,9 @@ export function balanceAndShuffleQuestionOptions(questions: Question[]): Questio
       return {
         id: `opt-${q.id}-${letter}`,
         letter,
-        text: opt.text,
+        text: sanitizeTextEncoding(opt.text),
         isCorrect,
-        explanation: opt.explanation,
+        explanation: opt.explanation ? sanitizeTextEncoding(opt.explanation) : undefined,
       };
     });
 
@@ -133,26 +133,78 @@ export function balanceAndShuffleQuestionOptions(questions: Question[]): Questio
 
     // If commentary is structured, re-map porOpcao letters to match new option positions
     let updatedCommentary = q.commentary;
-    if (typeof q.commentary === 'object' && q.commentary !== null && (q.commentary as any).porOpcao) {
-      const oldPorOpcao = (q.commentary as any).porOpcao || {};
-      const newPorOpcao: Record<string, string> = {};
-      finalOptions.forEach((opt, idx) => {
-        const originalOpt = newRawOptions[idx];
-        const oldLetter = originalOpt.letter;
-        const explanation = oldPorOpcao[oldLetter] || originalOpt.explanation || '';
-        newPorOpcao[opt.letter] = explanation;
-      });
-      updatedCommentary = {
-        ...(q.commentary as any),
-        porOpcao: newPorOpcao,
-      };
+    if (typeof q.commentary === 'object' && q.commentary !== null) {
+      const commObj = { ...(q.commentary as any) };
+      if (commObj.porOpcao) {
+        const oldPorOpcao = commObj.porOpcao || {};
+        const newPorOpcao: Record<string, string> = {};
+        finalOptions.forEach((opt, idx) => {
+          const originalOpt = newRawOptions[idx];
+          const oldLetter = originalOpt.letter;
+          const explanation = oldPorOpcao[oldLetter] || originalOpt.explanation || '';
+          newPorOpcao[opt.letter] = sanitizeTextEncoding(explanation);
+        });
+        commObj.porOpcao = newPorOpcao;
+      }
+
+      if (commObj.correta) {
+        let corretaText = sanitizeTextEncoding(String(commObj.correta));
+        const oldLetter = correctOpt.letter;
+        const newLetter = newCorrectOpt.letter;
+        if (oldLetter && newLetter && oldLetter !== newLetter) {
+          corretaText = corretaText.replace(
+            new RegExp(`\\b(alternativa|letra|op[çc][ãa]o)\\s+${oldLetter}\\b`, 'gi'),
+            `$1 ${newLetter}`
+          );
+        }
+        commObj.correta = corretaText;
+      }
+
+      if (commObj.correlacaoClinica) {
+        commObj.correlacaoClinica = sanitizeTextEncoding(commObj.correlacaoClinica);
+      }
+
+      updatedCommentary = commObj;
     }
 
     return {
       ...q,
+      statement: sanitizeTextEncoding(q.statement),
+      clinicalContext: q.clinicalContext ? sanitizeTextEncoding(q.clinicalContext) : undefined,
+      sourceContextExcerpt: q.sourceContextExcerpt
+        ? sanitizeTextEncoding(q.sourceContextExcerpt)
+        : undefined,
       options: finalOptions,
       correctOptionId: newCorrectOpt.id,
       commentary: updatedCommentary,
     };
   });
+}
+
+/**
+ * Sanitiza problemas comuns de encoding, caracteres gregos corrompidos e mojibake
+ */
+export function sanitizeTextEncoding(text: string): string {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    .replace(/Â(?=[\s\u00A0-\u00BF\u0370-\u03FF\u2070-\u209F])/g, '')
+    .replace(/TNF[-_\s]*[Â;]\s*α?/gi, 'TNF-α')
+    .replace(/PGE[-_\s]*[Â;]?\s*2/gi, 'PGE₂')
+    .replace(/PGE[-_\s]*[Â;]?\s*₂/gi, 'PGE₂')
+    .replace(/â€œ|â€\s*|“|”/g, '"')
+    .replace(/â€˜|â€™|’|‘/g, "'")
+    .replace(/â€“|â€”/g, '—')
+    .replace(/Ã¡/g, 'á')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã­/g, 'í')
+    .replace(/Ã³/g, 'ó')
+    .replace(/Ãº/g, 'ú')
+    .replace(/Ã£/g, 'ã')
+    .replace(/Ãµ/g, 'õ')
+    .replace(/Ã§/g, 'ç')
+    .replace(/Ã€/g, 'à')
+    .replace(/Ã‰/g, 'É')
+    .replace(/Ã“/g, 'Ó')
+    .replace(/Ãš/g, 'Ú')
+    .replace(/Ã‡/g, 'Ç');
 }

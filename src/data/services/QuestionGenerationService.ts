@@ -954,7 +954,7 @@ export class QuestionGenerationService {
   ): Promise<QuestionGenerationResult> {
     const config = request.configuration;
     const quantity = config.quantity || 5;
-    const MAX_ITEMS_PER_AI_CALL = 8;
+    const MAX_ITEMS_PER_AI_CALL = 5;
 
     const specialtyStr = config.specialties && config.specialties.length > 0 ? config.specialties.join(' & ') : config.specialty || 'Clínica Médica';
     const mainTopic = config.topics && config.topics.length > 0 ? config.topics.join(' & ') : 'Geral';
@@ -1145,7 +1145,7 @@ export class QuestionGenerationService {
       }
     }
 
-    // Split quantity into batches of up to MAX_ITEMS_PER_AI_CALL (8)
+    // Split quantity into batches of up to MAX_ITEMS_PER_AI_CALL (5)
     const batchQuantities: number[] = [];
     let rem = aiQuantityToGenerate;
     while (rem > 0) {
